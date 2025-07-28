@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Guessing Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Number Guessing Game</h1>
+        <div class="header-controls">
+            <button class="settings-icon" onclick="openSettingsModal()" title="Game Settings">
+                ⚙️
+            </button>
+        </div>
+        
+        <div class="game-info">
+            <p>I'm thinking of a <span id="digit-display">3</span>-digit number. Can you guess it?</p>
+            <p>You have <span id="attempts-left">5</span> attempts remaining.</p>
+        </div>
+        
+        <div class="game-area">
+            <div class="input-section">
+                <input type="text" id="guess-input" placeholder="Enter number" maxlength="5" pattern="[0-9]*">
+                <button id="submit-guess" onclick="makeGuess()">Submit Guess</button>
+            </div>
+            
+            <div class="feedback-section">
+                <div id="current-guess"></div>
+                <div id="feedback"></div>
+            </div>
+            
+            <div class="history-section">
+                <h3>Guess History:</h3>
+                <div id="guess-history"></div>
+            </div>
+        </div>
+        
+        <div class="game-controls">
+            <button id="new-game" onclick="startNewGame()">New Game</button>
+        </div>
+        
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Game Settings</h3>
+                    <span class="close" onclick="closeSettingsModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-row">
+                        <label for="digit-count">Number of Digits:</label>
+                        <select id="digit-count" onchange="updateSettings()">
+                            <option value="2">2 digits</option>
+                            <option value="3" selected>3 digits</option>
+                            <option value="4">4 digits</option>
+                            <option value="5">5 digits</option>
+                        </select>
+                    </div>
+                    <div class="settings-row">
+                        <label for="max-attempts">Max Attempts:</label>
+                        <select id="max-attempts" onchange="updateSettings()">
+                            <option value="3">3 attempts</option>
+                            <option value="5">5 attempts</option>
+                            <option value="7" selected>7 attempts</option>
+                            <option value="10">10 attempts</option>
+                            <option value="15">15 attempts</option>
+                            <option value="20">20 attempts</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button onclick="closeSettingsModal()">Close</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="rules">
+            <h3>How to Play:</h3>
+            <ul>
+                <li>Choose your preferred number of digits (2-5) and max attempts (3-20)</li>
+                <li>Guess the number within your attempt limit</li>
+                <li><strong>Correct Digits:</strong> How many digits are in the target number (regardless of position)</li>
+                <li><strong>Correct Positions:</strong> How many digits are in the correct position</li>
+                <li>Example: Target is 401, you guess 410 → 3 correct digits, 1 correct position</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
