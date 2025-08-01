@@ -191,6 +191,172 @@ h1 {
     box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
 }
 
+/* Multiplayer Styles */
+.phase-header {
+    text-align: center;
+    margin-bottom: 25px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border-left: 4px solid #667eea;
+}
+
+.phase-header h3 {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.phase-header p {
+    color: #666;
+    margin: 0;
+}
+
+.current-player-info {
+    text-align: center;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #e8f4fd;
+    border-radius: 8px;
+}
+
+.multiplayer-board {
+    margin: 20px 0;
+}
+
+.player-columns {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.player-column {
+    flex: 1;
+    min-width: 200px;
+    max-width: 250px;
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.player-column.eliminated {
+    background: #f8d7da;
+    border-color: #f5c6cb;
+    opacity: 0.7;
+}
+
+.player-column.winner {
+    background: #d4edda;
+    border-color: #c3e6cb;
+    box-shadow: 0 6px 12px rgba(40, 167, 69, 0.3);
+}
+
+.player-header {
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.player-header.active {
+    background: #667eea;
+    color: white;
+}
+
+.player-header.eliminated {
+    background: #dc3545;
+    color: white;
+}
+
+.player-header.winner {
+    background: #28a745;
+    color: white;
+}
+
+.player-guesses {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.guess-entry-multi {
+    padding: 8px;
+    margin: 5px 0;
+    background: #f8f9fa;
+    border-radius: 5px;
+    font-size: 0.9em;
+}
+
+.guess-entry-multi.correct {
+    background: #d4edda;
+    color: #155724;
+    font-weight: bold;
+}
+
+.guess-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 20px 0;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.target-selection {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.target-selection label {
+    font-weight: bold;
+    color: #555;
+}
+
+.target-selection select {
+    padding: 8px 12px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 1em;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+
+.target-selection select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.results-header {
+    text-align: center;
+    padding: 30px;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border-radius: 15px;
+    margin: 20px 0;
+}
+
+.results-header h3 {
+    font-size: 2em;
+    margin-bottom: 15px;
+}
+
+#winner-announcement {
+    font-size: 1.3em;
+    font-weight: bold;
+}
+
 .game-info {
     text-align: center;
     margin-bottom: 30px;

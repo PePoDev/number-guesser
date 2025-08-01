@@ -20,7 +20,8 @@
             <p>You have <span id="attempts-left">5</span> attempts remaining.</p>
         </div>
         
-        <div class="game-area">
+        <!-- Single Player Game Area -->
+        <div class="game-area" id="single-player-area">
             <div class="input-section">
                 <input type="text" id="guess-input" placeholder="Enter number" maxlength="5" pattern="[0-9]*">
                 <button id="submit-guess" onclick="makeGuess()">Submit Guess</button>
@@ -34,6 +35,57 @@
             <div class="history-section">
                 <h3>Guess History:</h3>
                 <div id="guess-history"></div>
+            </div>
+        </div>
+
+        <!-- Multi Player Game Area -->
+        <div class="game-area" id="multi-player-area" style="display: none;">
+            <!-- Number Input Phase -->
+            <div id="number-input-phase">
+                <div class="phase-header">
+                    <h3>Number Input Phase</h3>
+                    <p>Each player enters their secret number</p>
+                </div>
+                <div class="player-input-section">
+                    <div class="current-player-info">
+                        <span id="current-input-player">Player 1</span>'s turn to enter number
+                    </div>
+                    <div class="input-section">
+                        <input type="text" id="player-number-input" placeholder="Enter your secret number" maxlength="5" pattern="[0-9]*">
+                        <button id="save-number" onclick="savePlayerNumber()">Save Number</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Guessing Phase -->
+            <div id="guessing-phase" style="display: none;">
+                <div class="phase-header">
+                    <h3>Guessing Phase</h3>
+                    <p><span id="current-guesser">Player 1</span>'s turn to guess</p>
+                </div>
+                
+                <div class="multiplayer-board">
+                    <div id="player-columns"></div>
+                </div>
+                
+                <div class="guess-controls">
+                    <div class="target-selection">
+                        <label for="target-player">Guess for:</label>
+                        <select id="target-player"></select>
+                    </div>
+                    <div class="input-section">
+                        <input type="text" id="multi-guess-input" placeholder="Enter guess" maxlength="5" pattern="[0-9]*">
+                        <button id="submit-multi-guess" onclick="makeMultiPlayerGuess()">Submit Guess</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Results -->
+            <div id="game-results" style="display: none;">
+                <div class="results-header">
+                    <h3>Game Over!</h3>
+                    <div id="winner-announcement"></div>
+                </div>
             </div>
         </div>
         
@@ -50,6 +102,21 @@
                 </div>
                 <div class="modal-body">
                     <div class="settings-row">
+                        <label for="game-mode">Game Mode:</label>
+                        <select id="game-mode" onchange="updateGameMode()">
+                            <option value="single" selected>Single Player</option>
+                            <option value="multi">Multi Player</option>
+                        </select>
+                    </div>
+                    <div class="settings-row" id="player-count-row" style="display: none;">
+                        <label for="player-count">Number of Players:</label>
+                        <select id="player-count" onchange="updateSettings()">
+                            <option value="2" selected>2 players</option>
+                            <option value="3">3 players</option>
+                            <option value="4">4 players</option>
+                        </select>
+                    </div>
+                    <div class="settings-row">
                         <label for="digit-count">Number of Digits:</label>
                         <select id="digit-count" onchange="updateSettings()">
                             <option value="2">2 digits</option>
@@ -58,7 +125,7 @@
                             <option value="5">5 digits</option>
                         </select>
                     </div>
-                    <div class="settings-row">
+                    <div class="settings-row" id="max-attempts-row">
                         <label for="max-attempts">Max Attempts:</label>
                         <select id="max-attempts" onchange="updateSettings()">
                             <option value="3">3 attempts</option>

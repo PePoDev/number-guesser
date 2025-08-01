@@ -6,6 +6,15 @@ let digitCount = 3;
 let gameOver = false;
 let guessHistory = [];
 
+// Multiplayer variables
+let gameMode = "single";
+let playerCount = 2;
+let players = [];
+let currentInputPlayer = 0;
+let currentGuesser = 0;
+let gamePhase = "setup"; // setup, input, guessing, finished
+let activePlayers = [];
+
 // Initialize the game when page loads
 document.addEventListener("DOMContentLoaded", function () {
   updateSettings();
@@ -17,6 +26,24 @@ document.addEventListener("DOMContentLoaded", function () {
     .addEventListener("keypress", function (e) {
       if (e.key === "Enter") {
         makeGuess();
+      }
+    });
+
+  // Allow Enter key to save player number
+  document
+    .getElementById("player-number-input")
+    .addEventListener("keypress", function (e) {
+      if (e.key === "Enter") {
+        savePlayerNumber();
+      }
+    });
+
+  // Allow Enter key to submit multiplayer guess
+  document
+    .getElementById("multi-guess-input")
+    .addEventListener("keypress", function (e) {
+      if (e.key === "Enter") {
+        makeMultiPlayerGuess();
       }
     });
 
@@ -46,19 +73,55 @@ function closeSettingsModal() {
   document.getElementById("settings-modal").style.display = "none";
 }
 
+// Update game mode
+function updateGameMode() {
+  gameMode = document.getElementById("game-mode").value;
+  const playerCountRow = document.getElementById("player-count-row");
+  const maxAttemptsRow = document.getElementById("max-attempts-row");
+
+  if (gameMode === "multi") {
+    playerCountRow.style.display = "flex";
+    maxAttemptsRow.style.display = "none"; // Hide max attempts for multiplayer
+  } else {
+    playerCountRow.style.display = "none";
+    maxAttemptsRow.style.display = "flex";
+  }
+
+  updateSettings();
+}
+
 // Update settings from UI
 function updateSettings() {
   digitCount = parseInt(document.getElementById("digit-count").value);
-  maxAttempts = parseInt(document.getElementById("max-attempts").value);
+
+  if (gameMode === "single") {
+    maxAttempts = parseInt(document.getElementById("max-attempts").value);
+  } else {
+    playerCount = parseInt(document.getElementById("player-count").value);
+  }
 
   // Update UI text
   document.getElementById("digit-display").textContent = digitCount;
 
-  // Update input placeholder and constraints
-  const input = document.getElementById("guess-input");
+  // Update input constraints
+  const singleInput = document.getElementById("guess-input");
+  const playerInput = document.getElementById("player-number-input");
+  const multiInput = document.getElementById("multi-guess-input");
 
-  input.placeholder = `Enter ${digitCount}-digit number`;
-  input.maxLength = digitCount;
+  if (singleInput) {
+    singleInput.placeholder = `Enter ${digitCount}-digit number`;
+    singleInput.maxLength = digitCount;
+  }
+
+  if (playerInput) {
+    playerInput.placeholder = `Enter your ${digitCount}-digit secret number`;
+    playerInput.maxLength = digitCount;
+  }
+
+  if (multiInput) {
+    multiInput.placeholder = `Enter ${digitCount}-digit guess`;
+    multiInput.maxLength = digitCount;
+  }
 
   // Start new game with new settings
   startNewGame();
@@ -66,10 +129,23 @@ function updateSettings() {
 
 // Start a new game
 function startNewGame() {
+  if (gameMode === "single") {
+    startSinglePlayerGame();
+  } else {
+    startMultiPlayerGame();
+  }
+}
+
+// Start single player game
+function startSinglePlayerGame() {
   targetNumber = generateRandomNumber();
   attemptsLeft = maxAttempts;
   gameOver = false;
   guessHistory = [];
+
+  // Show single player area, hide multiplayer area
+  document.getElementById("single-player-area").style.display = "block";
+  document.getElementById("multi-player-area").style.display = "none";
 
   // Reset UI elements
   document.getElementById("attempts-left").textContent = attemptsLeft;
@@ -87,7 +163,305 @@ function startNewGame() {
   );
   existingMessages.forEach((msg) => msg.remove());
 
-  console.log("New game started. Target number:", targetNumber); // For debugging
+  console.log("New single player game started. Target number:", targetNumber);
+}
+
+// Start multiplayer game
+function startMultiPlayerGame() {
+  // Initialize multiplayer variables
+  players = [];
+  currentInputPlayer = 0;
+  currentGuesser = 0;
+  gamePhase = "input";
+  activePlayers = [];
+
+  // Initialize players
+  for (let i = 0; i < playerCount; i++) {
+    players.push({
+      id: i,
+      name: `Player ${i + 1}`,
+      number: "",
+      guesses: [],
+      eliminated: false,
+    });
+    activePlayers.push(i);
+  }
+
+  // Show multiplayer area, hide single player area
+  document.getElementById("single-player-area").style.display = "none";
+  document.getElementById("multi-player-area").style.display = "block";
+
+  // Show number input phase
+  document.getElementById("number-input-phase").style.display = "block";
+  document.getElementById("guessing-phase").style.display = "none";
+  document.getElementById("game-results").style.display = "none";
+
+  // Update current player display
+  updateCurrentInputPlayer();
+
+  console.log("New multiplayer game started with", playerCount, "players");
+}
+
+// Update current input player display
+function updateCurrentInputPlayer() {
+  if (currentInputPlayer < playerCount) {
+    document.getElementById("current-input-player").textContent =
+      players[currentInputPlayer].name;
+    document.getElementById("player-number-input").value = "";
+    document.getElementById("player-number-input").focus();
+  }
+}
+
+// Save player number
+function savePlayerNumber() {
+  const input = document.getElementById("player-number-input");
+  let number = input.value.trim();
+
+  // Check if input is empty
+  if (!number) {
+    alert("Please enter a number.");
+    return;
+  }
+
+  // Pad with leading zeros if needed
+  if (number.length < digitCount && !isNaN(number) && number.length > 0) {
+    number = number.padStart(digitCount, "0");
+  }
+
+  // Validate the number
+  const validation = validateGuess(number);
+  if (!validation.valid) {
+    alert(validation.message);
+    return;
+  }
+
+  // Save the number (duplicates are allowed)
+  players[currentInputPlayer].number = number;
+  console.log(`Player ${currentInputPlayer + 1} saved number: ${number}`);
+  currentInputPlayer++;
+
+  // Check if all players have entered their numbers
+  if (currentInputPlayer >= playerCount) {
+    startGuessingPhase();
+  } else {
+    updateCurrentInputPlayer();
+  }
+}
+
+// Start guessing phase
+function startGuessingPhase() {
+  gamePhase = "guessing";
+
+  // Hide input phase, show guessing phase
+  document.getElementById("number-input-phase").style.display = "none";
+  document.getElementById("guessing-phase").style.display = "block";
+
+  // Create player columns
+  createPlayerColumns();
+
+  // Setup target player dropdown
+  setupTargetPlayerDropdown();
+
+  // Update current guesser
+  updateCurrentGuesser();
+}
+
+// Create player columns for the game board
+function createPlayerColumns() {
+  const container = document.getElementById("player-columns");
+  container.innerHTML = "";
+
+  players.forEach((player, index) => {
+    const column = document.createElement("div");
+    column.className = "player-column";
+    column.id = `player-column-${index}`;
+
+    const header = document.createElement("div");
+    header.className = "player-header";
+    header.textContent = player.name;
+
+    const guessesContainer = document.createElement("div");
+    guessesContainer.className = "player-guesses";
+    guessesContainer.id = `player-guesses-${index}`;
+
+    column.appendChild(header);
+    column.appendChild(guessesContainer);
+    container.appendChild(column);
+  });
+}
+
+// Setup target player dropdown
+function setupTargetPlayerDropdown() {
+  const dropdown = document.getElementById("target-player");
+  dropdown.innerHTML = "";
+
+  activePlayers.forEach((playerIndex) => {
+    if (playerIndex !== currentGuesser) {
+      const option = document.createElement("option");
+      option.value = playerIndex;
+      option.textContent = players[playerIndex].name;
+      dropdown.appendChild(option);
+    }
+  });
+}
+
+// Update current guesser display
+function updateCurrentGuesser() {
+  if (activePlayers.length <= 1) {
+    endGame();
+    return;
+  }
+
+  // Find next active player
+  while (players[currentGuesser].eliminated) {
+    currentGuesser = (currentGuesser + 1) % playerCount;
+  }
+
+  document.getElementById("current-guesser").textContent =
+    players[currentGuesser].name;
+
+  // Update player column headers
+  players.forEach((player, index) => {
+    const header = document.querySelector(
+      `#player-column-${index} .player-header`
+    );
+    header.className = "player-header";
+
+    if (index === currentGuesser && !player.eliminated) {
+      header.classList.add("active");
+    } else if (player.eliminated) {
+      header.classList.add("eliminated");
+    }
+  });
+
+  // Update target dropdown
+  setupTargetPlayerDropdown();
+
+  // Clear and focus input
+  document.getElementById("multi-guess-input").value = "";
+  document.getElementById("multi-guess-input").focus();
+}
+
+// Make multiplayer guess
+function makeMultiPlayerGuess() {
+  if (gamePhase !== "guessing") return;
+
+  const guessInput = document.getElementById("multi-guess-input");
+  const targetSelect = document.getElementById("target-player");
+
+  let guess = guessInput.value.trim();
+  const targetPlayerIndex = parseInt(targetSelect.value);
+
+  // Pad with leading zeros if needed
+  if (guess.length < digitCount && !isNaN(guess)) {
+    guess = guess.padStart(digitCount, "0");
+  }
+
+  // Validate the guess
+  const validation = validateGuess(guess);
+  if (!validation.valid) {
+    alert(validation.message);
+    return;
+  }
+
+  // Check if guess is correct and calculate feedback
+  const targetPlayer = players[targetPlayerIndex];
+  const isCorrect = guess === targetPlayer.number;
+  const feedback = calculateFeedback(guess, targetPlayer.number);
+
+  // Add guess to history
+  const guessEntry = {
+    guesser: currentGuesser,
+    target: targetPlayerIndex,
+    guess: guess,
+    correct: isCorrect,
+    correctDigits: feedback.correctDigits,
+    correctPositions: feedback.correctPositions,
+  };
+
+  // Add to target player's guess history
+  targetPlayer.guesses.push(guessEntry);
+
+  // Update display
+  updatePlayerGuessDisplay(targetPlayerIndex, guessEntry);
+
+  if (isCorrect) {
+    // Target player is eliminated
+    targetPlayer.eliminated = true;
+    activePlayers = activePlayers.filter((p) => p !== targetPlayerIndex);
+
+    // Update column appearance
+    const column = document.getElementById(
+      `player-column-${targetPlayerIndex}`
+    );
+    column.classList.add("eliminated");
+
+    const header = column.querySelector(".player-header");
+    header.classList.add("eliminated");
+
+    // Check if game is over
+    if (activePlayers.length === 1) {
+      endGame();
+      return;
+    }
+  }
+
+  // Move to next player
+  do {
+    currentGuesser = (currentGuesser + 1) % playerCount;
+  } while (players[currentGuesser].eliminated);
+
+  updateCurrentGuesser();
+}
+
+// Update player guess display
+function updatePlayerGuessDisplay(playerIndex, guessEntry) {
+  const container = document.getElementById(`player-guesses-${playerIndex}`);
+
+  const entry = document.createElement("div");
+  entry.className = `guess-entry-multi ${guessEntry.correct ? "correct" : ""}`;
+
+  const guesserName = players[guessEntry.guesser].name;
+  const guessText = guessEntry.guess;
+
+  let resultText;
+  if (guessEntry.correct) {
+    resultText = "CORRECT!";
+  } else {
+    resultText = `D:${guessEntry.correctDigits}, P:${guessEntry.correctPositions}`;
+  }
+
+  entry.innerHTML = `
+    <div style="display: flex; justify-content: space-between; width: 100%;">
+      <span>${guesserName}: ${guessText}</span>
+      <span>${resultText}</span>
+    </div>
+  `;
+
+  container.appendChild(entry);
+  container.scrollTop = container.scrollHeight;
+}
+
+// End multiplayer game
+function endGame() {
+  gamePhase = "finished";
+
+  // Hide guessing phase, show results
+  document.getElementById("guessing-phase").style.display = "none";
+  document.getElementById("game-results").style.display = "block";
+
+  // Determine winner
+  const winner = players[activePlayers[0]];
+  document.getElementById(
+    "winner-announcement"
+  ).textContent = `🎉 ${winner.name} wins! 🎉`;
+
+  // Update winner column appearance
+  const winnerColumn = document.getElementById(`player-column-${winner.id}`);
+  winnerColumn.classList.add("winner");
+
+  const winnerHeader = winnerColumn.querySelector(".player-header");
+  winnerHeader.classList.add("winner");
 }
 
 // Validate the guess input
