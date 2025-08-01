@@ -10,9 +10,9 @@ let guessHistory = [];
 let gameMode = "single";
 let playerCount = 2;
 let players = [];
-let currentInputPlayer = 0;
+let currentSetupPlayer = 0;
 let currentGuesser = 0;
-let gamePhase = "setup"; // setup, input, guessing, finished
+let gamePhase = "setup"; // setup, guessing, finished
 let activePlayers = [];
 
 // Initialize the game when page loads
@@ -29,12 +29,12 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
 
-  // Allow Enter key to save player number
+  // Allow Enter key to save player setup (when in number input field)
   document
     .getElementById("player-number-input")
     .addEventListener("keypress", function (e) {
       if (e.key === "Enter") {
-        savePlayerNumber();
+        savePlayerSetup();
       }
     });
 
@@ -107,6 +107,7 @@ function updateSettings() {
   const singleInput = document.getElementById("guess-input");
   const playerInput = document.getElementById("player-number-input");
   const multiInput = document.getElementById("multi-guess-input");
+  const nameInput = document.getElementById("player-name-input");
 
   if (singleInput) {
     singleInput.placeholder = `Enter ${digitCount}-digit number`;
@@ -121,6 +122,11 @@ function updateSettings() {
   if (multiInput) {
     multiInput.placeholder = `Enter ${digitCount}-digit guess`;
     multiInput.maxLength = digitCount;
+  }
+
+  if (nameInput) {
+    nameInput.placeholder = "Enter player name";
+    nameInput.maxLength = 20;
   }
 
   // Start new game with new settings
@@ -170,12 +176,12 @@ function startSinglePlayerGame() {
 function startMultiPlayerGame() {
   // Initialize multiplayer variables
   players = [];
-  currentInputPlayer = 0;
+  currentSetupPlayer = 0;
   currentGuesser = 0;
-  gamePhase = "input";
+  gamePhase = "setup";
   activePlayers = [];
 
-  // Initialize players
+  // Initialize players with default names
   for (let i = 0; i < playerCount; i++) {
     players.push({
       id: i,
@@ -188,38 +194,68 @@ function startMultiPlayerGame() {
   }
 
   // Show multiplayer area, hide single player area
-  document.getElementById("single-player-area").style.display = "none";
-  document.getElementById("multi-player-area").style.display = "block";
+  const singlePlayerArea = document.getElementById("single-player-area");
+  const multiPlayerArea = document.getElementById("multi-player-area");
+  const playerSetupPhase = document.getElementById("player-setup-phase");
+  const guessingPhase = document.getElementById("guessing-phase");
+  const gameResults = document.getElementById("game-results");
 
-  // Show number input phase
-  document.getElementById("number-input-phase").style.display = "block";
-  document.getElementById("guessing-phase").style.display = "none";
-  document.getElementById("game-results").style.display = "none";
+  if (singlePlayerArea) singlePlayerArea.style.display = "none";
+  if (multiPlayerArea) multiPlayerArea.style.display = "block";
+  if (playerSetupPhase) playerSetupPhase.style.display = "block";
+  if (guessingPhase) guessingPhase.style.display = "none";
+  if (gameResults) gameResults.style.display = "none";
 
-  // Update current player display
-  updateCurrentInputPlayer();
+  // Update current setup player display
+  updateCurrentSetupPlayer();
 
   console.log("New multiplayer game started with", playerCount, "players");
 }
 
-// Update current input player display
-function updateCurrentInputPlayer() {
-  if (currentInputPlayer < playerCount) {
-    document.getElementById("current-input-player").textContent =
-      players[currentInputPlayer].name;
-    document.getElementById("player-number-input").value = "";
-    document.getElementById("player-number-input").focus();
+// Update current setup player display
+function updateCurrentSetupPlayer() {
+  if (currentSetupPlayer < playerCount) {
+    const currentSetupPlayerElement = document.getElementById(
+      "current-setup-player"
+    );
+    const nameInput = document.getElementById("player-name-input");
+    const numberInput = document.getElementById("player-number-input");
+
+    if (currentSetupPlayerElement) {
+      currentSetupPlayerElement.textContent = players[currentSetupPlayer].name;
+    }
+    if (nameInput) {
+      nameInput.value = players[currentSetupPlayer].name;
+      nameInput.focus();
+      nameInput.select();
+    }
+    if (numberInput) {
+      numberInput.value = "";
+    }
   }
 }
 
-// Save player number
-function savePlayerNumber() {
-  const input = document.getElementById("player-number-input");
-  let number = input.value.trim();
+// Save player setup (name and number)
+function savePlayerSetup() {
+  console.log(
+    `Saving setup for player ${currentSetupPlayer + 1} of ${playerCount}`
+  );
 
-  // Check if input is empty
+  const nameInput = document.getElementById("player-name-input");
+  const numberInput = document.getElementById("player-number-input");
+
+  let name = nameInput.value.trim();
+  let number = numberInput.value.trim();
+
+  // Check if name is empty, use default name
+  if (!name) {
+    name = `Player ${currentSetupPlayer + 1}`;
+  }
+
+  // Check if number is empty
   if (!number) {
-    alert("Please enter a number.");
+    alert("Please enter a secret number.");
+    numberInput.focus();
     return;
   }
 
@@ -232,19 +268,28 @@ function savePlayerNumber() {
   const validation = validateGuess(number);
   if (!validation.valid) {
     alert(validation.message);
+    numberInput.focus();
     return;
   }
 
-  // Save the number (duplicates are allowed)
-  players[currentInputPlayer].number = number;
-  console.log(`Player ${currentInputPlayer + 1} saved number: ${number}`);
-  currentInputPlayer++;
+  // Save the name and number
+  players[currentSetupPlayer].name = name;
+  players[currentSetupPlayer].number = number;
+  console.log(
+    `Player ${currentSetupPlayer + 1} setup complete: ${name} - ${number}`
+  );
+  currentSetupPlayer++;
 
-  // Check if all players have entered their numbers
-  if (currentInputPlayer >= playerCount) {
+  // Check if all players have completed setup
+  console.log(
+    `Current setup player: ${currentSetupPlayer}, Player count: ${playerCount}`
+  );
+  if (currentSetupPlayer >= playerCount) {
+    console.log("All players setup complete, starting guessing phase");
     startGuessingPhase();
   } else {
-    updateCurrentInputPlayer();
+    console.log("Moving to next player setup");
+    updateCurrentSetupPlayer();
   }
 }
 
@@ -252,9 +297,12 @@ function savePlayerNumber() {
 function startGuessingPhase() {
   gamePhase = "guessing";
 
-  // Hide input phase, show guessing phase
-  document.getElementById("number-input-phase").style.display = "none";
-  document.getElementById("guessing-phase").style.display = "block";
+  // Hide setup phase, show guessing phase
+  const setupPhase = document.getElementById("player-setup-phase");
+  const guessingPhase = document.getElementById("guessing-phase");
+
+  if (setupPhase) setupPhase.style.display = "none";
+  if (guessingPhase) guessingPhase.style.display = "block";
 
   // Create player columns
   createPlayerColumns();

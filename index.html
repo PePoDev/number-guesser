@@ -40,19 +40,28 @@
 
         <!-- Multi Player Game Area -->
         <div class="game-area" id="multi-player-area" style="display: none;">
-            <!-- Number Input Phase -->
-            <div id="number-input-phase">
+            <!-- Player Setup Phase -->
+            <div id="player-setup-phase">
                 <div class="phase-header">
-                    <h3>Number Input Phase</h3>
-                    <p>Each player enters their secret number</p>
+                    <h3>Player Setup</h3>
+                    <p>Enter your name and secret number</p>
                 </div>
                 <div class="player-input-section">
                     <div class="current-player-info">
-                        <span id="current-input-player">Player 1</span>'s turn to enter number
+                        <span id="current-setup-player">Player 1</span>'s turn to setup
                     </div>
-                    <div class="input-section">
-                        <input type="text" id="player-number-input" placeholder="Enter your secret number" maxlength="5" pattern="[0-9]*">
-                        <button id="save-number" onclick="savePlayerNumber()">Save Number</button>
+                    <div class="setup-form">
+                        <div class="input-row">
+                            <label for="player-name-input">Name:</label>
+                            <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20">
+                        </div>
+                        <div class="input-row">
+                            <label for="player-number-input">Secret Number:</label>
+                            <input type="text" id="player-number-input" placeholder="Enter your secret number" maxlength="5" pattern="[0-9]*">
+                        </div>
+                        <div class="input-section">
+                            <button id="save-player-setup" onclick="savePlayerSetup()">Save & Continue</button>
+                        </div>
                     </div>
                 </div>
             </div>

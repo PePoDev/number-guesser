@@ -222,6 +222,33 @@ h1 {
     border-radius: 8px;
 }
 
+.setup-form {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+}
+
+.input-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    gap: 15px;
+}
+
+.input-row label {
+    font-weight: bold;
+    color: #555;
+    min-width: 120px;
+    text-align: right;
+}
+
+.input-row input {
+    flex: 1;
+}
+
 .multiplayer-board {
     margin: 20px 0;
 }
@@ -384,7 +411,7 @@ h1 {
     justify-content: center;
 }
 
-#guess-input {
+#guess-input, #player-number-input, #multi-guess-input, #player-name-input {
     padding: 12px 15px;
     border: 2px solid #ddd;
     border-radius: 8px;
@@ -394,7 +421,7 @@ h1 {
     transition: border-color 0.3s ease;
 }
 
-#guess-input:focus {
+#guess-input:focus, #player-number-input:focus, #multi-guess-input:focus, #player-name-input:focus {
     outline: none;
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
@@ -582,9 +609,25 @@ button:disabled {
         align-items: center;
     }
     
-    #guess-input {
+    #guess-input, #player-number-input, #multi-guess-input, #player-name-input {
         width: 100%;
         max-width: 250px;
         margin-bottom: 10px;
+    }
+    
+    .setup-form {
+        padding: 15px;
+    }
+    
+    .input-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 5px;
+        margin-bottom: 20px;
+    }
+    
+    .input-row label {
+        text-align: left;
+        min-width: auto;
     }
 }
