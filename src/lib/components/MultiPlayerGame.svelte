@@ -97,29 +97,29 @@
 </script>
 
 {#if $gameStore.gamePhase === 'setup'}
-	<div class="phase-header text-center mb-6 p-5 bg-gray-50 rounded-lg border-l-4 border-purple-600">
-		<h3 class="text-gray-800 mb-2 text-xl font-semibold">Player Setup</h3>
-		<p class="text-gray-600 m-0">Enter your name and secret number</p>
+	<div class="phase-header text-center mb-6 p-5 rounded-xl border backdrop-blur-md bg-white/10 border-white/30 shadow-lg">
+		<h3 class="text-white mb-2 text-xl font-semibold drop-shadow-lg">Player Setup</h3>
+		<p class="text-white/90 m-0">Enter your name and secret number</p>
 	</div>
 	
-	<div class="current-player-info text-center text-xl font-bold text-purple-600 mb-5 p-4 bg-blue-50 rounded-lg">
+	<div class="current-player-info text-center text-xl font-bold text-white mb-5 p-4 rounded-xl backdrop-blur-md bg-blue-400/30 border border-white/30 shadow-lg drop-shadow-lg">
 		{$gameStore.players[$gameStore.currentSetupPlayer]?.name}'s turn to setup
 	</div>
 	
-	<div class="max-w-md mx-auto p-5 bg-gray-50 rounded-lg border-2 border-gray-200">
+	<div class="max-w-md mx-auto p-5 rounded-xl border-2 backdrop-blur-md bg-white/10 border-white/30 shadow-lg">
 		<div class="flex items-center mb-4 gap-4">
-			<label for="player-name-input" class="font-bold text-gray-700 min-w-[120px] text-right">Name:</label>
+			<label for="player-name-input" class="font-bold text-white min-w-[120px] text-right drop-shadow-lg">Name:</label>
 			<input
 				id="player-name-input"
 				type="text"
 				bind:value={playerNameInput}
 				placeholder="Enter your name"
 				maxlength="20"
-				class="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-lg text-center transition-all duration-300 focus:outline-none focus:border-purple-600 focus:ring-4 focus:ring-purple-100"
+				class="flex-1 px-3 py-2 rounded-xl text-lg text-center transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-white/30 backdrop-blur-md bg-white/20 border border-white/30 text-white placeholder-white/60 font-semibold shadow-lg"
 			/>
 		</div>
 		<div class="flex items-center mb-4 gap-4">
-			<label for="player-number-input" class="font-bold text-gray-700 min-w-[120px] text-right">Secret Number:</label>
+			<label for="player-number-input" class="font-bold text-white min-w-[120px] text-right drop-shadow-lg">Secret Number:</label>
 			<input
 				id="player-number-input"
 				type="text"
@@ -128,34 +128,34 @@
 				placeholder="Enter your secret number"
 				maxlength={$gameStore.settings.digitCount}
 				pattern="[0-9]*"
-				class="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-lg text-center transition-all duration-300 focus:outline-none focus:border-purple-600 focus:ring-4 focus:ring-purple-100"
+				class="flex-1 px-3 py-2 rounded-xl text-lg text-center transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-white/30 backdrop-blur-md bg-white/20 border border-white/30 text-white placeholder-white/60 font-semibold shadow-lg"
 			/>
 		</div>
 		<div class="flex gap-2 justify-center">
 			<button
 				onclick={savePlayerSetup}
-				class="px-5 py-3 bg-purple-600 text-white rounded-lg text-lg hover:bg-purple-700 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+				class="px-5 py-3 rounded-xl text-lg text-white font-semibold hover:scale-105 transition-all duration-300 shadow-lg backdrop-blur-md bg-gradient-to-r from-purple-400/30 to-pink-500/30 border border-white/30"
 			>
 				Save & Continue
 			</button>
 		</div>
 	</div>
 {:else if $gameStore.gamePhase === 'guessing'}
-	<div class="phase-header text-center mb-6 p-5 bg-gray-50 rounded-lg border-l-4 border-purple-600">
-		<h3 class="text-gray-800 mb-2 text-xl font-semibold">Guessing Phase</h3>
-		<p class="text-gray-600 m-0">{$gameStore.players[$gameStore.currentGuesser]?.name}'s turn to guess</p>
+	<div class="phase-header text-center mb-6 p-5 rounded-xl border backdrop-blur-md bg-white/10 border-white/30 shadow-lg">
+		<h3 class="text-white mb-2 text-xl font-semibold drop-shadow-lg">Guessing Phase</h3>
+		<p class="text-white/90 m-0">{$gameStore.players[$gameStore.currentGuesser]?.name}'s turn to guess</p>
 	</div>
 	
 	<div class="my-5">
 		<div class="flex gap-4 justify-center flex-wrap">
 			{#each $gameStore.players as player, index}
-				<div class="flex-1 min-w-[200px] max-w-[250px] bg-white border-2 rounded-lg p-4 shadow-md {player.eliminated ? 'bg-red-50 border-red-200 opacity-70' : 'border-gray-300'} {index === $gameStore.currentGuesser && !player.eliminated ? 'ring-4 ring-purple-300' : ''}">
-					<div class="text-center font-bold text-lg mb-4 p-2 rounded {index === $gameStore.currentGuesser && !player.eliminated ? 'bg-purple-600 text-white' : player.eliminated ? 'bg-red-600 text-white' : 'bg-gray-200'}">
+				<div class="flex-1 min-w-[200px] max-w-[250px] rounded-xl p-4 shadow-lg backdrop-blur-md border-2 {player.eliminated ? 'bg-red-400/20 border-red-300/50 opacity-70' : 'bg-white/20 border-white/30'} {index === $gameStore.currentGuesser && !player.eliminated ? 'ring-4 ring-purple-300/50' : ''}">
+					<div class="text-center font-bold text-lg mb-4 p-2 rounded-lg backdrop-blur-md {index === $gameStore.currentGuesser && !player.eliminated ? 'bg-purple-500/40 text-white border border-purple-300/50' : player.eliminated ? 'bg-red-500/40 text-white border border-red-300/50' : 'bg-white/20 text-white border border-white/30'} shadow-md">
 						{player.name}
 					</div>
 					<div class="max-h-52 overflow-y-auto space-y-1">
 						{#each player.guesses as guess}
-							<div class="p-2 my-1 rounded text-sm {guess.correct ? 'bg-green-100 text-green-800 font-bold' : 'bg-gray-100'}">
+							<div class="p-2 my-1 rounded-lg text-sm backdrop-blur-md shadow-md {guess.correct ? 'bg-green-400/30 text-white font-bold border border-green-300/50' : 'bg-white/20 text-white border border-white/30'}">
 								<div class="flex justify-between w-full">
 									<span>{$gameStore.players[guess.guesser]?.name}: {guess.guess}</span>
 									<span>{guess.correct ? 'CORRECT!' : `D:${guess.correctDigits}, P:${guess.correctPositions}`}</span>
@@ -168,13 +168,13 @@
 		</div>
 	</div>
 	
-	<div class="flex gap-4 items-center justify-center flex-wrap my-5 p-5 bg-gray-50 rounded-lg">
+	<div class="flex gap-4 items-center justify-center flex-wrap my-5 p-5 rounded-xl backdrop-blur-md bg-white/10 border border-white/30 shadow-lg">
 		<div class="flex items-center gap-2">
-			<label for="target-player" class="font-bold text-gray-700">Guess for:</label>
+			<label for="target-player" class="font-bold text-white drop-shadow-lg">Guess for:</label>
 			<select
 				id="target-player"
 				bind:value={targetPlayerIndex}
-				class="px-3 py-2 border-2 border-gray-300 rounded text-base bg-white cursor-pointer transition-all duration-300 focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-100"
+				class="px-3 py-2 rounded-lg text-base cursor-pointer transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white/30 backdrop-blur-md bg-white/20 border border-white/30 text-white font-semibold shadow-lg"
 			>
 				{#each $gameStore.activePlayers as playerIdx}
 					{#if playerIdx !== $gameStore.currentGuesser}
@@ -191,20 +191,20 @@
 				placeholder="Enter guess"
 				maxlength={$gameStore.settings.digitCount}
 				pattern="[0-9]*"
-				class="px-4 py-2 border-2 border-gray-300 rounded-lg text-lg w-52 text-center transition-all duration-300 focus:outline-none focus:border-purple-600 focus:ring-4 focus:ring-purple-100"
+				class="px-4 py-2 rounded-xl text-lg w-52 text-center transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-white/30 backdrop-blur-md bg-white/20 border border-white/30 text-white placeholder-white/60 font-semibold shadow-lg"
 			/>
 			<button
 				onclick={makeMultiPlayerGuess}
-				class="px-5 py-2 bg-purple-600 text-white rounded-lg text-lg hover:bg-purple-700 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+				class="px-5 py-2 rounded-xl text-lg text-white font-semibold hover:scale-105 transition-all duration-300 shadow-lg backdrop-blur-md bg-gradient-to-r from-purple-400/30 to-pink-500/30 border border-white/30"
 			>
 				Submit Guess
 			</button>
 		</div>
 	</div>
 {:else if $gameStore.gamePhase === 'finished'}
-	<div class="text-center p-8 bg-gradient-to-r from-green-600 to-teal-500 text-white rounded-2xl my-5">
-		<h3 class="text-3xl mb-4">Game Over!</h3>
-		<div class="text-2xl font-bold">
+	<div class="text-center p-8 rounded-2xl my-5 backdrop-blur-md bg-gradient-to-r from-green-400/40 to-teal-500/40 border-2 border-white/30 text-white shadow-2xl">
+		<h3 class="text-3xl mb-4 font-bold drop-shadow-lg">Game Over!</h3>
+		<div class="text-2xl font-bold drop-shadow-lg">
 			🎉 {$gameStore.players[$gameStore.activePlayers[0]]?.name} wins! 🎉
 		</div>
 	</div>

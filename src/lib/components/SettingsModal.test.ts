@@ -205,6 +205,26 @@ describe("SettingsModal Component", () => {
       expect(dialog).toHaveAttribute("aria-modal", "true");
     });
 
+    it("should close when clicking backdrop", async () => {
+      const user = userEvent.setup();
+      render(SettingsModal, { props: { onclose: mockOnClose } });
+
+      const backdrop = screen.getByRole("dialog");
+      await user.click(backdrop);
+
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not close when clicking modal content", async () => {
+      const user = userEvent.setup();
+      render(SettingsModal, { props: { onclose: mockOnClose } });
+
+      const modalContent = screen.getByText("Game Settings");
+      await user.click(modalContent);
+
+      expect(mockOnClose).not.toHaveBeenCalled();
+    });
+
     it("should have backdrop blur effect", () => {
       render(SettingsModal, { props: { onclose: mockOnClose } });
       const backdrop = screen.getByRole("dialog");
@@ -213,8 +233,10 @@ describe("SettingsModal Component", () => {
 
     it("should have animation class", () => {
       render(SettingsModal, { props: { onclose: mockOnClose } });
-      const modalContent = screen.getByText("Game Settings").closest("div");
-      expect(modalContent).toHaveClass("animate-modal-slide-in");
+      const modal = screen
+        .getByRole("dialog")
+        .querySelector(".animate-modal-slide-in");
+      expect(modal).toBeInTheDocument();
     });
   });
 

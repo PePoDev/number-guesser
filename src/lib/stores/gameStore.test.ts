@@ -271,6 +271,27 @@ describe("Game Store", () => {
       const state = get(gameStore);
       expect(state.currentGuesser).toBe(2); // Should skip player 1
     });
+
+    it("should add incorrect guess without eliminating player", () => {
+      gameStore.savePlayerSetup("Alice", "123");
+      gameStore.savePlayerSetup("Bob", "456");
+      gameStore.savePlayerSetup("Charlie", "789");
+
+      gameStore.addMultiPlayerGuess({
+        guesser: 0,
+        target: 1,
+        guess: "111",
+        correct: false,
+        correctDigits: 1,
+        correctPositions: 0,
+      });
+
+      const state = get(gameStore);
+      expect(state.players[1].guesses).toHaveLength(1);
+      expect(state.players[1].eliminated).toBe(false);
+      expect(state.activePlayers).toHaveLength(3);
+      expect(state.gamePhase).toBe("guessing");
+    });
   });
 });
 
@@ -313,6 +334,25 @@ describe("validateGuess", () => {
   it("should reject numbers exceeding max value", () => {
     const result = validateGuess("1000", 3);
     expect(result.valid).toBe(false);
+    expect(result.message).toBe("Please enter a number between 000 and 999.");
+  });
+
+  it("should reject negative numbers with proper range message", () => {
+    const result = validateGuess("-1", 2);
+    expect(result.valid).toBe(false);
+    expect(result.message).toBe("Please enter a valid number.");
+  });
+
+  it("should show proper range for 2 digits", () => {
+    const result = validateGuess("100", 2);
+    expect(result.valid).toBe(false);
+    expect(result.message).toBe("Please enter a number between 00 and 99.");
+  });
+
+  it("should show proper range for 4 digits", () => {
+    const result = validateGuess("10000", 4);
+    expect(result.valid).toBe(false);
+    expect(result.message).toBe("Please enter a number between 0000 and 9999.");
   });
 });
 

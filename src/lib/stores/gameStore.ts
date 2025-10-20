@@ -200,6 +200,11 @@ export function validateGuess(
   guess: string,
   digitCount: number
 ): { valid: boolean; message: string } {
+  // Check for negative numbers first
+  if (guess.includes("-")) {
+    return { valid: false, message: "Please enter a valid number." };
+  }
+
   if (isNaN(Number(guess))) {
     return { valid: false, message: "Please enter a valid number." };
   }

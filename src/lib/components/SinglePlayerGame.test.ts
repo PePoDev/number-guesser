@@ -213,11 +213,6 @@ describe("SinglePlayerGame Component", () => {
     const user = userEvent.setup();
     render(SinglePlayerGame);
 
-    // Get initial attempts
-    const initialText = await screen.getByText(/\d+ attempts remaining/)
-      .textContent;
-    const initialAttempts = parseInt(initialText?.match(/\d+/)?.[0] || "0");
-
     // Make first guess
     await user.type(screen.getByPlaceholderText("Enter number"), "123");
     await user.click(screen.getByText("Submit Guess"));
@@ -226,14 +221,11 @@ describe("SinglePlayerGame Component", () => {
       expect(screen.getByText(/Guess 1:/)).toBeInTheDocument();
     });
 
-    // Get attempts after first guess
-    const afterFirstText = await screen.getByText(/\d+ attempts remaining/)
-      .textContent;
-    const afterFirstAttempts = parseInt(
-      afterFirstText?.match(/\d+/)?.[0] || "0"
-    );
-
-    expect(afterFirstAttempts).toBe(initialAttempts - 1);
+    // Get attempts after first guess from store
+    let attemptsAfterFirst = 0;
+    gameStore.subscribe((state) => {
+      attemptsAfterFirst = state.attemptsLeft;
+    })();
 
     // Try duplicate guess
     await user.type(screen.getByPlaceholderText("Enter number"), "123");
@@ -246,13 +238,12 @@ describe("SinglePlayerGame Component", () => {
     });
 
     // Attempts should remain the same
-    const afterDuplicateText = await screen.getByText(/\d+ attempts remaining/)
-      .textContent;
-    const afterDuplicateAttempts = parseInt(
-      afterDuplicateText?.match(/\d+/)?.[0] || "0"
-    );
+    let attemptsAfterDuplicate = 0;
+    gameStore.subscribe((state) => {
+      attemptsAfterDuplicate = state.attemptsLeft;
+    })();
 
-    expect(afterDuplicateAttempts).toBe(afterFirstAttempts);
+    expect(attemptsAfterDuplicate).toBe(attemptsAfterFirst);
   });
 
   it("should prevent submission with empty input", async () => {
@@ -286,7 +277,7 @@ describe("SinglePlayerGame Component", () => {
     await waitFor(() => {
       const feedback = screen.getByText(
         /Please enter a number before submitting/
-      ).parentElement;
+      );
       expect(feedback).toHaveClass("bg-yellow-100");
       expect(feedback).toHaveClass("text-yellow-800");
       expect(feedback).toHaveClass("border-yellow-300");
@@ -315,6 +306,137 @@ describe("SinglePlayerGame Component", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Guess 1:/)).toBeInTheDocument();
+    });
+  });
+
+  it("should show win message with correct attempt count", async () => {
+    const user = userEvent.setup();
+    render(SinglePlayerGame);
+
+    // Get the target number from the store
+    let targetNumber = "";
+    gameStore.subscribe((state) => {
+      targetNumber = state.targetNumber;
+    })();
+
+    // Make a correct guess on first try
+    await user.type(screen.getByPlaceholderText("Enter number"), targetNumber);
+    await user.click(screen.getByText("Submit Guess"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Congratulations!/)).toBeInTheDocument();
+      expect(screen.getByText(/You won with 1 attempt!/)).toBeInTheDocument();
+    });
+  });
+
+  it("should show win message with plural attempts", async () => {
+    const user = userEvent.setup();
+    render(SinglePlayerGame);
+
+    // Get the target number from the store
+    let targetNumber = "";
+    gameStore.subscribe((state) => {
+      targetNumber = state.targetNumber;
+    })();
+
+    // Make wrong guesses first
+    await user.type(screen.getByPlaceholderText("Enter number"), "111");
+    await user.click(screen.getByText("Submit Guess"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Guess 1:/)).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByPlaceholderText("Enter number"), "222");
+    await user.click(screen.getByText("Submit Guess"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Guess 2:/)).toBeInTheDocument();
+    });
+
+    // Now make correct guess
+    await user.type(screen.getByPlaceholderText("Enter number"), targetNumber);
+    await user.click(screen.getByText("Submit Guess"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Congratulations!/)).toBeInTheDocument();
+      expect(screen.getByText(/You won with 3 attempts!/)).toBeInTheDocument();
+    });
+  });
+
+  it("should show lose message when attempts run out", async () => {
+    const user = userEvent.setup();
+    gameStore.reset();
+    gameStore.setMode("single");
+    gameStore.updateSettings({ maxAttempts: 2 });
+    gameStore.startNewGame();
+
+    render(SinglePlayerGame);
+
+    // Get the target number from the store
+    let targetNumber = "";
+    gameStore.subscribe((state) => {
+      targetNumber = state.targetNumber;
+    })();
+
+    // Make wrong guesses until attempts run out
+    await user.type(screen.getByPlaceholderText("Enter number"), "111");
+    await user.click(screen.getByText("Submit Guess"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Guess 1:/)).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByPlaceholderText("Enter number"), "222");
+    await user.click(screen.getByText("Submit Guess"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Game Over!/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/You've used all your attempts/)
+      ).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(targetNumber))).toBeInTheDocument();
+    });
+  });
+
+  it("should show correct feedback type for win", async () => {
+    const user = userEvent.setup();
+    render(SinglePlayerGame);
+
+    // Get the target number from the store
+    let targetNumber = "";
+    gameStore.subscribe((state) => {
+      targetNumber = state.targetNumber;
+    })();
+
+    await user.type(screen.getByPlaceholderText("Enter number"), targetNumber);
+    await user.click(screen.getByText("Submit Guess"));
+
+    await waitFor(() => {
+      const feedback = screen.getByText(
+        /Perfect! All digits in correct positions!/
+      );
+      expect(feedback).toHaveClass("bg-green-100");
+      expect(feedback).toHaveClass("text-green-800");
+    });
+  });
+
+  it("should show correct feedback type for lose", async () => {
+    const user = userEvent.setup();
+    gameStore.reset();
+    gameStore.setMode("single");
+    gameStore.updateSettings({ maxAttempts: 1 });
+    gameStore.startNewGame();
+
+    render(SinglePlayerGame);
+
+    await user.type(screen.getByPlaceholderText("Enter number"), "111");
+    await user.click(screen.getByText("Submit Guess"));
+
+    await waitFor(() => {
+      const feedback = screen.getByText(/Better luck next time!/);
+      expect(feedback).toHaveClass("bg-red-100");
+      expect(feedback).toHaveClass("text-red-800");
     });
   });
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import MultiPlayerGame from "./MultiPlayerGame.svelte";
@@ -185,7 +185,7 @@ describe("MultiPlayerGame Component", () => {
 
     it("should display player cards", () => {
       expect(screen.getByText("Alice")).toBeInTheDocument();
-      expect(screen.getByText("Bob")).toBeInTheDocument();
+      expect(screen.getAllByText("Bob").length).toBeGreaterThan(0);
     });
 
     it("should have target player selector", () => {
@@ -205,9 +205,8 @@ describe("MultiPlayerGame Component", () => {
       await user.click(screen.getByText("Submit Guess"));
 
       await waitFor(() => {
-        // Check that guess was recorded
-        const bobCard = screen.getByText("Bob").closest("div");
-        expect(bobCard).toBeInTheDocument();
+        // Check that game ended (Alice guessed Bob's number correctly)
+        expect(screen.getByText("Game Over!")).toBeInTheDocument();
       });
     });
 
@@ -218,14 +217,15 @@ describe("MultiPlayerGame Component", () => {
       await user.type(guessInput, "456{Enter}");
 
       await waitFor(() => {
-        const bobCard = screen.getByText("Bob").closest("div");
-        expect(bobCard).toBeInTheDocument();
+        // Check that game ended (Alice guessed Bob's number correctly)
+        expect(screen.getByText("Game Over!")).toBeInTheDocument();
       });
     });
 
     it("should highlight active player", () => {
-      const aliceCard = screen.getByText("Alice").closest("div");
-      expect(aliceCard).toHaveClass("ring-4", "ring-purple-300");
+      // Find the player card container for Alice (not just the name div)
+      const playerCards = screen.getByText("Alice").closest(".flex-1");
+      expect(playerCards).toHaveClass("ring-4", "ring-purple-300");
     });
 
     it("should not allow guessing own number", () => {
@@ -319,8 +319,151 @@ describe("MultiPlayerGame Component", () => {
       await waitFor(() => {
         expect(screen.getByText("Guessing Phase")).toBeInTheDocument();
         expect(screen.getByText("Alice")).toBeInTheDocument();
-        expect(screen.getByText("Bob")).toBeInTheDocument();
-        expect(screen.getByText("Charlie")).toBeInTheDocument();
+        expect(screen.getAllByText("Bob").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Charlie").length).toBeGreaterThan(0);
+      });
+    });
+
+    it("should pad short numbers with leading zeros during setup", async () => {
+      const user = userEvent.setup();
+      render(MultiPlayerGame);
+
+      await user.type(screen.getByPlaceholderText("Enter your name"), "Alice");
+      await user.type(
+        screen.getByPlaceholderText("Enter your secret number"),
+        "12"
+      );
+      await user.click(screen.getByText("Save & Continue"));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/Player 2's turn to setup/)
+        ).toBeInTheDocument();
+      });
+
+      // Verify the number was padded to 012
+      const state = gameStore;
+      let currentState: any;
+      state.subscribe((s) => (currentState = s))();
+      expect(currentState.players[0].number).toBe("012");
+    });
+
+    it("should show alert for invalid guess during guessing phase", async () => {
+      const user = userEvent.setup();
+      const alertMock = vi.spyOn(window, "alert").mockImplementation(() => {});
+
+      render(MultiPlayerGame);
+
+      // Setup both players
+      await user.type(screen.getByPlaceholderText("Enter your name"), "Alice");
+      await user.type(
+        screen.getByPlaceholderText("Enter your secret number"),
+        "123"
+      );
+      await user.click(screen.getByText("Save & Continue"));
+
+      await waitFor(() => screen.getByText(/Player 2's turn to setup/));
+
+      await user.type(screen.getByPlaceholderText("Enter your name"), "Bob");
+      await user.type(
+        screen.getByPlaceholderText("Enter your secret number"),
+        "4"
+      );
+      await user.click(screen.getByText("Save & Continue"));
+
+      await waitFor(() => screen.getByText("Guessing Phase"));
+
+      // Try to submit invalid guess (wrong length)
+      await user.type(screen.getByPlaceholderText("Enter guess"), "1");
+      await user.click(screen.getByText("Submit Guess"));
+
+      expect(alertMock).toHaveBeenCalledWith("Please enter exactly 3 digits.");
+
+      alertMock.mockRestore();
+    });
+
+    it("should pad short guesses with leading zeros", async () => {
+      const user = userEvent.setup();
+      render(MultiPlayerGame);
+
+      // Setup both players
+      await user.type(screen.getByPlaceholderText("Enter your name"), "Alice");
+      await user.type(
+        screen.getByPlaceholderText("Enter your secret number"),
+        "123"
+      );
+      await user.click(screen.getByText("Save & Continue"));
+
+      await waitFor(() => screen.getByText(/Player 2's turn to setup/));
+
+      await user.type(screen.getByPlaceholderText("Enter your name"), "Bob");
+      await user.type(
+        screen.getByPlaceholderText("Enter your secret number"),
+        "012"
+      );
+      await user.click(screen.getByText("Save & Continue"));
+
+      await waitFor(() => screen.getByText("Guessing Phase"));
+
+      // Make a guess with short number that should be padded
+      await user.type(screen.getByPlaceholderText("Enter guess"), "1");
+      await user.click(screen.getByText("Submit Guess"));
+
+      // The guess should be padded to 012 and match Bob's number
+      await waitFor(() => {
+        expect(screen.getByText("Game Over!")).toBeInTheDocument();
+      });
+    });
+
+    it("should move to next guesser after incorrect guess", async () => {
+      const user = userEvent.setup();
+      gameStore.reset();
+      gameStore.setMode("multi");
+      gameStore.updateSettings({ playerCount: 3 });
+      gameStore.startNewGame();
+
+      render(MultiPlayerGame);
+
+      // Setup three players
+      await user.type(screen.getByPlaceholderText("Enter your name"), "Alice");
+      await user.type(
+        screen.getByPlaceholderText("Enter your secret number"),
+        "123"
+      );
+      await user.click(screen.getByText("Save & Continue"));
+
+      await waitFor(() => screen.getByText(/Player 2's turn to setup/));
+
+      await user.type(screen.getByPlaceholderText("Enter your name"), "Bob");
+      await user.type(
+        screen.getByPlaceholderText("Enter your secret number"),
+        "456"
+      );
+      await user.click(screen.getByText("Save & Continue"));
+
+      await waitFor(() => screen.getByText(/Player 3's turn to setup/));
+
+      await user.type(
+        screen.getByPlaceholderText("Enter your name"),
+        "Charlie"
+      );
+      await user.type(
+        screen.getByPlaceholderText("Enter your secret number"),
+        "789"
+      );
+      await user.click(screen.getByText("Save & Continue"));
+
+      await waitFor(() => screen.getByText("Guessing Phase"));
+
+      // Alice's turn - make incorrect guess
+      expect(screen.getByText(/Alice's turn to guess/)).toBeInTheDocument();
+
+      await user.type(screen.getByPlaceholderText("Enter guess"), "11");
+      await user.click(screen.getByText("Submit Guess"));
+
+      // Should move to Bob's turn
+      await waitFor(() => {
+        expect(screen.getByText(/Bob's turn to guess/)).toBeInTheDocument();
       });
     });
   });
