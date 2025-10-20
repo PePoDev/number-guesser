@@ -209,13 +209,7 @@ export function validateGuess(
     return { valid: false, message: "Please enter a valid number." };
   }
 
-  if (guess.length !== digitCount) {
-    return {
-      valid: false,
-      message: `Please enter exactly ${digitCount} digits.`,
-    };
-  }
-
+  // Check range before length to provide better error messages
   const num = parseInt(guess);
   const max = Math.pow(10, digitCount) - 1;
 
@@ -225,6 +219,13 @@ export function validateGuess(
     return {
       valid: false,
       message: `Please enter a number between ${minDisplay} and ${maxDisplay}.`,
+    };
+  }
+
+  if (guess.length !== digitCount) {
+    return {
+      valid: false,
+      message: `Please enter exactly ${digitCount} digits.`,
     };
   }
 

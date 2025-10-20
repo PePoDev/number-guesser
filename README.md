@@ -1,6 +1,6 @@
 # Number Guessing Game 🎯
 
-A modern, interactive number guessing game built with **SvelteKit** and **Tailwind CSS**. Features both single-player and multiplayer modes with customizable difficulty settings.
+A modern, interactive number guessing game built with **SvelteKit** and **Tailwind CSS**. Features both single-player and multiplayer modes with customizable difficulty settings and a stunning **glassmorphism design**.
 
 🎮 **[Play Live Demo](https://number-guesser.pepo.dev)**
 
@@ -27,6 +27,7 @@ This Number Guessing Game is a web-based puzzle game where players attempt to gu
 - **Dual Game Modes**: Single-player vs computer and multiplayer competitive mode
 - **Customizable Difficulty**: 2-5 digit numbers with adjustable attempt limits
 - **Real-time Feedback**: Instant feedback on digit accuracy and positioning
+- **Glassmorphism Design**: Modern frosted glass UI with beautiful gradient backgrounds
 - **Responsive Design**: Works seamlessly on desktop and mobile devices
 - **Modern UI**: Clean, intuitive interface with Tailwind CSS styling
 - **Built with SvelteKit**: Fast, reactive, and optimized
@@ -39,9 +40,20 @@ This Number Guessing Game is a web-based puzzle game where players attempt to gu
 - 👥 **Multiplayer Mode**: Competitive gameplay for 2-4 players
 - ⚙️ **Customizable Settings**: Adjust digit count (2-5) and attempt limits (3-20)
 - 📊 **Guess History**: Track all previous guesses and their feedback
-- 🎨 **Modern UI**: Responsive design with Tailwind CSS
+- 🎨 **Glassmorphism Design**: Stunning frosted glass effects with backdrop blur
+- 🌈 **Beautiful Gradients**: Vibrant blue-to-teal radial gradient background
 - ⌨️ **Keyboard Support**: Enter key support for quick gameplay
 - 🚀 **Fast Performance**: Built with SvelteKit for optimal speed
+- 🔄 **Smooth Animations**: Hover effects and transitions throughout
+
+### Design Features
+
+- **Frosted Glass Effects**: Semi-transparent containers with backdrop blur
+- **Gradient Backgrounds**: Beautiful radial gradient from blue to teal
+- **Custom Scrollbars**: Styled scrollbars matching the glass aesthetic
+- **Hover Animations**: Interactive elements with scale and shadow effects
+- **Text Shadows**: Enhanced readability on transparent backgrounds
+- **Responsive Layout**: Adapts beautifully to all screen sizes
 
 ### Game Mechanics
 
@@ -49,6 +61,7 @@ This Number Guessing Game is a web-based puzzle game where players attempt to gu
   - **Correct Digits**: Count of digits present in the target number
   - **Correct Positions**: Count of digits in the exact right position
 - **Input Validation**: Ensures valid number format and length
+- **Duplicate Detection**: Prevents guessing the same number twice
 - **Auto-padding**: Automatically adds leading zeros for shorter inputs
 - **State Management**: Svelte stores for reactive game state
 
@@ -60,6 +73,7 @@ This Number Guessing Game is a web-based puzzle game where players attempt to gu
 - Customizable attempt limits (3-20 attempts)
 - Immediate feedback on each guess
 - Win/lose conditions with celebratory messages
+- Visual feedback with glassmorphism effects
 
 ### Multiplayer Mode
 
@@ -68,6 +82,7 @@ This Number Guessing Game is a web-based puzzle game where players attempt to gu
 - **Elimination System**: Players are eliminated when their number is guessed
 - **Winner Determination**: Last remaining player wins
 - **Visual Indicators**: Active player highlighting and elimination status
+- **Player Cards**: Beautiful glass-effect cards for each player
 
 ## 🎯 How to Play
 
@@ -94,11 +109,23 @@ This Number Guessing Game is a web-based puzzle game where players attempt to gu
 - **Framework**: SvelteKit 2.x
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS 4.x
-- **State Management**: Svelte Stores
+- **Design Pattern**: Glassmorphism with custom CSS
+- **State Management**: Svelte Stores with Runes ($state, $effect)
 - **Build Tool**: Vite
 - **Package Manager**: pnpm
 - **Testing**: Vitest, Testing Library, Playwright
 - **Deployment**: Static adapter for GitHub Pages
+
+### Design Implementation
+
+- **Glassmorphism Effects**:
+  - `backdrop-filter: blur()` for frosted glass
+  - Semi-transparent backgrounds (rgba with 10-30% opacity)
+  - Subtle borders with white/30% opacity
+  - Custom utility classes for reusable glass effects
+- **Gradient Background**: Radial gradient from `rgba(83,113,245,1)` to `rgba(107,228,184,1)`
+- **Custom Scrollbars**: Styled to match the glass aesthetic
+- **Smooth Transitions**: CSS transitions on all interactive elements
 
 ### Browser Compatibility
 
@@ -107,6 +134,8 @@ This Number Guessing Game is a web-based puzzle game where players attempt to gu
 - Safari 14+
 - Edge 90+
 
+**Note**: Glassmorphism effects require modern browsers with backdrop-filter support.
+
 ### Performance Features
 
 - **Server-Side Rendering**: Optional SSR support
@@ -114,6 +143,7 @@ This Number Guessing Game is a web-based puzzle game where players attempt to gu
 - **Fast Loading**: Optimized bundle size
 - **Responsive**: Tailwind CSS for all screen sizes
 - **Accessible**: Keyboard navigation support
+- **Hardware Acceleration**: CSS transforms for smooth animations
 
 ## 📁 Project Structure
 
@@ -156,15 +186,23 @@ number-guessing/
 
 #### [`src/routes/+page.svelte`](src/routes/+page.svelte)
 
-- Main game page component
+- Main game page component with glassmorphism design
 - Handles game mode switching
 - Integrates all sub-components
+- Gradient background implementation
 
 #### [`src/lib/components/`](src/lib/components/)
 
-- **SettingsModal.svelte**: Game configuration modal
-- **SinglePlayerGame.svelte**: Single-player game interface
-- **MultiPlayerGame.svelte**: Multiplayer game interface
+- **SettingsModal.svelte**: Game configuration modal with glass effects
+- **SinglePlayerGame.svelte**: Single-player game interface with glassmorphism
+- **MultiPlayerGame.svelte**: Multiplayer game interface with glass player cards
+
+#### [`src/app.css`](src/app.css)
+
+- Global styles and Tailwind CSS imports
+- Custom glassmorphism utility classes
+- Scrollbar styling
+- Smooth transition definitions
 
 ## 🚀 Setup & Installation
 
@@ -228,15 +266,27 @@ pnpm run preview
 
 - **Component-Based**: Modular Svelte components
 - **Type-Safe**: TypeScript for type safety
-- **Reactive**: Svelte stores for state management
-- **Styled**: Tailwind CSS utility classes
+- **Reactive**: Svelte stores with modern Runes API
+- **Styled**: Tailwind CSS utility classes + custom glassmorphism CSS
+- **Tested**: Comprehensive test coverage
 
 ### Adding New Features
 
 1. **New Game Mode**: Extend the game store and add corresponding components
 2. **Difficulty Levels**: Modify settings in the store
-3. **Themes**: Extend Tailwind configuration
+3. **Themes**: Extend Tailwind configuration or modify gradient backgrounds
 4. **Sound Effects**: Add audio elements and integrate with game events
+5. **Animations**: Extend CSS transitions or add new glass effects
+
+### Customizing the Design
+
+To customize the glassmorphism design:
+
+1. **Background Gradient**: Modify the `background-image` in [`src/routes/+page.svelte`](src/routes/+page.svelte:30)
+2. **Glass Opacity**: Adjust `bg-white/XX` values in components
+3. **Blur Amount**: Change `backdrop-blur-XX` values
+4. **Border Opacity**: Modify `border-white/XX` values
+5. **Custom Classes**: Add new utility classes in [`src/app.css`](src/app.css)
 
 ## 🧪 Testing
 
@@ -337,6 +387,8 @@ The project uses `@sveltejs/adapter-static` for static site generation. Configur
 - 🔧 **Technical Enhancements**: Performance optimizations
 - 📱 **Mobile Experience**: Touch gestures or mobile-specific features
 - 🌐 **Accessibility**: Screen reader support improvements
+- 🎭 **Design Themes**: Alternative color schemes or design patterns
+- 🔊 **Sound Effects**: Audio feedback for game events
 
 ### Bug Reports
 
@@ -353,6 +405,6 @@ This project is open source and available under the MIT License.
 
 ---
 
-**Made with ❤️ using SvelteKit and Tailwind CSS**
+**Made with ❤️ using SvelteKit, Tailwind CSS, and Glassmorphism Design**
 
 _For questions, suggestions, or contributions, please open an issue or submit a pull request._

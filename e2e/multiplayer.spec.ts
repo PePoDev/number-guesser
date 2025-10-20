@@ -5,9 +5,13 @@ test.describe("Multiplayer Game", () => {
     await page.goto("/");
     // Switch to multiplayer mode
     await page.click('button[title="Game Settings"]');
+    await page.waitForSelector("text=Game Settings", { state: "visible" });
     await page.selectOption("select#game-mode", "multi");
     await page.selectOption("select#player-count", "2");
+    // Wait for any animations to complete
+    await page.waitForTimeout(500);
     await page.click('button:has-text("Close")');
+    await page.waitForSelector("text=Game Settings", { state: "hidden" });
   });
 
   test("should display setup phase", async ({ page }) => {
@@ -104,9 +108,13 @@ test.describe("Multiplayer Game - Guessing Phase", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
     await page.click('button[title="Game Settings"]');
+    await page.waitForSelector("text=Game Settings", { state: "visible" });
     await page.selectOption("select#game-mode", "multi");
     await page.selectOption("select#player-count", "2");
+    // Wait for any animations to complete
+    await page.waitForTimeout(500);
     await page.click('button:has-text("Close")');
+    await page.waitForSelector("text=Game Settings", { state: "hidden" });
 
     // Setup both players
     await page.fill('input[placeholder="Enter your name"]', "Alice");
@@ -127,13 +135,22 @@ test.describe("Multiplayer Game - Guessing Phase", () => {
   });
 
   test("should display player cards", async ({ page }) => {
-    await expect(page.locator("text=Alice")).toBeVisible();
-    await expect(page.locator("text=Bob")).toBeVisible();
+    await expect(
+      page
+        .locator(".text-center.font-bold.text-lg")
+        .filter({ hasText: "Alice" })
+    ).toBeVisible();
+    await expect(
+      page.locator(".text-center.font-bold.text-lg").filter({ hasText: "Bob" })
+    ).toBeVisible();
   });
 
   test("should highlight active player", async ({ page }) => {
-    const aliceCard = page.locator("text=Alice").locator("..").locator("..");
-    await expect(aliceCard).toHaveClass(/ring-purple-300/);
+    const aliceCard = page
+      .locator(".text-center.font-bold.text-lg")
+      .filter({ hasText: "Alice" })
+      .locator("..");
+    await expect(aliceCard).toHaveClass(/ring-purple-300\/50/);
   });
 
   test("should have target player selector", async ({ page }) => {
@@ -197,8 +214,11 @@ test.describe("Multiplayer Game - Guessing Phase", () => {
     await page.click('button:has-text("Submit Guess")');
 
     // Bob's card should have eliminated styling
-    const bobCard = page.locator("text=Bob").locator("..").locator("..");
-    await expect(bobCard).toHaveClass(/bg-red-50/);
+    const bobCard = page
+      .locator(".text-center.font-bold.text-lg")
+      .filter({ hasText: "Bob" })
+      .locator("..");
+    await expect(bobCard).toHaveClass(/bg-red-400\/20/);
   });
 
   test("should end game when only one player remains", async ({ page }) => {
@@ -248,9 +268,13 @@ test.describe("Multiplayer Game - Three Players", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
     await page.click('button[title="Game Settings"]');
+    await page.waitForSelector("text=Game Settings", { state: "visible" });
     await page.selectOption("select#game-mode", "multi");
     await page.selectOption("select#player-count", "3");
+    // Wait for any animations to complete
+    await page.waitForTimeout(500);
     await page.click('button:has-text("Close")');
+    await page.waitForSelector("text=Game Settings", { state: "hidden" });
   });
 
   test("should setup three players", async ({ page }) => {
@@ -270,9 +294,19 @@ test.describe("Multiplayer Game - Three Players", () => {
     await page.click('button:has-text("Save & Continue")');
 
     await expect(page.locator("text=Guessing Phase")).toBeVisible();
-    await expect(page.locator("text=Alice")).toBeVisible();
-    await expect(page.locator("text=Bob")).toBeVisible();
-    await expect(page.locator("text=Charlie")).toBeVisible();
+    await expect(
+      page
+        .locator(".text-center.font-bold.text-lg")
+        .filter({ hasText: "Alice" })
+    ).toBeVisible();
+    await expect(
+      page.locator(".text-center.font-bold.text-lg").filter({ hasText: "Bob" })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(".text-center.font-bold.text-lg")
+        .filter({ hasText: "Charlie" })
+    ).toBeVisible();
   });
 
   test("should rotate turns among three players", async ({ page }) => {
@@ -344,9 +378,13 @@ test.describe("Multiplayer Game - Four Players", () => {
   test("should setup and play with four players", async ({ page }) => {
     await page.goto("/");
     await page.click('button[title="Game Settings"]');
+    await page.waitForSelector("text=Game Settings", { state: "visible" });
     await page.selectOption("select#game-mode", "multi");
     await page.selectOption("select#player-count", "4");
+    // Wait for any animations to complete
+    await page.waitForTimeout(500);
     await page.click('button:has-text("Close")');
+    await page.waitForSelector("text=Game Settings", { state: "hidden" });
 
     // Setup all four players
     const players = [
@@ -370,7 +408,11 @@ test.describe("Multiplayer Game - Four Players", () => {
 
     // All players should be visible
     for (const player of players) {
-      await expect(page.locator(`text=${player.name}`)).toBeVisible();
+      await expect(
+        page
+          .locator(".text-center.font-bold.text-lg")
+          .filter({ hasText: player.name })
+      ).toBeVisible();
     }
   });
 });
@@ -379,8 +421,12 @@ test.describe("Multiplayer Game - New Game", () => {
   test("should restart multiplayer game", async ({ page }) => {
     await page.goto("/");
     await page.click('button[title="Game Settings"]');
+    await page.waitForSelector("text=Game Settings", { state: "visible" });
     await page.selectOption("select#game-mode", "multi");
+    // Wait for any animations to complete
+    await page.waitForTimeout(500);
     await page.click('button:has-text("Close")');
+    await page.waitForSelector("text=Game Settings", { state: "hidden" });
 
     // Setup players
     await page.fill('input[placeholder="Enter your name"]', "Alice");

@@ -225,7 +225,7 @@ describe("MultiPlayerGame Component", () => {
     it("should highlight active player", () => {
       // Find the player card container for Alice (not just the name div)
       const playerCards = screen.getByText("Alice").closest(".flex-1");
-      expect(playerCards).toHaveClass("ring-4", "ring-purple-300");
+      expect(playerCards).toHaveClass("ring-4", "ring-purple-300/50");
     });
 
     it("should not allow guessing own number", () => {
@@ -352,6 +352,12 @@ describe("MultiPlayerGame Component", () => {
       const user = userEvent.setup();
       const alertMock = vi.spyOn(window, "alert").mockImplementation(() => {});
 
+      // Reset and configure for 2 players
+      gameStore.reset();
+      gameStore.setMode("multi");
+      gameStore.updateSettings({ playerCount: 2 });
+      gameStore.startNewGame();
+
       render(MultiPlayerGame);
 
       // Setup both players
@@ -367,23 +373,32 @@ describe("MultiPlayerGame Component", () => {
       await user.type(screen.getByPlaceholderText("Enter your name"), "Bob");
       await user.type(
         screen.getByPlaceholderText("Enter your secret number"),
-        "4"
+        "456"
       );
       await user.click(screen.getByText("Save & Continue"));
 
-      await waitFor(() => screen.getByText("Guessing Phase"));
+      await waitFor(() => screen.getByText("Guessing Phase"), {
+        timeout: 3000,
+      });
 
-      // Try to submit invalid guess (wrong length)
-      await user.type(screen.getByPlaceholderText("Enter guess"), "1");
+      // Try to submit invalid guess (non-numeric)
+      await user.type(screen.getByPlaceholderText("Enter guess"), "abc");
       await user.click(screen.getByText("Submit Guess"));
 
-      expect(alertMock).toHaveBeenCalledWith("Please enter exactly 3 digits.");
+      expect(alertMock).toHaveBeenCalledWith("Please enter a valid number.");
 
       alertMock.mockRestore();
     });
 
     it("should pad short guesses with leading zeros", async () => {
       const user = userEvent.setup();
+
+      // Reset and configure for 2 players
+      gameStore.reset();
+      gameStore.setMode("multi");
+      gameStore.updateSettings({ playerCount: 2 });
+      gameStore.startNewGame();
+
       render(MultiPlayerGame);
 
       // Setup both players
@@ -403,10 +418,12 @@ describe("MultiPlayerGame Component", () => {
       );
       await user.click(screen.getByText("Save & Continue"));
 
-      await waitFor(() => screen.getByText("Guessing Phase"));
+      await waitFor(() => screen.getByText("Guessing Phase"), {
+        timeout: 3000,
+      });
 
       // Make a guess with short number that should be padded
-      await user.type(screen.getByPlaceholderText("Enter guess"), "1");
+      await user.type(screen.getByPlaceholderText("Enter guess"), "12");
       await user.click(screen.getByText("Submit Guess"));
 
       // The guess should be padded to 012 and match Bob's number

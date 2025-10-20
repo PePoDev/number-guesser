@@ -96,7 +96,9 @@ test.describe("Single Player Game", () => {
     ).toBeVisible();
   });
 
-  test("should show validation error for wrong length", async ({ page }) => {
+  test("should show validation error for single digit input", async ({
+    page,
+  }) => {
     await page.fill('input[placeholder="Enter number"]', "1");
     await page.click('button:has-text("Submit Guess")');
 
@@ -134,7 +136,7 @@ test.describe("Single Player Game", () => {
   test("should disable input when game is over", async ({ page }) => {
     // Make guesses until game over (assuming 7 attempts)
     for (let i = 0; i < 7; i++) {
-      await page.fill('input[placeholder="Enter number"]', "999");
+      await page.fill('input[placeholder="Enter number"]', `${i}99`);
       await page.click('button:has-text("Submit Guess")');
     }
 
@@ -148,7 +150,7 @@ test.describe("Single Player Game", () => {
   }) => {
     // Make 7 wrong guesses
     for (let i = 0; i < 7; i++) {
-      await page.fill('input[placeholder="Enter number"]', "999");
+      await page.fill('input[placeholder="Enter number"]', `${i}99`);
       await page.click('button:has-text("Submit Guess")');
     }
 
@@ -298,8 +300,12 @@ test.describe("Single Player Game - Different Configurations", () => {
     test.beforeEach(async ({ page }) => {
       await page.goto("/");
       await page.click('button[title="Game Settings"]');
+      await page.waitForSelector("text=Game Settings", { state: "visible" });
       await page.selectOption("select#game-mode", "single");
+      // Wait for any animations to complete
+      await page.waitForTimeout(500);
       await page.click('button:has-text("Close")');
+      await page.waitForSelector("text=Game Settings", { state: "hidden" });
     });
 
     test("should detect and reject duplicate guesses", async ({ page }) => {
@@ -436,11 +442,11 @@ test.describe("Single Player Game - Different Configurations", () => {
         await page.click('button:has-text("Submit Guess")');
 
         // Check for yellow styling
-        const feedback = page
-          .locator("text=/Please enter a number before submitting/")
-          .locator("..");
-        await expect(feedback).toHaveClass(/bg-yellow-100/);
-        await expect(feedback).toHaveClass(/text-yellow-800/);
+        const feedback = page.locator(
+          "text=/Please enter a number before submitting/"
+        );
+        await expect(feedback).toHaveClass(/bg-yellow-400\/30/);
+        await expect(feedback).toHaveClass(/text-white/);
       });
 
       test("should allow valid submission after validation error", async ({
@@ -489,8 +495,8 @@ test.describe("Single Player Game - Different Configurations", () => {
       });
 
       test("should validate digit count correctly", async ({ page }) => {
-        // Try to submit a number with wrong length (too long)
-        await page.fill('input[placeholder="Enter number"]', "1234");
+        // Try to submit a number with wrong length (too short)
+        await page.fill('input[placeholder="Enter number"]', "12");
         await page.click('button:has-text("Submit Guess")');
 
         // Should show validation error

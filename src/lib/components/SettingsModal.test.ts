@@ -228,7 +228,7 @@ describe("SettingsModal Component", () => {
     it("should have backdrop blur effect", () => {
       render(SettingsModal, { props: { onclose: mockOnClose } });
       const backdrop = screen.getByRole("dialog");
-      expect(backdrop).toHaveClass("backdrop-blur-sm");
+      expect(backdrop).toHaveClass("backdrop-blur-md");
     });
 
     it("should have animation class", () => {

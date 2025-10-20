@@ -68,7 +68,7 @@
 		
 		// Check if player lost
 		if ($gameStore.attemptsLeft === 0) {
-			loseMessage = `😞 Game Over! You've used all your attempts.<br>The correct number was: <strong>${$gameStore.targetNumber}</strong>`;
+			loseMessage = `Game Over! You've used all your attempts. The correct number was: <strong>${$gameStore.targetNumber}</strong>`;
 			feedbackMessage = 'Better luck next time!';
 			feedbackType = 'incorrect';
 			gameStore.setGameOver(true);
@@ -115,12 +115,13 @@
 		{#if currentGuess}
 			<div class="text-xl font-bold text-white mb-2 drop-shadow-lg">{currentGuess}</div>
 		{/if}
-		{#if feedbackMessage}
-			<div class="text-lg p-4 rounded-xl my-2 backdrop-blur-md border shadow-lg {feedbackType === 'correct' ? 'bg-green-400/30 text-white border-green-300/50' : feedbackType === 'warning' ? 'bg-yellow-400/30 text-white border-yellow-300/50' : 'bg-red-400/30 text-white border-red-300/50'}">
-				{feedbackMessage}
-			</div>
-		{/if}
 	</div>
+	
+	{#if feedbackMessage}
+		<div class="text-lg p-4 rounded-xl my-2 backdrop-blur-md border shadow-lg text-center {feedbackType === 'correct' ? 'bg-green-400/30 text-white border-green-300/50' : feedbackType === 'warning' ? 'bg-yellow-400/30 text-white border-yellow-300/50' : 'bg-red-400/30 text-white border-red-300/50'}">
+			{feedbackMessage}
+		</div>
+	{/if}
 	
 	{#if winMessage}
 		<div class="backdrop-blur-md bg-green-400/30 text-white border-2 border-green-300/50 p-5 rounded-xl text-center text-xl font-bold my-5 shadow-lg">

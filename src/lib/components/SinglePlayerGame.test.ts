@@ -278,9 +278,9 @@ describe("SinglePlayerGame Component", () => {
       const feedback = screen.getByText(
         /Please enter a number before submitting/
       );
-      expect(feedback).toHaveClass("bg-yellow-100");
-      expect(feedback).toHaveClass("text-yellow-800");
-      expect(feedback).toHaveClass("border-yellow-300");
+      expect(feedback).toHaveClass("bg-yellow-400/30");
+      expect(feedback).toHaveClass("text-white");
+      expect(feedback).toHaveClass("border-yellow-300/50");
     });
   });
 
@@ -416,8 +416,8 @@ describe("SinglePlayerGame Component", () => {
       const feedback = screen.getByText(
         /Perfect! All digits in correct positions!/
       );
-      expect(feedback).toHaveClass("bg-green-100");
-      expect(feedback).toHaveClass("text-green-800");
+      expect(feedback).toHaveClass("bg-green-400/30");
+      expect(feedback).toHaveClass("text-white");
     });
   });
 
@@ -435,8 +435,8 @@ describe("SinglePlayerGame Component", () => {
 
     await waitFor(() => {
       const feedback = screen.getByText(/Better luck next time!/);
-      expect(feedback).toHaveClass("bg-red-100");
-      expect(feedback).toHaveClass("text-red-800");
+      expect(feedback).toHaveClass("bg-red-400/30");
+      expect(feedback).toHaveClass("text-white");
     });
   });
 });

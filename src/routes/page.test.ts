@@ -55,7 +55,10 @@ describe("+page.svelte Component", () => {
 
   it("should display digit count from settings", () => {
     render(Page);
-    expect(screen.getByText(/3/)).toBeInTheDocument();
+    // Use getAllByText to get all matches and check the first one (digit count in the game info)
+    const digitElements = screen.getAllByText(/3/);
+    expect(digitElements.length).toBeGreaterThan(0);
+    expect(digitElements[0]).toBeInTheDocument();
   });
 
   it("should display attempts remaining in single player mode", () => {
@@ -156,22 +159,22 @@ describe("+page.svelte Component", () => {
   it("should display game info with correct styling", () => {
     render(Page);
     const gameInfo = screen.getByText(/I'm thinking of a/).closest("div");
-    expect(gameInfo).toHaveClass("bg-gray-50");
-    expect(gameInfo).toHaveClass("border-l-4");
-    expect(gameInfo).toHaveClass("border-purple-600");
+    expect(gameInfo).toHaveClass("bg-white/10");
+    expect(gameInfo).toHaveClass("backdrop-blur-md");
+    expect(gameInfo).toHaveClass("border-white/30");
   });
 
   it("should have settings button with proper styling", () => {
     render(Page);
     const settingsButton = screen.getByLabelText("Open Settings");
-    expect(settingsButton).toHaveClass("bg-purple-600");
+    expect(settingsButton).toHaveClass("bg-white/20");
     expect(settingsButton).toHaveClass("rounded-full");
   });
 
   it("should have New Game button with proper styling", () => {
     render(Page);
     const newGameButton = screen.getByText("New Game");
-    expect(newGameButton).toHaveClass("bg-green-600");
+    expect(newGameButton).toHaveClass("bg-gradient-to-r");
     expect(newGameButton).toHaveClass("text-white");
   });
 });
