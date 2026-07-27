@@ -324,7 +324,18 @@ Add new surfaces to this table. The initial editorial design system was recorded
 
 ## Deployment
 
-`@sveltejs/adapter-static` builds to `build/`. GitHub Pages deploys `main` through `.github/workflows/deploy.yml`; `static/CNAME` sets `number-guesser.pepo.dev`.
+`@sveltejs/adapter-static` builds to `build/`. GitHub Pages deploys the static client from `main` through `.github/workflows/deploy.yml`; `static/CNAME` sets `number-guesser.pepo.dev`. `.github/workflows/deploy-firebase.yml` deploys Cloud Functions and Firestore rules/indexes to `us-central1`.
+
+Before the first backend deploy, create the Firestore database and enable Anonymous Auth. Configure these GitHub repository variables:
+
+- `PUBLIC_FIREBASE_API_KEY`
+- `PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `PUBLIC_FIREBASE_PROJECT_ID`
+- `PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `PUBLIC_FIREBASE_APP_ID`
+
+Add the Firebase service account JSON as the `FIREBASE_SERVICE_ACCOUNT` repository secret. Never put that service account in a public variable or committed file.
 
 Do not change the workflow, target, CNAME, or DNS without owner approval.
 
