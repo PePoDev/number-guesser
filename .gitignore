@@ -16,7 +16,6 @@ Thumbs.db
 .env
 .env.*
 !.env.example
-!.env.test
 
 # Vite
 vite.config.js.timestamp-*
@@ -26,3 +25,11 @@ vite.config.ts.timestamp-*
 test-results/
 playwright-report/
 coverage/
+
+# Firebase
+.firebaserc
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+functions/lib/

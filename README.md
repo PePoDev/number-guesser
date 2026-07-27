@@ -18,7 +18,8 @@ Example: target `401`, guess `410` → 3 correct digits and 1 correct position.
 ### Modes
 
 - **Single player:** The computer generates a number. The player has 3–20 attempts, with 7 by default. Duplicate guesses are rejected without consuming an attempt.
-- **Multiplayer:** Two to four players choose names and secret numbers. Players guess another active player's number in turn. A correct guess eliminates the target; the last unguessed player wins.
+- **Local multiplayer:** Two to four players share one device, choose names and secret numbers, and take turns guessing.
+- **Online multiplayer:** Two to four remote players enter display names, create or join a room with a six-character ID, and reconnect after refresh. Firebase keeps secrets private and enforces turns on the server.
 
 `Enter` submits a guess. `Escape` closes the settings modal.
 
@@ -33,9 +34,11 @@ Example: target `401`, guess `410` → 3 correct digits and 1 correct position.
 | Build | Vite 7, `@sveltejs/adapter-static` |
 | Unit/component tests | Vitest, Testing Library, jsdom |
 | End-to-end tests | Playwright with Chromium |
+| Online backend | Firebase Anonymous Auth, Firestore, callable Functions, Admin SDK |
+| Firebase tests | Firebase Emulator Suite |
 | Hosting | GitHub Pages at `number-guesser.pepo.dev` |
 
-There is no server, API, or database.
+GitHub Pages serves the static SvelteKit client. Callable Cloud Functions own authoritative online commands; Firestore publishes member-only room projections.
 
 ## Quick start
 
@@ -75,6 +78,12 @@ src/lib/components/
   SettingsModal.svelte         Settings dialog
 src/lib/stores/
   gameStore.ts                 All shared game state and logic
+src/lib/firebase/              Firebase browser initialization and rules tests
+src/lib/online/                Public online state types
+src/lib/services/              Auth, callable, and subscription boundary
+functions/                     Server-authoritative room commands
+firebase.json                  Emulator and deployment configuration
+firestore.rules                Member-only reads and server-only writes
 src/app.css                    Global styles and design tokens
 e2e/                           Playwright flows
 static/                        CNAME, favicon, robots.txt
@@ -98,6 +107,8 @@ These rules are binding. Update this README when a project, testing, or design d
 - Use Tailwind for layout and spacing, and CSS custom properties for design values.
 - Add or update tests for every change.
 - Read the Design system before editing a `.svelte` file.
+- Keep online secrets out of public Firestore documents, client state, local storage, analytics, and logs.
+- Run Firebase tests only against project `demo-number-guessing`; never connect automated tests to production Firebase.
 - Match existing style: tabs in `.svelte` and `.ts`, single quotes, no semicolons in TypeScript, and trailing commas in multiline structures.
 - Prefer the smallest change that solves the problem.
 - Run `pnpm check` and `pnpm test:run` before claiming completion.
@@ -113,6 +124,8 @@ These rules are binding. Update this README when a project, testing, or design d
 - Change CI, deployment, hosting, or GitHub settings without approval.
 - Amend commits or force-push unless explicitly requested.
 - Introduce speculative abstractions or unrelated refactors.
+
+Firebase dependencies and backend deployment are explicitly approved for online multiplayer. `.env.example` may contain placeholders; Vite `test` mode uses only checked-in `demo-number-guessing` identifiers.
 
 ### Documentation
 

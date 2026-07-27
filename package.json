@@ -18,9 +18,16 @@
     "test:e2e:single": "PW_TEST_HTML_REPORT_OPEN='never' playwright test --max-failures=1",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
-    "test:all": "vitest run && PW_TEST_HTML_REPORT_OPEN='never' playwright test"
+    "test:all": "vitest run && PW_TEST_HTML_REPORT_OPEN='never' playwright test",
+    "firebase:emulators": "pnpm --dir functions build && firebase emulators:start --project demo-number-guessing",
+    "firebase:emulators:exec": "pnpm --dir functions build && firebase emulators:exec --project demo-number-guessing --only auth,firestore,functions",
+    "firebase:firestore:exec": "firebase emulators:exec --project demo-number-guessing --only firestore",
+    "test:functions": "pnpm --dir functions test",
+    "test:firebase": "pnpm firebase:emulators:exec \"pnpm --dir functions test:emulator && pnpm vitest run --config vitest.firebase.config.ts\"",
+    "test:e2e:online": "pnpm firebase:emulators:exec \"pnpm exec playwright test e2e/online-multiplayer.spec.ts\""
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@playwright/test": "^1.56.1",
     "@sveltejs/adapter-auto": "^6.1.0",
     "@sveltejs/adapter-static": "^3.0.10",
@@ -33,6 +40,7 @@
     "@vitest/coverage-v8": "3.2.4",
     "@vitest/ui": "^3.2.4",
     "autoprefixer": "^10.4.21",
+    "firebase-tools": "^15.24.0",
     "happy-dom": "^20.0.7",
     "jsdom": "^27.0.1",
     "postcss": "^8.5.6",
@@ -42,5 +50,8 @@
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "firebase": "^12.16.0"
   }
 }

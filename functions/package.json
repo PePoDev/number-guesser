@@ -1,0 +1,24 @@
+{
+  "name": "number-guessing-functions",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run src/domain.test.ts",
+    "test:emulator": "vitest run src/roomCommands.test.ts src/guessCommand.test.ts src/cleanup.test.ts",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
