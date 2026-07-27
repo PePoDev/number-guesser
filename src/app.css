@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+:root {
+	--stage-border: #0b1220;
+	--glass-bg: #f5efe6;
+	--glass-border: #0b1220;
+	--glass-fg: #0b1220;
+	--glass-muted: #5b6478;
+	--glass-accent: #facc15;
+	--accent-blue: #2563eb;
+	--accent-purple: #a855f7;
+	--accent-purple-fg: #ffffff;
+	--state-correct: #22c55e;
+	--state-incorrect: #ef4444;
+	--state-warning: #f59e0b;
+	--state-info: #3b82f6;
+}
+
 /* Glassmorphism utility classes */
 .glass-container {
 	background: rgba(255, 255, 255, 0.2);

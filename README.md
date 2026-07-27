@@ -252,6 +252,7 @@ The main display heading ends with one bold italic word in `--glass-accent`. Use
 | Feedback banner | State-tinted low-opacity background and border |
 | History row | Translucent white; newest row has a purple left border |
 | Player card | Landscape nav-card language; inset turn border; red-tinted eliminated state |
+| Online multiplayer | One cream-panel flow: name/create/join entry, room-ID lobby with readiness, turn/guess state, reconnect status, and host restart |
 | Settings modal | Cream surface, 480px maximum, blurred 40% black scrim, focus trap |
 | Hero | Decorative CSS/SVG tile tunnel with `aria-hidden="true"` |
 
@@ -289,6 +290,7 @@ Use Tailwind breakpoints `sm: 600px`, `md: 900px`, and `lg: 1200px`. Document an
 | Stage, ticker, nav, glass shell, hero, utilities | `src/routes/+page.svelte` |
 | Single-player panel | `src/lib/components/SinglePlayerGame.svelte` |
 | Multiplayer panels and player cards | `src/lib/components/MultiPlayerGame.svelte` |
+| Online entry, lobby, synchronized game, reconnect, and result states | `src/lib/components/OnlineMultiplayerGame.svelte` |
 | Settings modal | `src/lib/components/SettingsModal.svelte` |
 | Tokens and global motion/focus styles | `src/app.css` |
 | Tailwind token mappings | `tailwind.config.js` |
