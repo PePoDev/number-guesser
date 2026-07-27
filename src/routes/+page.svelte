@@ -3,6 +3,7 @@
 	import SettingsModal from '$lib/components/SettingsModal.svelte';
 	import SinglePlayerGame from '$lib/components/SinglePlayerGame.svelte';
 	import MultiPlayerGame from '$lib/components/MultiPlayerGame.svelte';
+	import OnlineMultiplayerGame from '$lib/components/OnlineMultiplayerGame.svelte';
 	
 	let showSettings = $state(false);
 	
@@ -55,18 +56,22 @@
 		
 		{#if $gameStore.mode === 'single'}
 			<SinglePlayerGame />
-		{:else}
+		{:else if $gameStore.mode === 'multi'}
 			<MultiPlayerGame />
+		{:else}
+			<OnlineMultiplayerGame />
 		{/if}
 		
-		<div class="text-center my-5">
-			<button
-				onclick={startNewGame}
-				class="glass-button px-8 py-4 rounded-xl text-xl text-white font-semibold hover:scale-105 transition-all duration-300 shadow-lg backdrop-blur-md bg-gradient-to-r from-green-400/30 to-emerald-500/30 border border-white/30"
-			>
-				New Game
-			</button>
-		</div>
+		{#if $gameStore.mode !== 'online'}
+			<div class="text-center my-5">
+				<button
+					onclick={startNewGame}
+					class="glass-button px-8 py-4 rounded-xl text-xl text-white font-semibold hover:scale-105 transition-all duration-300 shadow-lg backdrop-blur-md bg-gradient-to-r from-green-400/30 to-emerald-500/30 border border-white/30"
+				>
+					New Game
+				</button>
+			</div>
+		{/if}
 		
 		<div class="mt-8 p-5 glass-panel rounded-xl border border-white/30 backdrop-blur-md bg-white/10">
 			<h3 class="text-white mb-4 font-semibold text-lg">How to Play:</h3>

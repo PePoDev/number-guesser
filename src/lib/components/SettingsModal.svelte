@@ -66,11 +66,12 @@
                     class="px-4 py-2 rounded-xl text-base cursor-pointer transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-white/30 backdrop-blur-md bg-white/20 border border-white/30 text-white font-semibold shadow-lg"
                 >
                     <option value="single">Single Player</option>
-                    <option value="multi">Multi Player</option>
+                    <option value="multi">Local Multiplayer</option>
+                    <option value="online">Online Multiplayer</option>
                 </select>
             </div>
             
-            {#if mode === 'multi'}
+            {#if mode === 'multi' || mode === 'online'}
                 <div class="flex justify-between items-center">
                     <label for="player-count" class="font-bold text-white text-lg drop-shadow-lg">Number of Players:</label>
                     <select

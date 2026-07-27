@@ -49,13 +49,17 @@ describe("SettingsModal Component", () => {
       expect(screen.getByLabelText("Game Mode:")).toBeInTheDocument();
     });
 
-    it("should have single and multi player options", () => {
+    it("offers local and online multiplayer separately", () => {
       render(SettingsModal, { props: { onclose: mockOnClose } });
-      const select = screen.getByLabelText("Game Mode:") as HTMLSelectElement;
-      const options = Array.from(select.options).map((opt) => opt.text);
+      const mode = screen.getByLabelText("Game Mode:");
 
-      expect(options).toContain("Single Player");
-      expect(options).toContain("Multi Player");
+      expect(mode).toHaveDisplayValue("Single Player");
+      expect(
+        screen.getByRole("option", { name: "Local Multiplayer" })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: "Online Multiplayer" })
+      ).toBeInTheDocument();
     });
 
     it("should change game mode when selected", async () => {
@@ -74,6 +78,15 @@ describe("SettingsModal Component", () => {
       const user = userEvent.setup();
       gameStore.setMode("multi");
       render(SettingsModal, { props: { onclose: mockOnClose } });
+
+      expect(screen.getByLabelText("Number of Players:")).toBeInTheDocument();
+    });
+
+    it("shows player count for online multiplayer", async () => {
+      const user = userEvent.setup();
+      render(SettingsModal, { props: { onclose: mockOnClose } });
+
+      await user.selectOptions(screen.getByLabelText("Game Mode:"), "online");
 
       expect(screen.getByLabelText("Number of Players:")).toBeInTheDocument();
     });

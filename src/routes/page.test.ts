@@ -95,6 +95,14 @@ describe("+page.svelte Component", () => {
     expect(screen.getByText("Player Setup")).toBeInTheDocument();
   });
 
+  it("renders OnlineMultiplayerGame in online mode", () => {
+    gameStore.setMode("online");
+    render(Page);
+
+    expect(screen.getByLabelText("Display name")).toBeInTheDocument();
+    expect(screen.queryByText("New Game")).not.toBeInTheDocument();
+  });
+
   it("should have New Game button", () => {
     render(Page);
     expect(screen.getByText("New Game")).toBeInTheDocument();
