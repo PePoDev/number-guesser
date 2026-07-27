@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest run src/domain.test.ts",
+    "test": "vitest run src/domain.test.ts src/errors.test.ts",
     "test:emulator": "vitest run src/roomCommands.test.ts src/guessCommand.test.ts src/cleanup.test.ts",
     "test:watch": "vitest"
   },
