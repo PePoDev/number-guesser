@@ -140,6 +140,8 @@ Firebase dependencies and backend deployment are explicitly approved for online 
 | Unit | `src/lib/stores/gameStore.test.ts` | Pure helpers, state transitions, edge cases |
 | Component | Colocated `*.test.ts` files | Rendering, interaction, ARIA, component branches |
 | End-to-end | `e2e/*.spec.ts` | Complete single-player and multiplayer flows |
+| Firebase integration | `functions/src/*.test.ts`, `src/lib/firebase/firestore.rules.test.ts` | Emulator-only transactions, cleanup, and security rules |
+| Online end-to-end | `e2e/online-multiplayer.spec.ts` | Separate browser contexts for create/join, turns, reconnect, and errors |
 | Setup | `src/tests/setup.ts` | DOM environment and matchers |
 
 ### Test requirements
@@ -152,6 +154,8 @@ Firebase dependencies and backend deployment are explicitly approved for online 
 - Use semantic Testing Library queries and Playwright's built-in waiting.
 - Use fake timers and seeded randomness when needed.
 - Keep tests independent; avoid arbitrary timeouts.
+- Run Firebase tests only with project `demo-number-guessing`, never production services.
+- Give every online player a separate Playwright browser context.
 
 ### Coverage goals
 

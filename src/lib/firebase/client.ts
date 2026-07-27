@@ -55,7 +55,6 @@ export async function getFirebaseClient() {
 		app,
 		import.meta.env.PUBLIC_FIREBASE_FUNCTIONS_REGION || 'us-central1',
 	)
-	await setPersistence(auth, browserLocalPersistence)
 	if (useEmulators && !emulatorConnected) {
 		connectAuthEmulator(auth, 'http://127.0.0.1:9099', {
 			disableWarnings: true,
@@ -64,5 +63,6 @@ export async function getFirebaseClient() {
 		connectFunctionsEmulator(functions, '127.0.0.1', 5001)
 		emulatorConnected = true
 	}
+	await setPersistence(auth, browserLocalPersistence)
 	return { auth, firestore, functions }
 }

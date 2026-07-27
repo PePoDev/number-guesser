@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/svelte'
 import userEvent from '@testing-library/user-event'
+import { tick } from 'svelte'
 import OnlineMultiplayerGame from './OnlineMultiplayerGame.svelte'
 import { gameStore } from '$lib/stores/gameStore'
 import type { OnlineSnapshot } from '$lib/online/types'
@@ -191,6 +192,21 @@ it('shows lobby readiness and lets the host start', async () => {
 		number: '123',
 	})
 	expect(service.startRoom).toHaveBeenCalledWith('AB2C3D')
+})
+
+it('keeps one room subscription while snapshots update', async () => {
+	const service = createFakeOnlineGameService()
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(readyLobbySnapshot(false))
+	render(OnlineMultiplayerGame, { props: { service } })
+
+	await waitFor(() => {
+		expect(service.subscribeToRoom).toHaveBeenCalledTimes(1)
+	})
+	gameStore.applyOnlineSnapshot(readyLobbySnapshot())
+	await tick()
+
+	expect(service.subscribeToRoom).toHaveBeenCalledTimes(1)
 })
 
 it('enables guessing only for the active player', async () => {

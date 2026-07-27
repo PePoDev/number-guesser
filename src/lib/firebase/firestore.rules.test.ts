@@ -5,8 +5,16 @@ import {
 	initializeTestEnvironment,
 	type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
-import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
+import {
+	collection,
+	doc,
+	getDoc,
+	getDocs,
+	orderBy,
+	query,
+	setDoc,
+} from 'firebase/firestore'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 let environment: RulesTestEnvironment
 
@@ -26,7 +34,10 @@ beforeEach(async () => {
 	await environment.withSecurityRulesDisabled(async (context) => {
 		const firestore = context.firestore()
 		await setDoc(doc(firestore, 'rooms/AB2C3D'), { phase: 'lobby' })
-		await setDoc(doc(firestore, 'rooms/AB2C3D/players/member'), { name: 'Ada' })
+		await setDoc(doc(firestore, 'rooms/AB2C3D/players/member'), {
+			name: 'Ada',
+			seat: 0,
+		})
 		await setDoc(doc(firestore, 'roomSecrets/AB2C3D/players/member'), {
 			number: '123',
 		})
@@ -43,6 +54,20 @@ describe('firestore rules', () => {
 	it('allows members to read public room state', async () => {
 		const firestore = environment.authenticatedContext('member').firestore()
 		await assertSucceeds(getDoc(doc(firestore, 'rooms/AB2C3D')))
+	})
+
+	it('allows members to list players in their room', async () => {
+		const firestore = environment.authenticatedContext('member').firestore()
+		const players = await assertSucceeds(
+			getDocs(
+				query(
+					collection(firestore, 'rooms/AB2C3D/players'),
+					orderBy('seat'),
+				),
+			),
+		)
+
+		expect(players.docs.map((player) => player.id)).toEqual(['member'])
 	})
 
 	it('denies nonmembers and anonymous users', async () => {

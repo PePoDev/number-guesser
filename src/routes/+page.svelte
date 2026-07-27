@@ -4,8 +4,10 @@
 	import SinglePlayerGame from '$lib/components/SinglePlayerGame.svelte';
 	import MultiPlayerGame from '$lib/components/MultiPlayerGame.svelte';
 	import OnlineMultiplayerGame from '$lib/components/OnlineMultiplayerGame.svelte';
+	import { onlineGameService } from '$lib/services/onlineGameService';
 	
 	let showSettings = $state(false);
+	let sessionRestoreStarted = $state(false);
 	
 	function openSettings() {
 		showSettings = true;
@@ -20,7 +22,26 @@
 	}
 	
 	$effect(() => {
-		gameStore.startNewGame();
+		if (sessionRestoreStarted) {
+			return;
+		}
+
+		sessionRestoreStarted = true;
+		void onlineGameService.restoreSession().then((session) => {
+			if (session) {
+				gameStore.setMode('online');
+				gameStore.setOnlineIdentity(session.uid, session.roomId);
+				return;
+			}
+
+			gameStore.startNewGame();
+		}).catch((error: unknown) => {
+			gameStore.setMode('online');
+			gameStore.setOnlineStatus(
+				'error',
+				error instanceof Error ? error.message : 'Could not restore the room.',
+			);
+		});
 	});
 </script>
 

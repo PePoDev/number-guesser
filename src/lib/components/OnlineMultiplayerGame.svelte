@@ -17,6 +17,7 @@
 	let targetUid = $state('')
 	let restoreStarted = $state(false)
 	let busy = $state(false)
+	let activeRoomId = $state($gameStore.online.roomId)
 	const room = $derived($gameStore.online.room)
 	const currentPlayer = $derived(
 		$gameStore.online.players.find(
@@ -75,6 +76,7 @@
 				maxPlayers: $gameStore.settings.playerCount,
 			})
 			gameStore.setOnlineIdentity(session.uid, session.roomId)
+			activeRoomId = session.roomId
 		} catch (error) {
 			reportError(error)
 		} finally {
@@ -91,6 +93,7 @@
 				roomId: roomIdInput.trim().toUpperCase(),
 			})
 			gameStore.setOnlineIdentity(session.uid, session.roomId)
+			activeRoomId = session.roomId
 		} catch (error) {
 			reportError(error)
 		} finally {
@@ -134,6 +137,7 @@
 		busy = true
 		try {
 			await service.leaveRoom(room.id)
+			activeRoomId = ''
 			gameStore.clearOnlineSession()
 		} catch (error) {
 			reportError(error)
@@ -192,6 +196,7 @@
 			.then((session) => {
 				if (session) {
 					gameStore.setOnlineIdentity(session.uid, session.roomId)
+					activeRoomId = session.roomId
 				}
 			})
 			.catch((error: unknown) => {
@@ -200,7 +205,7 @@
 	})
 
 	$effect(() => {
-		const roomId = $gameStore.online.roomId
+		const roomId = activeRoomId
 		if (!roomId) {
 			return
 		}
@@ -210,6 +215,7 @@
 			(message) => {
 				if (message === 'Room not found or expired.') {
 					service.clearSession()
+					activeRoomId = ''
 					gameStore.clearOnlineSession()
 					gameStore.setOnlineStatus('error', message)
 					return
