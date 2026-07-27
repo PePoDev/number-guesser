@@ -3,6 +3,7 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { resolve } from "path";
 
 export default defineConfig({
+  envPrefix: ["VITE_", "PUBLIC_"],
   plugins: [
     svelte({
       hot: !process.env.VITEST,
