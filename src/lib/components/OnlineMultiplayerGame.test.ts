@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/svelte'
+import { render, screen, waitFor } from '@testing-library/svelte'
 import userEvent from '@testing-library/user-event'
 import OnlineMultiplayerGame from './OnlineMultiplayerGame.svelte'
 import { gameStore } from '$lib/stores/gameStore'
@@ -59,6 +59,74 @@ function readyLobbySnapshot(hostReady = true): OnlineSnapshot {
 			},
 		],
 		guesses: [],
+	}
+}
+
+function guessingSnapshot(input: {
+	currentGuesserUid: string
+	turnNumber?: number
+}): OnlineSnapshot {
+	return {
+		room: {
+			id: 'AB2C3D',
+			hostUid: 'host',
+			phase: 'guessing',
+			digitCount: 3,
+			maxPlayers: 2,
+			playerOrder: ['host', 'p2'],
+			currentGuesserUid: input.currentGuesserUid,
+			winnerUid: null,
+			turnNumber: input.turnNumber ?? 0,
+		},
+		players: [
+			{
+				uid: 'host',
+				name: 'Ada',
+				seat: 0,
+				ready: true,
+				eliminated: false,
+			},
+			{
+				uid: 'p2',
+				name: 'Lin',
+				seat: 1,
+				ready: true,
+				eliminated: false,
+			},
+		],
+		guesses: [],
+	}
+}
+
+function finishedSnapshot(input: { winnerUid: string }): OnlineSnapshot {
+	const snapshot = guessingSnapshot({
+		currentGuesserUid: input.winnerUid,
+		turnNumber: 1,
+	})
+	return {
+		...snapshot,
+		room: {
+			...snapshot.room,
+			phase: 'finished',
+			currentGuesserUid: null,
+			winnerUid: input.winnerUid,
+		},
+		players: snapshot.players.map((player) => ({
+			...player,
+			eliminated: player.uid !== input.winnerUid,
+		})),
+		guesses: [
+			{
+				id: 'turn-1',
+				turnNumber: 1,
+				guesserUid: input.winnerUid,
+				targetUid: input.winnerUid === 'host' ? 'p2' : 'host',
+				guess: '456',
+				correct: true,
+				correctDigits: 3,
+				correctPositions: 3,
+			},
+		],
 	}
 }
 
@@ -123,4 +191,80 @@ it('shows lobby readiness and lets the host start', async () => {
 		number: '123',
 	})
 	expect(service.startRoom).toHaveBeenCalledWith('AB2C3D')
+})
+
+it('enables guessing only for the active player', async () => {
+	const service = createFakeOnlineGameService()
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(
+		guessingSnapshot({ currentGuesserUid: 'host' }),
+	)
+	const user = userEvent.setup()
+	render(OnlineMultiplayerGame, { props: { service } })
+
+	await user.selectOptions(screen.getByLabelText('Target player'), 'p2')
+	await user.type(screen.getByLabelText('Guess'), '456')
+	await user.click(screen.getByRole('button', { name: 'Submit Guess' }))
+
+	expect(service.submitGuess).toHaveBeenCalledWith({
+		roomId: 'AB2C3D',
+		targetUid: 'p2',
+		guess: '456',
+		turnNumber: 0,
+	})
+})
+
+it('shows a waiting state for another player turn', () => {
+	gameStore.setOnlineIdentity('p2', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(
+		guessingSnapshot({ currentGuesserUid: 'host' }),
+	)
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService() },
+	})
+
+	expect(screen.getByText("Ada's turn")).toBeInTheDocument()
+	expect(screen.getByLabelText('Guess')).toBeDisabled()
+})
+
+it('shows the winner and host restart action', async () => {
+	const service = createFakeOnlineGameService()
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(finishedSnapshot({ winnerUid: 'host' }))
+	const user = userEvent.setup()
+	render(OnlineMultiplayerGame, { props: { service } })
+
+	expect(screen.getByText('Ada wins!')).toBeInTheDocument()
+	await user.click(screen.getByRole('button', { name: 'Play Again' }))
+	expect(service.restartRoom).toHaveBeenCalledWith('AB2C3D')
+})
+
+it('restores a saved room and clears an expired saved session', async () => {
+	const service = createFakeOnlineGameService({
+		restoreSessionResult: { uid: 'host', roomId: 'AB2C3D' },
+	})
+	render(OnlineMultiplayerGame, { props: { service } })
+
+	await waitFor(() => {
+		expect(service.subscribeToRoom).toHaveBeenCalledWith(
+			'AB2C3D',
+			expect.any(Function),
+			expect.any(Function),
+		)
+	})
+
+	const onError = vi.mocked(service.subscribeToRoom).mock.calls[0][2]
+	onError('Connection interrupted.')
+	await waitFor(() => {
+		expect(screen.getByText('Reconnecting…')).toBeInTheDocument()
+	})
+
+	onError('Room not found or expired.')
+
+	expect(service.clearSession).toHaveBeenCalled()
+	await waitFor(() => {
+		expect(screen.getByRole('alert')).toHaveTextContent(
+			'Room not found or expired.',
+		)
+	})
 })
