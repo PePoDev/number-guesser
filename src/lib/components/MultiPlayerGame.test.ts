@@ -223,9 +223,10 @@ describe("MultiPlayerGame Component", () => {
     });
 
     it("should highlight active player", () => {
-      // Find the player card container for Alice (not just the name div)
-      const playerCards = screen.getByText("Alice").closest(".flex-1");
-      expect(playerCards).toHaveClass("ring-4", "ring-purple-300/50");
+      const aliceCard = screen
+        .getAllByTestId("player-card")
+        .find((card) => card.textContent?.includes("Alice"));
+      expect(aliceCard).toHaveClass("player-card-turn");
     });
 
     it("should not allow guessing own number", () => {

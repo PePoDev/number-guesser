@@ -11,7 +11,9 @@ describe("+page.svelte Component", () => {
 
   it("should render the main title", () => {
     render(Page);
-    expect(screen.getByText("Number Guessing Game")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Number Guessing Game."
+    );
   });
 
   it("should render settings button", () => {
@@ -66,7 +68,9 @@ describe("+page.svelte Component", () => {
     gameStore.startNewGame();
     render(Page);
 
-    expect(screen.getByText(/7/)).toBeInTheDocument();
+    expect(
+      screen.getByText("7", { selector: ".accent-value" })
+    ).toBeInTheDocument();
     expect(screen.getByText(/attempts remaining/)).toBeInTheDocument();
   });
 
@@ -100,7 +104,7 @@ describe("+page.svelte Component", () => {
     render(Page);
 
     expect(screen.getByLabelText("Display name")).toBeInTheDocument();
-    expect(screen.queryByText("New Game")).not.toBeInTheDocument();
+    expect(screen.getByText("New Game").closest("button")).toBeDisabled();
   });
 
   it("should have New Game button", () => {
@@ -132,13 +136,17 @@ describe("+page.svelte Component", () => {
     });
   });
 
-  it("should display How to Play section", () => {
+  it("should display How to Play section", async () => {
+    const user = userEvent.setup();
     render(Page);
+    await user.click(screen.getByRole("button", { name: /Instructions/ }));
     expect(screen.getByText("How to Play:")).toBeInTheDocument();
   });
 
-  it("should display game instructions", () => {
+  it("should display game instructions", async () => {
+    const user = userEvent.setup();
     render(Page);
+    await user.click(screen.getByRole("button", { name: /Instructions/ }));
     expect(
       screen.getByText(/Choose your preferred number of digits/)
     ).toBeInTheDocument();
@@ -146,11 +154,81 @@ describe("+page.svelte Component", () => {
     expect(screen.getByText(/Correct Positions:/)).toBeInTheDocument();
   });
 
+  it("should hide instructions when the card is clicked again", async () => {
+    const user = userEvent.setup();
+    render(Page);
+    const instructionsCard = screen.getByRole("button", {
+      name: "Instructions",
+    });
+    await user.click(instructionsCard);
+    expect(screen.getByText("How to Play:")).toBeInTheDocument();
+    await user.click(instructionsCard);
+    expect(screen.queryByText("How to Play:")).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Enter number")).toBeInTheDocument();
+  });
+
+  it("should switch to multiplayer from the nav card", async () => {
+    const user = userEvent.setup();
+    render(Page);
+    await user.click(screen.getByRole("button", { name: /Multiplayer/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Player Setup")).toBeInTheDocument();
+    });
+  });
+
+  it("should return to single player from the nav card", async () => {
+    const user = userEvent.setup();
+    gameStore.setMode("multi");
+    gameStore.startNewGame();
+    render(Page);
+    await user.click(screen.getByRole("button", { name: /Single Player/ }));
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Enter number")).toBeInTheDocument();
+    });
+  });
+
+  it("should switch between local and online multiplayer", async () => {
+    const user = userEvent.setup();
+    gameStore.setMode("multi");
+    gameStore.startNewGame();
+    render(Page);
+
+    await user.click(screen.getByRole("button", { name: "Online" }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Display name")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Local" }));
+    await waitFor(() => {
+      expect(screen.getByText("Player Setup")).toBeInTheDocument();
+    });
+  });
+
+  it("should disable New Game in online mode", () => {
+    gameStore.setMode("online");
+    render(Page);
+    expect(screen.getByText("New Game").closest("button")).toBeDisabled();
+  });
+
+  it("should mark the hero and duplicated ticker content aria-hidden", () => {
+    const { container } = render(Page);
+    expect(container.querySelector(".hero")).toHaveAttribute(
+      "aria-hidden",
+      "true"
+    );
+    const tickerSeqs = container.querySelectorAll(".ticker-seq");
+    expect(tickerSeqs[1]).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("should have proper page title", () => {
     render(Page);
     // The title is set in svelte:head, which may not be testable in this context
     // but we can verify the component renders
-    expect(screen.getByText("Number Guessing Game")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Number Guessing Game."
+    );
   });
 
   it("should initialize game on mount", async () => {
@@ -166,23 +244,21 @@ describe("+page.svelte Component", () => {
 
   it("should display game info with correct styling", () => {
     render(Page);
-    const gameInfo = screen.getByText(/I'm thinking of a/).closest("div");
-    expect(gameInfo).toHaveClass("bg-white/10");
-    expect(gameInfo).toHaveClass("backdrop-blur-md");
-    expect(gameInfo).toHaveClass("border-white/30");
+    const gameInfo = screen.getByText(/I'm thinking of a/).closest("header");
+    expect(gameInfo).toHaveClass("game-info");
   });
 
   it("should have settings button with proper styling", () => {
     render(Page);
     const settingsButton = screen.getByLabelText("Open Settings");
-    expect(settingsButton).toHaveClass("bg-white/20");
-    expect(settingsButton).toHaveClass("rounded-full");
+    expect(settingsButton).toHaveClass("nav-card");
+    expect(settingsButton).toHaveClass("nav-green");
   });
 
   it("should have New Game button with proper styling", () => {
     render(Page);
-    const newGameButton = screen.getByText("New Game");
-    expect(newGameButton).toHaveClass("bg-gradient-to-r");
-    expect(newGameButton).toHaveClass("text-white");
+    const newGameButton = screen.getByText("New Game").closest("button");
+    expect(newGameButton).toHaveClass("nav-card");
+    expect(newGameButton).toHaveClass("nav-primary");
   });
 });

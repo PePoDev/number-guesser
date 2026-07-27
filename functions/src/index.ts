@@ -13,7 +13,7 @@ import {
 	startRoom as startRoomCommand,
 } from './roomCommands.js'
 
-setGlobalOptions({ region: 'us-central1', maxInstances: 20 })
+setGlobalOptions({ region: 'asia-southeast1', maxInstances: 20 })
 
 function callable<TInput, TOutput>(
 	command: (uid: string, input: TInput) => Promise<TOutput>,

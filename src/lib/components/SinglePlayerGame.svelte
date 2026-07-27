@@ -91,7 +91,7 @@
 </script>
 
 <div class="game-area">
-	<div class="flex gap-2 mb-5 justify-center">
+	<div class="mb-5 flex flex-wrap justify-center gap-3">
 		<input
 			type="text"
 			bind:value={guessInput}
@@ -100,48 +100,46 @@
 			maxlength={$gameStore.settings.digitCount}
 			pattern="[0-9]*"
 			disabled={$gameStore.gameOver}
-			class="px-4 py-3 rounded-xl text-lg w-52 text-center transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-white/30 disabled:cursor-not-allowed backdrop-blur-md bg-white/20 border border-white/30 text-white placeholder-white/60 font-semibold shadow-lg disabled:opacity-50"
+			class="field-input w-52 text-lg"
 		/>
 		<button
 			onclick={makeGuess}
 			disabled={$gameStore.gameOver}
-			class="px-5 py-3 rounded-xl text-lg text-white font-semibold hover:scale-105 transition-all duration-300 shadow-lg disabled:cursor-not-allowed disabled:transform-none backdrop-blur-md bg-gradient-to-r from-purple-400/30 to-pink-500/30 border border-white/30 disabled:opacity-50"
+			class="btn-primary text-lg"
 		>
 			Submit Guess
 		</button>
 	</div>
 	
-	<div class="my-5 text-center">
-		{#if currentGuess}
-			<div class="text-xl font-bold text-white mb-2 drop-shadow-lg">{currentGuess}</div>
-		{/if}
-	</div>
+	{#if currentGuess}
+		<p class="my-4 text-center text-xl font-bold">{currentGuess}</p>
+	{/if}
 	
 	{#if feedbackMessage}
-		<div class="text-lg p-4 rounded-xl my-2 backdrop-blur-md border shadow-lg text-center {feedbackType === 'correct' ? 'bg-green-400/30 text-white border-green-300/50' : feedbackType === 'warning' ? 'bg-yellow-400/30 text-white border-yellow-300/50' : 'bg-red-400/30 text-white border-red-300/50'}">
+		<div class="banner my-3 text-center {feedbackType === 'correct' ? 'banner-correct' : feedbackType === 'warning' ? 'banner-warning' : 'banner-incorrect'}">
 			{feedbackMessage}
 		</div>
 	{/if}
 	
 	{#if winMessage}
-		<div class="backdrop-blur-md bg-green-400/30 text-white border-2 border-green-300/50 p-5 rounded-xl text-center text-xl font-bold my-5 shadow-lg">
+		<div class="banner banner-correct my-5 p-5 text-center text-xl font-bold">
 			{@html winMessage}
 		</div>
 	{/if}
 	
 	{#if loseMessage}
-		<div class="backdrop-blur-md bg-red-400/30 text-white border-2 border-red-300/50 p-5 rounded-xl text-center text-xl font-bold my-5 shadow-lg">
+		<div class="banner banner-incorrect my-5 p-5 text-center text-xl font-bold">
 			{@html loseMessage}
 		</div>
 	{/if}
 	
 	<div class="mt-8">
-		<h3 class="text-white mb-4 text-center font-semibold text-lg drop-shadow-lg">Guess History:</h3>
-		<div class="max-h-52 overflow-y-auto rounded-xl p-2 backdrop-blur-md bg-white/10 border border-white/30 shadow-lg">
+		<h3 class="mb-4 text-center font-display text-lg font-bold">Guess History:</h3>
+		<div class="max-h-52 space-y-1 overflow-y-auto rounded-2xl border-[1.5px] border-[var(--glass-border)] bg-white/40 p-2">
 			{#each $gameStore.guessHistory as entry, index}
-				<div class="flex justify-between items-center p-2 my-1 rounded-lg border-l-4 backdrop-blur-md bg-white/20 border-purple-400/50 shadow-md">
-					<span class="font-bold text-lg text-white">Guess {index + 1}: {entry.guess}</span>
-					<span class="text-sm text-white/90">Digits: {entry.correctDigits}, Positions: {entry.correctPositions}</span>
+				<div class="history-row flex items-center justify-between px-3 py-2 {index === $gameStore.guessHistory.length - 1 ? 'history-row-newest' : ''}">
+					<span class="font-bold">Guess {index + 1}: {entry.guess}</span>
+					<span class="text-sm text-[var(--glass-muted)]">Digits: {entry.correctDigits}, Positions: {entry.correctPositions}</span>
 				</div>
 			{/each}
 		</div>

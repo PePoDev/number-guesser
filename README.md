@@ -49,7 +49,7 @@ pnpm dev
 
 Open <http://localhost:5173>.
 
-For online development, install Java 21, then run `pnpm firebase:emulators` and `pnpm dev --mode test` in separate terminals. Test mode uses only the local `demo-number-guessing` project. Production requires a Firestore database, Anonymous Auth, the six public Firebase values from `.env.example`, and Functions in `us-central1`.
+For online development, install Java 21, then run `pnpm firebase:emulators` and `pnpm dev --mode test` in separate terminals. Test mode uses only the local `demo-number-guessing` project. Production requires a Firestore database, Anonymous Auth, the six public Firebase values from `.env.example`, and Functions in `asia-southeast1`.
 
 ## Commands
 
@@ -335,7 +335,7 @@ Add new surfaces to this table. The initial editorial design system was recorded
 
 ## Deployment
 
-`@sveltejs/adapter-static` builds to `build/`. GitHub Pages deploys the static client from `main` through `.github/workflows/deploy.yml`; `static/CNAME` sets `number-guesser.pepo.dev`. `.github/workflows/deploy-firebase.yml` deploys Cloud Functions and Firestore rules/indexes to `us-central1`.
+`@sveltejs/adapter-static` builds to `build/`. GitHub Pages deploys the static client from `main` through `.github/workflows/deploy.yml`; `static/CNAME` sets `number-guesser.pepo.dev`. `.github/workflows/deploy-firebase.yml` deploys Cloud Functions and Firestore rules/indexes to `asia-southeast1`.
 
 Before the first backend deploy, create the Firestore database and enable Anonymous Auth. Configure these GitHub repository variables:
 

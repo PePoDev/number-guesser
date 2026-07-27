@@ -1,88 +1,214 @@
 @import "tailwindcss";
 
+@theme {
+	--breakpoint-sm: 600px;
+	--breakpoint-md: 900px;
+	--breakpoint-lg: 1200px;
+	--font-display: "Space Grotesk", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+	--font-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
 :root {
+	--stage-bg: #1d4ed8;
+	--stage-grid: rgba(255, 255, 255, 0.18);
 	--stage-border: #0b1220;
+	--ticker-bg: #1e40af;
+	--ticker-fg: #fef3c7;
 	--glass-bg: #f5efe6;
 	--glass-border: #0b1220;
 	--glass-fg: #0b1220;
 	--glass-muted: #5b6478;
 	--glass-accent: #facc15;
 	--accent-blue: #2563eb;
+	--accent-yellow: #facc15;
+	--accent-orange: #f97316;
+	--accent-green: #22c55e;
 	--accent-purple: #a855f7;
+	--accent-blue-fg: #ffffff;
+	--accent-yellow-fg: var(--stage-border);
+	--accent-orange-fg: var(--stage-border);
+	--accent-green-fg: var(--stage-border);
 	--accent-purple-fg: #ffffff;
 	--state-correct: #22c55e;
 	--state-incorrect: #ef4444;
 	--state-warning: #f59e0b;
 	--state-info: #3b82f6;
+	--motion-duration: 180ms;
+	--motion-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* Glassmorphism utility classes */
-.glass-container {
-	background: rgba(255, 255, 255, 0.2);
-	backdrop-filter: blur(20px);
-	-webkit-backdrop-filter: blur(20px);
-	border: 1px solid rgba(255, 255, 255, 0.3);
-	box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+body {
+	font-family: var(--font-body);
+	background: var(--stage-bg);
+	color: var(--glass-fg);
 }
 
-.glass-panel {
-	background: rgba(255, 255, 255, 0.1);
-	backdrop-filter: blur(16px);
-	-webkit-backdrop-filter: blur(16px);
-	border: 1px solid rgba(255, 255, 255, 0.3);
-	box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.2);
+button,
+input,
+select,
+a {
+	transition:
+		background-color var(--motion-duration) var(--motion-easing),
+		border-color var(--motion-duration) var(--motion-easing),
+		color var(--motion-duration) var(--motion-easing),
+		opacity var(--motion-duration) var(--motion-easing),
+		transform var(--motion-duration) var(--motion-easing),
+		box-shadow var(--motion-duration) var(--motion-easing);
 }
 
-.glass-button {
-	background: rgba(255, 255, 255, 0.2);
-	backdrop-filter: blur(12px);
-	-webkit-backdrop-filter: blur(12px);
-	border: 1px solid rgba(255, 255, 255, 0.3);
-	transition: all 0.3s ease;
+:focus-visible {
+	outline: 3px solid var(--state-info);
+	outline-offset: 2px;
 }
 
-.glass-button:hover {
-	background: rgba(255, 255, 255, 0.3);
-	box-shadow: 0 8px 24px 0 rgba(31, 38, 135, 0.3);
-	transform: translateY(-2px);
+@media (prefers-reduced-motion: reduce) {
+	button,
+	input,
+	select,
+	a {
+		transition: none;
+	}
+
+	.ticker-track,
+	.animate-modal-slide-in {
+		animation: none;
+	}
 }
 
-/* Custom scrollbar for glass effect */
-::-webkit-scrollbar {
-	width: 8px;
-	height: 8px;
+.panel {
+	background: var(--glass-bg);
+	border: 1.5px solid var(--glass-border);
+	border-radius: 20px;
+	color: var(--glass-fg);
 }
 
-::-webkit-scrollbar-track {
-	background: rgba(255, 255, 255, 0.1);
+.field-input {
+	height: 56px;
+	background: #ffffff;
+	color: var(--glass-fg);
+	border: 1.5px solid var(--glass-border);
+	border-radius: 14px;
+	text-align: center;
+	font-weight: 600;
+}
+
+.field-input::placeholder {
+	color: var(--glass-muted);
+}
+
+.field-input:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.field-select {
+	min-height: 48px;
+	background: #ffffff;
+	color: var(--glass-fg);
+	border: 1.5px solid var(--glass-border);
+	border-radius: 14px;
+	padding: 0 12px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.field-select:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.btn-primary {
+	min-height: 48px;
+	background: var(--stage-border);
+	color: var(--glass-bg);
+	border: 1.5px solid var(--stage-border);
+	border-radius: 14px;
+	padding: 0 20px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.btn-primary:hover:not(:disabled) {
+	transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.btn-secondary {
+	min-height: 48px;
+	background: #ffffff;
+	color: var(--glass-fg);
+	border: 1.5px solid var(--glass-border);
+	border-radius: 14px;
+	padding: 0 20px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.btn-secondary:hover:not(:disabled) {
+	transform: translateY(-1px);
+}
+
+.btn-secondary:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.banner {
+	border: 1.5px solid;
+	border-radius: 14px;
+	padding: 12px 16px;
+	color: var(--glass-fg);
+}
+
+.banner-correct {
+	border-color: var(--state-correct);
+	background: color-mix(in srgb, var(--state-correct) 15%, transparent);
+}
+
+.banner-incorrect {
+	border-color: var(--state-incorrect);
+	background: color-mix(in srgb, var(--state-incorrect) 12%, transparent);
+}
+
+.banner-warning {
+	border-color: var(--state-warning);
+	background: color-mix(in srgb, var(--state-warning) 18%, transparent);
+}
+
+.banner-info {
+	border-color: var(--state-info);
+	background: color-mix(in srgb, var(--state-info) 12%, transparent);
+}
+
+.history-row {
+	background: rgba(255, 255, 255, 0.6);
+	border: 1.5px solid transparent;
+	border-left: 4px solid transparent;
 	border-radius: 10px;
 }
 
-::-webkit-scrollbar-thumb {
-	background: rgba(255, 255, 255, 0.3);
-	border-radius: 10px;
-	backdrop-filter: blur(10px);
-	-webkit-backdrop-filter: blur(10px);
+.history-row-newest {
+	border-left-color: var(--accent-purple);
 }
 
-::-webkit-scrollbar-thumb:hover {
-	background: rgba(255, 255, 255, 0.5);
+.history-row-correct {
+	background: color-mix(in srgb, var(--state-correct) 15%, #ffffff);
+	border-left-color: var(--state-correct);
 }
 
-/* Select dropdown styling for glassmorphism */
-select option {
-	background: rgba(100, 100, 150, 0.95);
-	color: white;
-	padding: 8px;
+.history-row-eliminated {
+	background: color-mix(in srgb, var(--state-incorrect) 12%, #ffffff);
+	opacity: 0.75;
 }
 
-/* Smooth transitions */
-* {
-	transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
-	transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Text shadow for better readability on glass */
-.drop-shadow-lg {
-	filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+.accent-value {
+	background: var(--glass-accent);
+	color: var(--stage-border);
+	padding: 0 0.3em;
+	border-radius: 0.3em;
+	font-weight: 700;
 }

@@ -1,26 +1,68 @@
 <script lang="ts">
-	import { gameStore, validateGuess, calculateFeedback, type GuessEntry } from '$lib/stores/gameStore';
+	import { gameStore } from '$lib/stores/gameStore';
 	import SettingsModal from '$lib/components/SettingsModal.svelte';
 	import SinglePlayerGame from '$lib/components/SinglePlayerGame.svelte';
 	import MultiPlayerGame from '$lib/components/MultiPlayerGame.svelte';
 	import OnlineMultiplayerGame from '$lib/components/OnlineMultiplayerGame.svelte';
 	import { onlineGameService } from '$lib/services/onlineGameService';
-	
+
+	type NavMode = 'single' | 'multi' | 'online';
+
 	let showSettings = $state(false);
+	let showInstructions = $state(false);
 	let sessionRestoreStarted = $state(false);
-	
+	let chosenMultiMode = $state<'multi' | 'online'>('multi');
+
+	const multiMode = $derived<'multi' | 'online'>(
+		$gameStore.mode === 'multi' || $gameStore.mode === 'online'
+			? $gameStore.mode
+			: chosenMultiMode,
+	);
+
+	const modeLabels: Record<NavMode, string> = {
+		single: 'Single Player',
+		multi: 'Local Multiplayer',
+		online: 'Online Multiplayer',
+	};
+
+	const tickerItems = [
+		'Guess the number',
+		'2–5 digits',
+		'3–20 attempts',
+		'Single player',
+		'Local multiplayer',
+		'Online rooms',
+	];
+	const tickerText = `${tickerItems.join(' ✦ ')} ✦ `;
+
 	function openSettings() {
 		showSettings = true;
 	}
-	
+
 	function closeSettings() {
 		showSettings = false;
 	}
-	
+
 	function startNewGame() {
 		gameStore.startNewGame();
 	}
-	
+
+	function selectMode(mode: NavMode) {
+		showInstructions = false;
+		if (mode === 'multi' || mode === 'online') {
+			chosenMultiMode = mode;
+		}
+		if ($gameStore.mode === mode) {
+			return;
+		}
+		gameStore.setMode(mode);
+		gameStore.startNewGame();
+	}
+
+	function toggleInstructions() {
+		showInstructions = !showInstructions;
+	}
+
 	$effect(() => {
 		if (sessionRestoreStarted) {
 			return;
@@ -49,61 +91,161 @@
 	<title>Number Guessing Game</title>
 </svelte:head>
 
-<div class="min-h-screen flex items-center justify-center p-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);">
-	<div class="glass-container rounded-3xl shadow-2xl p-8 max-w-2xl w-full relative backdrop-blur-xl bg-white/20 border border-white/30">
-		<button
-			onclick={openSettings}
-			class="absolute top-5 right-5 glass-button text-white rounded-full w-12 h-12 flex items-center justify-center text-2xl hover:scale-110 transition-all duration-300 shadow-lg cursor-pointer z-10 backdrop-blur-md bg-white/20 border border-white/30"
-			title="Game Settings"
-			aria-label="Open Settings"
-		>
-			<span class="pointer-events-none">⚙️</span>
-		</button>
-		
-		<h1 class="text-center text-white mb-5 text-4xl font-bold drop-shadow-2xl">
-			Number Guessing Game
-		</h1>
-		
-		<div class="text-center mb-8 p-4 glass-panel rounded-xl border border-white/30 backdrop-blur-md bg-white/10">
-			<p class="my-1 text-white font-medium">
-				I'm thinking of a <span class="font-bold text-yellow-300 text-xl drop-shadow-lg">{$gameStore.settings.digitCount}</span>-digit number. Can you guess it?
-			</p>
-			{#if $gameStore.mode === 'single'}
-				<p class="my-1 text-white font-medium">
-					You have <span class="font-bold text-yellow-300 text-xl drop-shadow-lg">{$gameStore.attemptsLeft}</span> attempts remaining.
-				</p>
-			{/if}
-		</div>
-		
-		{#if $gameStore.mode === 'single'}
-			<SinglePlayerGame />
-		{:else if $gameStore.mode === 'multi'}
-			<MultiPlayerGame />
-		{:else}
-			<OnlineMultiplayerGame />
-		{/if}
-		
-		{#if $gameStore.mode !== 'online'}
-			<div class="text-center my-5">
-				<button
-					onclick={startNewGame}
-					class="glass-button px-8 py-4 rounded-xl text-xl text-white font-semibold hover:scale-105 transition-all duration-300 shadow-lg backdrop-blur-md bg-gradient-to-r from-green-400/30 to-emerald-500/30 border border-white/30"
-				>
-					New Game
-				</button>
+<div class="stage flex min-h-screen items-center justify-center p-3 sm:p-5">
+	<div class="stage-frame flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl md:rounded-3xl">
+		<div class="ticker">
+			<div class="ticker-track">
+				<span class="ticker-seq">{tickerText}</span>
+				<span class="ticker-seq" aria-hidden="true">{tickerText}</span>
 			</div>
-		{/if}
-		
-		<div class="mt-8 p-5 glass-panel rounded-xl border border-white/30 backdrop-blur-md bg-white/10">
-			<h3 class="text-white mb-4 font-semibold text-lg">How to Play:</h3>
-			<ul class="list-inside text-white/90 space-y-2 text-sm">
-				<li>Choose your preferred number of digits (2-5) and max attempts (3-20)</li>
-				<li>Guess the number within your attempt limit</li>
-				<li><strong>Correct Digits:</strong> How many digits are in the target number (regardless of position)</li>
-				<li><strong>Correct Positions:</strong> How many digits are in the correct position</li>
-				<li>Example: Target is 401, you guess 410 → 3 correct digits, 1 correct position</li>
-			</ul>
 		</div>
+
+		<div class="stage-body grid gap-3 p-3 sm:gap-4 sm:p-4 md:grid-cols-[140px_minmax(320px,6fr)_minmax(0,4fr)]">
+			<nav class="nav-rail grid grid-cols-5 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-1" aria-label="Game navigation">
+				<button
+					type="button"
+					class="nav-card nav-blue"
+					aria-pressed={$gameStore.mode === 'single' && !showInstructions}
+					onclick={() => selectMode('single')}
+				>
+					<span class="nav-meta">
+						<span>01</span>
+						<svg class="max-sm:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M5 12h14M13 6l6 6-6 6" />
+						</svg>
+					</span>
+					<span class="nav-label">Single Player</span>
+				</button>
+				<button
+					type="button"
+					class="nav-card nav-yellow"
+					aria-pressed={($gameStore.mode === 'multi' || $gameStore.mode === 'online') && !showInstructions}
+					onclick={() => selectMode(multiMode)}
+				>
+					<span class="nav-meta">
+						<span>02</span>
+						<svg class="max-sm:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M5 12h14M13 6l6 6-6 6" />
+						</svg>
+					</span>
+					<span class="nav-label">Multiplayer</span>
+				</button>
+				<button
+					type="button"
+					class="nav-card nav-orange"
+					aria-pressed={showInstructions}
+					onclick={toggleInstructions}
+				>
+					<span class="nav-meta">
+						<span>03</span>
+						<svg class="max-sm:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M5 12h14M13 6l6 6-6 6" />
+						</svg>
+					</span>
+					<span class="nav-label">Instructions</span>
+				</button>
+				<button
+					type="button"
+					class="nav-card nav-green"
+					title="Game Settings"
+					aria-label="Open Settings"
+					aria-pressed="false"
+					onclick={openSettings}
+				>
+					<span class="nav-meta">
+						<span>04</span>
+						<svg class="max-sm:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M5 12h14M13 6l6 6-6 6" />
+						</svg>
+					</span>
+					<span class="nav-label">Settings</span>
+				</button>
+				<button
+					type="button"
+					class="nav-card nav-primary"
+					disabled={$gameStore.mode === 'online'}
+					onclick={startNewGame}
+				>
+					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+						<path d="M3 3v5h5" />
+					</svg>
+					<span class="nav-label">New Game</span>
+				</button>
+			</nav>
+
+			<main class="panel p-5 sm:p-6 md:p-8">
+				{#if showInstructions}
+					<section aria-labelledby="instructions-heading" class="space-y-4">
+						<h2 id="instructions-heading" class="font-display text-2xl font-bold">How to Play:</h2>
+						<ul class="list-disc space-y-2 pl-5 text-sm">
+							<li>Choose your preferred number of digits (2-5) and max attempts (3-20)</li>
+							<li>Guess the number within your attempt limit</li>
+							<li><strong>Correct Digits:</strong> How many digits are in the target number (regardless of position)</li>
+							<li><strong>Correct Positions:</strong> How many digits are in the correct position</li>
+							<li>Example: Target is 401, you guess 410 → 3 correct digits, 1 correct position</li>
+						</ul>
+					</section>
+				{:else}
+					<header class="game-info mb-6 space-y-2">
+						<h1 class="font-display text-[clamp(2rem,4vw,3rem)] font-bold leading-tight">
+							Number Guessing <em class="sig">Game.</em>
+						</h1>
+						<p>
+							I'm thinking of a <span class="accent-value">{$gameStore.settings.digitCount}</span>-digit number. Can you guess it?
+						</p>
+						{#if $gameStore.mode === 'single'}
+							<p>
+								You have <span class="accent-value">{$gameStore.attemptsLeft}</span> attempts remaining.
+							</p>
+						{/if}
+						{#if $gameStore.mode === 'multi' || $gameStore.mode === 'online'}
+							<div class="variant-switch mt-4" role="group" aria-label="Multiplayer type">
+								<button
+									type="button"
+									aria-pressed={$gameStore.mode === 'multi'}
+									onclick={() => selectMode('multi')}
+								>
+									Local
+								</button>
+								<button
+									type="button"
+									aria-pressed={$gameStore.mode === 'online'}
+									onclick={() => selectMode('online')}
+								>
+									Online
+								</button>
+							</div>
+						{/if}
+					</header>
+
+					{#if $gameStore.mode === 'single'}
+						<SinglePlayerGame />
+					{:else if $gameStore.mode === 'multi'}
+						<MultiPlayerGame />
+					{:else}
+						<OnlineMultiplayerGame />
+					{/if}
+				{/if}
+			</main>
+
+			<aside class="hero hidden md:flex" aria-hidden="true">
+				<div class="tunnel">
+					{#each [0, 1, 2, 3, 4, 5] as i}
+						<div class="tunnel-ring" style="--i: {i};">
+							<span class="tunnel-tile tunnel-tile-a">{(i * 3 + 1) % 10}</span>
+							<span class="tunnel-tile tunnel-tile-b">{(i * 3 + 2) % 10}</span>
+							<span class="tunnel-tile tunnel-tile-c">{(i * 3 + 3) % 10}</span>
+						</div>
+					{/each}
+				</div>
+			</aside>
+		</div>
+
+		<footer class="utility-row">
+			<span><kbd>Enter</kbd> submits a guess · <kbd>Escape</kbd> closes settings</span>
+			<span>{modeLabels[$gameStore.mode]}</span>
+		</footer>
 	</div>
 </div>
 
@@ -112,16 +254,246 @@
 {/if}
 
 <style>
-	.glass-container {
-		box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+	.stage {
+		background-color: var(--stage-bg);
+		background-image:
+			linear-gradient(var(--stage-grid) 1.5px, transparent 1.5px),
+			linear-gradient(90deg, var(--stage-grid) 1.5px, transparent 1.5px);
+		background-size: 24px 24px;
 	}
-	
-	.glass-panel {
-		box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.2);
+
+	@media (min-width: 600px) {
+		.stage {
+			background-size: 32px 32px;
+		}
 	}
-	
-	.glass-button:hover {
-		background: rgba(255, 255, 255, 0.3);
-		box-shadow: 0 8px 24px 0 rgba(31, 38, 135, 0.3);
+
+	.stage-frame {
+		border: 2px solid var(--stage-border);
+	}
+
+	.ticker {
+		background: var(--ticker-bg);
+		color: var(--ticker-fg);
+		overflow: hidden;
+		border-bottom: 1.5px solid var(--stage-border);
+	}
+
+	.ticker-track {
+		display: flex;
+		width: max-content;
+		animation: ticker-scroll 40s linear infinite;
+	}
+
+	.ticker-seq {
+		padding: 10px 0;
+		white-space: nowrap;
+		font-family: var(--font-display);
+		font-size: 0.8125rem;
+		letter-spacing: 0.15em;
+		text-transform: uppercase;
+	}
+
+	@keyframes ticker-scroll {
+		to {
+			transform: translateX(-50%);
+		}
+	}
+
+	.nav-card {
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		gap: 10px;
+		min-height: 96px;
+		padding: 12px;
+		background: var(--nav-accent);
+		color: var(--nav-fg);
+		border: 1.5px solid var(--stage-border);
+		border-radius: 16px;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.nav-card:hover:not(:disabled) {
+		transform: translateY(-2px);
+	}
+
+	.nav-card[aria-pressed='true'] {
+		box-shadow: inset 0 0 0 2.5px var(--stage-border);
+	}
+
+	.nav-card:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.nav-meta {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		font-family: var(--font-display);
+		font-size: 0.8125rem;
+		font-weight: 700;
+	}
+
+	.nav-label {
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: 0.95rem;
+		line-height: 1.1;
+	}
+
+	.nav-blue {
+		--nav-accent: var(--accent-blue);
+		--nav-fg: var(--accent-blue-fg);
+	}
+
+	.nav-yellow {
+		--nav-accent: var(--accent-yellow);
+		--nav-fg: var(--accent-yellow-fg);
+	}
+
+	.nav-orange {
+		--nav-accent: var(--accent-orange);
+		--nav-fg: var(--accent-orange-fg);
+	}
+
+	.nav-green {
+		--nav-accent: var(--accent-green);
+		--nav-fg: var(--accent-green-fg);
+	}
+
+	.nav-primary {
+		--nav-accent: var(--accent-purple);
+		--nav-fg: var(--accent-purple-fg);
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		min-height: 56px;
+	}
+
+	@media (max-width: 599px) {
+		.nav-card {
+			min-height: 72px;
+			padding: 8px;
+		}
+
+		.nav-label {
+			font-size: 0.75rem;
+		}
+
+		.nav-primary {
+			min-height: 72px;
+			flex-direction: column;
+			gap: 4px;
+		}
+	}
+
+	@media (min-width: 600px) and (max-width: 899px) {
+		.nav-primary {
+			grid-column: span 2;
+		}
+	}
+
+	.sig {
+		font-style: italic;
+		font-weight: 700;
+		color: var(--glass-accent);
+		background: var(--stage-border);
+		padding: 0 0.2em;
+		border-radius: 0.2em;
+	}
+
+	.variant-switch {
+		display: inline-flex;
+		border: 1.5px solid var(--glass-border);
+		border-radius: 14px;
+		overflow: hidden;
+		background: #ffffff;
+	}
+
+	.variant-switch button {
+		padding: 10px 20px;
+		font-weight: 600;
+		color: var(--glass-fg);
+		cursor: pointer;
+	}
+
+	.variant-switch button[aria-pressed='true'] {
+		background: var(--stage-border);
+		color: var(--glass-bg);
+	}
+
+	.hero {
+		align-items: center;
+		justify-content: center;
+		perspective: 700px;
+		overflow: hidden;
+	}
+
+	.tunnel {
+		position: relative;
+		width: 240px;
+		height: 320px;
+		transform-style: preserve-3d;
+		transform: rotateX(8deg) rotateY(-12deg);
+	}
+
+	.tunnel-ring {
+		position: absolute;
+		inset: 0;
+		border: 1.5px solid var(--stage-grid);
+		border-radius: 20px;
+		transform: translateZ(calc(var(--i) * -80px));
+		opacity: calc(1 - var(--i) * 0.14);
+	}
+
+	.tunnel-tile {
+		position: absolute;
+		display: grid;
+		place-items: center;
+		width: 44px;
+		height: 56px;
+		border: 1.5px solid var(--stage-grid);
+		border-radius: 10px;
+		background: rgba(255, 255, 255, 0.06);
+		color: var(--ticker-fg);
+		font-family: var(--font-display);
+		font-size: 1.5rem;
+		font-weight: 700;
+	}
+
+	.tunnel-tile-a {
+		top: -22px;
+		left: 12%;
+	}
+
+	.tunnel-tile-b {
+		top: 40%;
+		right: -22px;
+	}
+
+	.tunnel-tile-c {
+		bottom: -22px;
+		left: 38%;
+	}
+
+	.utility-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 4px 24px;
+		padding: 10px 16px;
+		border-top: 1.5px solid var(--stage-border);
+		color: var(--ticker-fg);
+		font-size: 0.8125rem;
+	}
+
+	.utility-row kbd {
+		font-family: var(--font-display);
+		font-weight: 700;
 	}
 </style>

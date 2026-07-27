@@ -53,7 +53,7 @@ export async function getFirebaseClient() {
 	const firestore = getFirestore(app)
 	const functions = getFunctions(
 		app,
-		import.meta.env.PUBLIC_FIREBASE_FUNCTIONS_REGION || 'us-central1',
+		import.meta.env.PUBLIC_FIREBASE_FUNCTIONS_REGION || 'asia-southeast1',
 	)
 	if (useEmulators && !emulatorConnected) {
 		connectAuthEmulator(auth, 'http://127.0.0.1:9099', {

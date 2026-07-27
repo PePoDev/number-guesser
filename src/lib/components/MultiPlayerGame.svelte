@@ -1,6 +1,8 @@
 <script lang="ts">
 import { gameStore, validateGuess, calculateFeedback, type GuessEntry } from '$lib/stores/gameStore';
 	
+const playerAccents = ['blue', 'yellow', 'orange', 'green'];
+	
 let playerNameInput = $state('');
 let playerNumberInput = $state('');
 let multiGuessInput = $state('');
@@ -98,29 +100,29 @@ function handleGuessKeyPress(e: KeyboardEvent) {
 </script>
 
 {#if $gameStore.gamePhase === 'setup'}
-<div class="phase-header text-center mb-6 p-5 rounded-xl border backdrop-blur-md bg-white/10 border-white/30 shadow-lg">
-	<h3 class="text-white mb-2 text-xl font-semibold drop-shadow-lg">Player Setup</h3>
-	<p class="text-white/90 m-0">Enter your name and secret number</p>
-</div>
+<header class="mb-6 space-y-1 text-center">
+	<h3 class="font-display text-xl font-bold">Player Setup</h3>
+	<p class="text-[var(--glass-muted)]">Enter your name and secret number</p>
+</header>
 	
-<div class="current-player-info text-center text-xl font-bold text-white mb-5 p-4 rounded-xl backdrop-blur-md bg-blue-400/30 border border-white/30 shadow-lg drop-shadow-lg">
+<p class="banner banner-info mb-5 text-center font-semibold">
 	{$gameStore.players[$gameStore.currentSetupPlayer]?.name}'s turn to setup
-</div>
+</p>
 	
-<div class="max-w-md mx-auto p-5 rounded-xl border-2 backdrop-blur-md bg-white/10 border-white/30 shadow-lg">
-	<div class="flex items-center mb-4 gap-4">
-		<label for="player-name-input" class="font-bold text-white min-w-[120px] text-right drop-shadow-lg">Name:</label>
+<div class="mx-auto max-w-md space-y-4 rounded-2xl border-[1.5px] border-[var(--glass-border)] bg-white/60 p-5">
+	<div class="flex items-center gap-3">
+		<label for="player-name-input" class="w-24 shrink-0 text-right font-semibold">Name:</label>
 		<input
 			id="player-name-input"
 			type="text"
 			bind:value={playerNameInput}
 			placeholder="Enter your name"
 			maxlength="20"
-			class="flex-1 px-3 py-2 rounded-xl text-lg text-center transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-white/30 backdrop-blur-md bg-white/20 border border-white/30 text-white placeholder-white/60 font-semibold shadow-lg"
+			class="field-input min-w-0 flex-1"
 		/>
 	</div>
-	<div class="flex items-center mb-4 gap-4">
-		<label for="player-number-input" class="font-bold text-white min-w-[120px] text-right drop-shadow-lg">Secret Number:</label>
+	<div class="flex items-center gap-3">
+		<label for="player-number-input" class="w-24 shrink-0 text-right font-semibold">Secret Number:</label>
 		<input
 			id="player-number-input"
 			type="text"
@@ -129,35 +131,35 @@ function handleGuessKeyPress(e: KeyboardEvent) {
 			placeholder="Enter your secret number"
 			maxlength={$gameStore.settings.digitCount}
 			pattern="[0-9]*"
-			class="flex-1 px-3 py-2 rounded-xl text-lg text-center transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-white/30 backdrop-blur-md bg-white/20 border border-white/30 text-white placeholder-white/60 font-semibold shadow-lg"
+			class="field-input min-w-0 flex-1"
 		/>
 	</div>
-	<div class="flex gap-2 justify-center">
-		<button
-			onclick={savePlayerSetup}
-			class="px-5 py-3 rounded-xl text-lg text-white font-semibold hover:scale-105 transition-all duration-300 shadow-lg backdrop-blur-md bg-gradient-to-r from-purple-400/30 to-pink-500/30 border border-white/30"
-		>
+	<div class="text-center">
+		<button onclick={savePlayerSetup} class="btn-primary">
 			Save & Continue
 		</button>
 	</div>
 </div>
 {:else if $gameStore.gamePhase === 'guessing' || $gameStore.gamePhase === 'finished'}
-<div class="phase-header text-center mb-6 p-5 rounded-xl border backdrop-blur-md bg-white/10 border-white/30 shadow-lg">
-	<h3 class="text-white mb-2 text-xl font-semibold drop-shadow-lg">{$gameStore.gamePhase === 'finished' ? 'Game Over!' : 'Guessing Phase'}</h3>
-	<p class="text-white/90 m-0">{$gameStore.gamePhase === 'finished' ? `${$gameStore.players[$gameStore.activePlayers[0]]?.name} wins!` : `${$gameStore.players[$gameStore.currentGuesser]?.name}'s turn to guess`}</p>
-</div>
+<header class="mb-6 space-y-1 text-center">
+	<h3 class="font-display text-xl font-bold">{$gameStore.gamePhase === 'finished' ? 'Game Over!' : 'Guessing Phase'}</h3>
+	<p class="text-[var(--glass-muted)]">{$gameStore.gamePhase === 'finished' ? `${$gameStore.players[$gameStore.activePlayers[0]]?.name} wins!` : `${$gameStore.players[$gameStore.currentGuesser]?.name}'s turn to guess`}</p>
+</header>
 	
 <div class="my-5">
-	<div class="flex gap-4 justify-center flex-wrap">
+	<div class="flex flex-wrap justify-center gap-4">
 		{#each $gameStore.players as player, index}
-		<div class="flex-1 min-w-[200px] max-w-[250px] rounded-xl p-4 shadow-lg backdrop-blur-md border-2 {player.eliminated ? 'bg-red-400/20 border-red-300/50 opacity-70' : 'bg-white/20 border-white/30'} {index === $gameStore.currentGuesser && !player.eliminated && $gameStore.gamePhase === 'guessing' ? 'ring-4 ring-purple-300/50' : ''}">
-			<div class="text-center font-bold text-lg mb-4 p-2 rounded-lg backdrop-blur-md {index === $gameStore.currentGuesser && !player.eliminated && $gameStore.gamePhase === 'guessing' ? 'bg-purple-500/40 text-white border border-purple-300/50' : player.eliminated ? 'bg-red-500/40 text-white border border-red-300/50' : 'bg-white/20 text-white border border-white/30'} shadow-md">
+		<div
+			data-testid="player-card"
+			class="player-card player-accent-{playerAccents[index % playerAccents.length]} min-w-[200px] max-w-[250px] flex-1 rounded-2xl p-3 {index === $gameStore.currentGuesser && !player.eliminated && $gameStore.gamePhase === 'guessing' ? 'player-card-turn' : ''} {player.eliminated ? 'player-card-eliminated' : ''}"
+		>
+			<div class="player-card-name rounded-lg px-3 py-2 text-center font-display text-lg font-bold">
 				{player.name}
 			</div>
-			<div class="max-h-52 overflow-y-auto space-y-1">
+			<div class="mt-3 max-h-52 space-y-1 overflow-y-auto">
 				{#each player.guesses as guess}
-				<div class="p-2 my-1 rounded-lg text-sm backdrop-blur-md shadow-md {guess.correct ? 'bg-green-400/30 text-white font-bold border border-green-300/50' : 'bg-white/20 text-white border border-white/30'}">
-					<div class="flex justify-between w-full">
+				<div class="history-row px-2 py-1.5 text-sm {guess.correct ? 'history-row-correct font-bold' : ''}">
+					<div class="flex w-full justify-between gap-2">
 						<span>{$gameStore.players[guess.guesser]?.name}: {guess.guess}</span>
 						<span>{guess.correct ? 'CORRECT!' : `D:${guess.correctDigits}, P:${guess.correctPositions}`}</span>
 					</div>
@@ -170,14 +172,14 @@ function handleGuessKeyPress(e: KeyboardEvent) {
 </div>
 	
 {#if $gameStore.gamePhase === 'guessing' || $gameStore.gamePhase === 'finished'}
-	<div class="flex gap-4 items-center justify-center flex-wrap my-5 p-5 rounded-xl backdrop-blur-md bg-white/10 border border-white/30 shadow-lg">
+	<div class="my-5 flex flex-wrap items-center justify-center gap-4 rounded-2xl border-[1.5px] border-[var(--glass-border)] bg-white/60 p-4">
 		<div class="flex items-center gap-2">
-			<label for="target-player" class="font-bold text-white drop-shadow-lg">Guess for:</label>
+			<label for="target-player" class="font-semibold">Guess for:</label>
 			<select
 				id="target-player"
 				bind:value={targetPlayerIndex}
 				disabled={$gameStore.gamePhase === 'finished'}
-				class="px-3 py-2 rounded-lg text-base cursor-pointer transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white/30 backdrop-blur-md bg-white/20 border border-white/30 text-white font-semibold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+				class="field-select"
 			>
 				{#each $gameStore.activePlayers as playerIdx}
 					{#if playerIdx !== $gameStore.currentGuesser}
@@ -195,12 +197,12 @@ function handleGuessKeyPress(e: KeyboardEvent) {
 				maxlength={$gameStore.settings.digitCount}
 				pattern="[0-9]*"
 				disabled={$gameStore.gamePhase === 'finished'}
-				class="px-4 py-2 rounded-xl text-lg w-52 text-center transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-white/30 backdrop-blur-md bg-white/20 border border-white/30 text-white placeholder-white/60 font-semibold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+				class="field-input w-40"
 			/>
 			<button
 				onclick={makeMultiPlayerGuess}
 				disabled={$gameStore.gamePhase === 'finished'}
-				class="px-5 py-2 rounded-xl text-lg text-white font-semibold hover:scale-105 transition-all duration-300 shadow-lg backdrop-blur-md bg-gradient-to-r from-purple-400/30 to-pink-500/30 border border-white/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+				class="btn-primary"
 			>
 				Submit Guess
 			</button>
@@ -208,10 +210,51 @@ function handleGuessKeyPress(e: KeyboardEvent) {
 	</div>
 {/if}
 {:else if $gameStore.gamePhase === 'setup'}
-<div class="text-center p-8 rounded-2xl my-5 backdrop-blur-md bg-gradient-to-r from-green-400/40 to-teal-500/40 border-2 border-white/30 text-white shadow-2xl">
-	<h3 class="text-3xl mb-4 font-bold drop-shadow-lg">Game Over!</h3>
-	<div class="text-2xl font-bold drop-shadow-lg">
+<div class="banner banner-correct my-5 p-8 text-center">
+	<h3 class="mb-4 font-display text-3xl font-bold">Game Over!</h3>
+	<div class="text-2xl font-bold">
 		🎉 {$gameStore.players[$gameStore.activePlayers[0]]?.name} wins! 🎉
 	</div>
 </div>
 {/if}
+
+<style>
+	.player-card {
+		background: #ffffff;
+		border: 1.5px solid var(--stage-border);
+	}
+
+	.player-card-turn {
+		box-shadow: inset 0 0 0 3px var(--accent-purple);
+	}
+
+	.player-card-eliminated {
+		background: color-mix(in srgb, var(--state-incorrect) 12%, #ffffff);
+		opacity: 0.75;
+	}
+
+	.player-card-name {
+		background: var(--player-accent);
+		color: var(--player-accent-fg);
+	}
+
+	.player-accent-blue {
+		--player-accent: var(--accent-blue);
+		--player-accent-fg: var(--accent-blue-fg);
+	}
+
+	.player-accent-yellow {
+		--player-accent: var(--accent-yellow);
+		--player-accent-fg: var(--accent-yellow-fg);
+	}
+
+	.player-accent-orange {
+		--player-accent: var(--accent-orange);
+		--player-accent-fg: var(--accent-orange-fg);
+	}
+
+	.player-accent-green {
+		--player-accent: var(--accent-green);
+		--player-accent-fg: var(--accent-green-fg);
+	}
+</style>

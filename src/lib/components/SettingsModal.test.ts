@@ -238,6 +238,48 @@ describe("SettingsModal Component", () => {
       expect(mockOnClose).not.toHaveBeenCalled();
     });
 
+    it("should close on Escape key", async () => {
+      const user = userEvent.setup();
+      render(SettingsModal, { props: { onclose: mockOnClose } });
+
+      await user.keyboard("{Escape}");
+
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("should trap focus within the modal", async () => {
+      const user = userEvent.setup();
+      render(SettingsModal, { props: { onclose: mockOnClose } });
+
+      const dialog = screen.getByRole("dialog");
+      const focusables = dialog.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      const last = focusables[focusables.length - 1];
+
+      last.focus();
+      await user.tab();
+      expect(focusables[0]).toHaveFocus();
+
+      focusables[0].focus();
+      await user.tab({ shift: true });
+      expect(last).toHaveFocus();
+    });
+
+    it("should restore focus when closed", () => {
+      const trigger = document.createElement("button");
+      document.body.appendChild(trigger);
+      trigger.focus();
+
+      const { unmount } = render(SettingsModal, {
+        props: { onclose: mockOnClose },
+      });
+      unmount();
+
+      expect(trigger).toHaveFocus();
+      trigger.remove();
+    });
+
     it("should have backdrop blur effect", () => {
       render(SettingsModal, { props: { onclose: mockOnClose } });
       const backdrop = screen.getByRole("dialog");

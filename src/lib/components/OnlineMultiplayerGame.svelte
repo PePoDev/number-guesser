@@ -227,16 +227,13 @@
 </script>
 
 {#if $gameStore.online.error}
-	<p
-		role="alert"
-		class="mb-4 rounded-lg border border-[var(--state-incorrect)] p-3 text-[var(--glass-fg)]"
-	>
+	<p role="alert" class="banner banner-incorrect mb-4">
 		{$gameStore.online.error}
 	</p>
 {/if}
 
 {#if $gameStore.online.status === 'reconnecting'}
-	<p aria-live="polite" class="mb-4 text-[var(--state-warning)]">
+	<p aria-live="polite" class="banner banner-warning mb-4">
 		Reconnecting…
 	</p>
 {/if}
@@ -250,8 +247,8 @@
 			<p class="text-sm uppercase tracking-widest text-[var(--glass-muted)]">
 				Online Multiplayer
 			</p>
-			<h2 id="online-entry-heading" class="text-3xl font-bold">
-				Play with <em class="text-[var(--glass-accent)]">friends.</em>
+			<h2 id="online-entry-heading" class="font-display text-3xl font-bold">
+				Play with friends.
 			</h2>
 		</div>
 
@@ -261,7 +258,7 @@
 				bind:value={name}
 				disabled={busy}
 				maxlength="20"
-				class="w-full rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] p-3"
+				class="field-input w-full text-left"
 			/>
 		</label>
 
@@ -270,7 +267,7 @@
 				type="button"
 				onclick={createRoom}
 				disabled={busy || !name.trim()}
-				class="rounded-lg border border-[var(--glass-border)] bg-[var(--accent-purple)] p-3 font-bold text-[var(--accent-purple-fg)] disabled:opacity-50"
+				class="btn-primary"
 			>
 				Create Room
 			</button>
@@ -281,14 +278,14 @@
 						bind:value={roomIdInput}
 						disabled={busy}
 						maxlength="6"
-						class="w-full rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] p-3 uppercase"
+						class="field-input w-full uppercase"
 					/>
 				</label>
 				<button
 					type="button"
 					onclick={joinRoom}
 					disabled={busy || !name.trim() || roomIdInput.trim().length !== 6}
-					class="w-full rounded-lg border border-[var(--glass-border)] bg-[var(--accent-blue)] p-3 font-bold text-[var(--accent-purple-fg)] disabled:opacity-50"
+					class="btn-primary w-full"
 				>
 					Join Room
 				</button>
@@ -310,15 +307,11 @@
 				<p class="text-sm uppercase tracking-widest text-[var(--glass-muted)]">
 					Lobby
 				</p>
-				<h2 id="online-lobby-heading" class="text-3xl font-bold">
+				<h2 id="online-lobby-heading" class="font-display text-3xl font-bold">
 					Room <span data-testid="room-id">{room.id}</span>
 				</h2>
 			</div>
-			<button
-				type="button"
-				onclick={copyRoomId}
-				class="rounded-lg border border-[var(--glass-border)] px-3 py-2"
-			>
+			<button type="button" onclick={copyRoomId} class="btn-secondary">
 				Copy Room ID
 			</button>
 		</div>
@@ -326,9 +319,7 @@
 		<p>{`${$gameStore.online.players.length} / ${room.maxPlayers} players`}</p>
 		<ul class="space-y-2">
 			{#each $gameStore.online.players as player (player.uid)}
-				<li
-					class="flex items-center justify-between rounded-lg border border-[var(--glass-border)] p-3"
-				>
+				<li class="history-row flex items-center justify-between px-3 py-2">
 					<span>
 						{player.name}
 						{#if player.uid === room.hostUid}
@@ -348,14 +339,14 @@
 					disabled={busy}
 					inputmode="numeric"
 					maxlength={room.digitCount}
-					class="w-full rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] p-3"
+					class="field-input w-full"
 				/>
 			</label>
 			<button
 				type="button"
 				onclick={setSecret}
 				disabled={busy || secret.length !== room.digitCount}
-				class="rounded-lg border border-[var(--glass-border)] bg-[var(--accent-purple)] px-4 py-3 font-bold text-[var(--accent-purple-fg)] disabled:opacity-50"
+				class="btn-primary"
 			>
 				{currentPlayer.ready ? 'Update Secret' : 'Ready'}
 			</button>
@@ -372,7 +363,7 @@
 					type="button"
 					onclick={startRoom}
 					disabled={busy || !canStart}
-					class="rounded-lg border border-[var(--glass-border)] bg-[var(--accent-blue)] px-4 py-3 font-bold text-[var(--accent-purple-fg)] disabled:opacity-50"
+					class="btn-primary"
 				>
 					Start Game
 				</button>
@@ -381,7 +372,7 @@
 				type="button"
 				onclick={leaveRoom}
 				disabled={busy}
-				class="rounded-lg border border-[var(--glass-border)] px-4 py-3"
+				class="btn-secondary"
 			>
 				Leave Room
 			</button>
@@ -396,7 +387,7 @@
 			<p class="text-sm uppercase tracking-widest text-[var(--glass-muted)]">
 				Room {room.id}
 			</p>
-			<h2 id="online-game-heading" class="text-3xl font-bold">
+			<h2 id="online-game-heading" class="font-display text-3xl font-bold">
 				{currentGuesser?.name ?? 'Player'}'s turn
 			</h2>
 		</div>
@@ -404,8 +395,7 @@
 		<ul class="grid gap-2 sm:grid-cols-2">
 			{#each $gameStore.online.players as player (player.uid)}
 				<li
-					class="rounded-lg border border-[var(--glass-border)] p-3"
-					class:opacity-50={player.eliminated}
+					class="history-row px-3 py-2 {player.eliminated ? 'history-row-eliminated' : ''}"
 				>
 					<strong>{player.name}</strong>
 					<span class="ml-2">
@@ -420,7 +410,7 @@
 			<select
 				bind:value={targetUid}
 				disabled={!canGuess || busy}
-				class="w-full rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] p-3"
+				class="field-select w-full"
 			>
 				<option value="">Choose a player</option>
 				{#each activeTargets as player (player.uid)}
@@ -435,7 +425,7 @@
 				disabled={!canGuess || busy}
 				inputmode="numeric"
 				maxlength={room.digitCount}
-				class="w-full rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] p-3"
+				class="field-input w-full"
 			/>
 		</label>
 		<button
@@ -445,18 +435,18 @@
 				busy ||
 				!targetUid ||
 				guess.length !== room.digitCount}
-			class="rounded-lg border border-[var(--glass-border)] bg-[var(--accent-purple)] px-4 py-3 font-bold text-[var(--accent-purple-fg)] disabled:opacity-50"
+			class="btn-primary"
 		>
 			Submit Guess
 		</button>
 
-		<h3 class="text-xl font-bold">Guess history</h3>
+		<h3 class="font-display text-xl font-bold">Guess history</h3>
 		{#if $gameStore.online.guesses.length === 0}
 			<p class="text-[var(--glass-muted)]">No guesses yet.</p>
 		{:else}
 			<ol class="space-y-2">
 				{#each $gameStore.online.guesses as entry (entry.id)}
-					<li class="rounded-lg border border-[var(--glass-border)] p-3">
+					<li class="history-row px-3 py-2">
 						<strong>
 							{$gameStore.online.players.find(
 								(player) => player.uid === entry.guesserUid,
@@ -480,7 +470,7 @@
 		<p class="text-sm uppercase tracking-widest text-[var(--glass-muted)]">
 			Room {room.id}
 		</p>
-		<h2 id="online-finished-heading" class="text-3xl font-bold">
+		<h2 id="online-finished-heading" class="font-display text-3xl font-bold">
 			{winner?.name ?? 'Player'} wins!
 		</h2>
 		{#if room.hostUid === $gameStore.online.uid}
@@ -488,7 +478,7 @@
 				type="button"
 				onclick={restartRoom}
 				disabled={busy}
-				class="rounded-lg border border-[var(--glass-border)] bg-[var(--accent-purple)] px-4 py-3 font-bold text-[var(--accent-purple-fg)] disabled:opacity-50"
+				class="btn-primary"
 			>
 				Play Again
 			</button>
@@ -499,7 +489,7 @@
 			type="button"
 			onclick={leaveRoom}
 			disabled={busy}
-			class="rounded-lg border border-[var(--glass-border)] px-4 py-3"
+			class="btn-secondary"
 		>
 			Leave Room
 		</button>
