@@ -38,6 +38,50 @@ describe("Game Store", () => {
       const state = get(gameStore);
       expect(state.mode).toBe("single");
     });
+
+    it("initializes online mode without local multiplayer players", () => {
+      gameStore.setMode("online");
+      gameStore.startNewGame();
+
+      const state = get(gameStore);
+
+      expect(state.mode).toBe("online");
+      expect(state.players).toEqual([]);
+      expect(state.online.status).toBe("idle");
+    });
+
+    it("applies online identity and snapshots through store actions", () => {
+      gameStore.setOnlineIdentity("uid-1", "AB2C3D");
+      gameStore.applyOnlineSnapshot({
+        room: {
+          id: "AB2C3D",
+          hostUid: "uid-1",
+          phase: "lobby",
+          digitCount: 3,
+          maxPlayers: 2,
+          playerOrder: ["uid-1"],
+          currentGuesserUid: null,
+          winnerUid: null,
+          turnNumber: 0,
+        },
+        players: [
+          {
+            uid: "uid-1",
+            name: "Ada",
+            seat: 0,
+            ready: false,
+            eliminated: false,
+          },
+        ],
+        guesses: [],
+      });
+
+      const state = get(gameStore);
+
+      expect(state.online.status).toBe("connected");
+      expect(state.online.roomId).toBe("AB2C3D");
+      expect(state.online.players[0].name).toBe("Ada");
+    });
   });
 
   describe("Settings Management", () => {

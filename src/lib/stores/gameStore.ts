@@ -1,6 +1,11 @@
 import { writable, derived } from "svelte/store";
+import type {
+  OnlineConnectionStatus,
+  OnlineGameState,
+  OnlineSnapshot,
+} from "../online/types";
 
-export type GameMode = "single" | "multi";
+export type GameMode = "single" | "multi" | "online";
 export type GamePhase = "setup" | "guessing" | "finished";
 
 export interface Player {
@@ -44,12 +49,23 @@ export interface GameState {
   currentGuesser: number;
   gamePhase: GamePhase;
   activePlayers: number[];
+  online: OnlineGameState;
 }
 
 const initialSettings: GameSettings = {
   digitCount: 3,
   maxAttempts: 7,
   playerCount: 2,
+};
+
+const initialOnlineState: OnlineGameState = {
+  status: "idle",
+  uid: "",
+  roomId: "",
+  room: null,
+  players: [],
+  guesses: [],
+  error: "",
 };
 
 const initialState: GameState = {
@@ -64,6 +80,7 @@ const initialState: GameState = {
   currentGuesser: 0,
   gamePhase: "setup",
   activePlayers: [],
+  online: initialOnlineState,
 };
 
 function createGameStore() {
@@ -77,6 +94,40 @@ function createGameStore() {
         ...state,
         settings: { ...state.settings, ...settings },
       })),
+    setOnlineStatus: (status: OnlineConnectionStatus, error = "") =>
+      update((state) => ({
+        ...state,
+        online: { ...state.online, status, error },
+      })),
+    setOnlineIdentity: (uid: string, roomId: string) =>
+      update((state) => ({
+        ...state,
+        online: {
+          ...state.online,
+          uid,
+          roomId,
+          status: "connecting",
+          error: "",
+        },
+      })),
+    applyOnlineSnapshot: (snapshot: OnlineSnapshot) =>
+      update((state) => ({
+        ...state,
+        online: {
+          ...state.online,
+          status: "connected",
+          roomId: snapshot.room.id,
+          room: snapshot.room,
+          players: snapshot.players,
+          guesses: snapshot.guesses,
+          error: "",
+        },
+      })),
+    clearOnlineSession: () =>
+      update((state) => ({
+        ...state,
+        online: initialOnlineState,
+      })),
     startNewGame: () =>
       update((state) => {
         if (state.mode === "single") {
@@ -87,7 +138,7 @@ function createGameStore() {
             gameOver: false,
             guessHistory: [],
           };
-        } else {
+        } else if (state.mode === "multi") {
           // Initialize multiplayer
           const players: Player[] = [];
           for (let i = 0; i < state.settings.playerCount; i++) {
@@ -112,6 +163,7 @@ function createGameStore() {
             gameOver: false,
           };
         }
+        return state;
       }),
     addGuess: (guess: SinglePlayerGuess) =>
       update((state) => ({
