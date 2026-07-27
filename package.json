@@ -19,11 +19,11 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:all": "vitest run && PW_TEST_HTML_REPORT_OPEN='never' playwright test",
-    "firebase:emulators": "pnpm --dir functions build && firebase emulators:start --project demo-number-guessing",
-    "firebase:emulators:exec": "pnpm --dir functions build && firebase emulators:exec --project demo-number-guessing --only auth,firestore,functions",
+    "firebase:emulators": "pnpm --config.engine-strict=false --dir functions build && firebase emulators:start --project demo-number-guessing",
+    "firebase:emulators:exec": "pnpm --config.engine-strict=false --dir functions build && firebase emulators:exec --project demo-number-guessing --only auth,firestore,functions",
     "firebase:firestore:exec": "firebase emulators:exec --project demo-number-guessing --only firestore",
-    "test:functions": "pnpm --dir functions test",
-    "test:firebase": "pnpm firebase:emulators:exec \"pnpm --dir functions test:emulator && pnpm vitest run --config vitest.firebase.config.ts\"",
+    "test:functions": "pnpm --config.engine-strict=false --dir functions test",
+    "test:firebase": "pnpm firebase:emulators:exec \"pnpm --config.engine-strict=false --dir functions test:emulator && pnpm vitest run --config vitest.firebase.config.ts\"",
     "test:e2e:online": "pnpm firebase:emulators:exec \"pnpm exec playwright test e2e/online-multiplayer.spec.ts\""
   },
   "devDependencies": {
