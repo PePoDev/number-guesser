@@ -49,6 +49,8 @@ pnpm dev
 
 Open <http://localhost:5173>.
 
+For online development, install Java 21, then run `pnpm firebase:emulators` and `pnpm dev --mode test` in separate terminals. Test mode uses only the local `demo-number-guessing` project. Production requires a Firestore database, Anonymous Auth, the six public Firebase values from `.env.example`, and Functions in `us-central1`.
+
 ## Commands
 
 | Command | Purpose |
@@ -66,6 +68,10 @@ Open <http://localhost:5173>.
 | `pnpm test:e2e:ui` | Open the Playwright UI |
 | `pnpm test:e2e:debug` | Debug Playwright tests |
 | `pnpm test:all` | Run unit, component, and end-to-end tests |
+| `pnpm firebase:emulators` | Start local Auth, Firestore, and Functions emulators |
+| `pnpm test:functions` | Run pure Functions tests |
+| `pnpm test:firebase` | Run transaction and rules tests in emulators |
+| `pnpm test:e2e:online` | Run online flows in separate browser contexts and emulators |
 
 ## Architecture
 
@@ -75,15 +81,18 @@ src/routes/
 src/lib/components/
   SinglePlayerGame.svelte      Single-player UI
   MultiPlayerGame.svelte       Multiplayer UI
+  OnlineMultiplayerGame.svelte Online room entry, lobby, and synchronized game
   SettingsModal.svelte         Settings dialog
 src/lib/stores/
   gameStore.ts                 All shared game state and logic
-src/lib/firebase/              Firebase browser initialization and rules tests
-src/lib/online/                Public online state types
-src/lib/services/              Auth, callable, and subscription boundary
+src/lib/firebase/client.ts      Firebase browser initialization
+src/lib/online/types.ts         Public online state types
+src/lib/services/
+  onlineGameService.ts         Auth, callable, and subscription boundary
 functions/                     Server-authoritative room commands
 firebase.json                  Emulator and deployment configuration
 firestore.rules                Member-only reads and server-only writes
+firestore.indexes.json         Firestore query indexes
 src/app.css                    Global styles and design tokens
 e2e/                           Playwright flows
 static/                        CNAME, favicon, robots.txt
@@ -300,6 +309,8 @@ Use Tailwind breakpoints `sm: 600px`, `md: 900px`, and `lg: 1200px`. Document an
 | Tailwind token mappings | `tailwind.config.js` |
 
 Add new surfaces to this table. The initial editorial design system was recorded on 2026-07-08.
+
+2026-07-27 — Added secure Firebase online rooms while retaining local multiplayer.
 
 ## Change guide
 
