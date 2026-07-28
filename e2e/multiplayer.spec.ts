@@ -136,21 +136,16 @@ test.describe("Multiplayer Game - Guessing Phase", () => {
 
   test("should display player cards", async ({ page }) => {
     await expect(
-      page
-        .locator(".text-center.font-bold.text-lg")
-        .filter({ hasText: "Alice" })
+      page.getByRole("group", { name: "Alice" })
     ).toBeVisible();
     await expect(
-      page.locator(".text-center.font-bold.text-lg").filter({ hasText: "Bob" })
+      page.getByRole("group", { name: "Bob" })
     ).toBeVisible();
   });
 
   test("should highlight active player", async ({ page }) => {
-    const aliceCard = page
-      .locator(".text-center.font-bold.text-lg")
-      .filter({ hasText: "Alice" })
-      .locator("..");
-    await expect(aliceCard).toHaveClass(/ring-purple-300\/50/);
+    const aliceCard = page.getByRole("group", { name: "Alice" });
+    await expect(aliceCard).toHaveClass(/player-card-turn/);
   });
 
   test("should have target player selector", async ({ page }) => {
@@ -214,11 +209,8 @@ test.describe("Multiplayer Game - Guessing Phase", () => {
     await page.click('button:has-text("Submit Guess")');
 
     // Bob's card should have eliminated styling
-    const bobCard = page
-      .locator(".text-center.font-bold.text-lg")
-      .filter({ hasText: "Bob" })
-      .locator("..");
-    await expect(bobCard).toHaveClass(/bg-red-400\/20/);
+    const bobCard = page.getByRole("group", { name: "Bob eliminated" });
+    await expect(bobCard).toHaveClass(/player-card-eliminated/);
   });
 
   test("should end game when only one player remains", async ({ page }) => {
@@ -243,14 +235,14 @@ test.describe("Multiplayer Game - Guessing Phase", () => {
     await page.click('button:has-text("Submit Guess")');
 
     // Check that guesses are recorded
-    const bobCard = page.locator("text=Bob").locator("..").locator("..");
+    const bobCard = page.getByRole("group", { name: "Bob" });
     await expect(bobCard.locator("text=/Alice: 111/")).toBeVisible();
     await expect(bobCard.locator("text=/Alice: 333/")).toBeVisible();
   });
 
   test("should clear input after guess", async ({ page }) => {
     const input = page.locator('input[placeholder="Enter guess"]');
-    await input.fill("456");
+    await input.fill("111");
     await page.click('button:has-text("Submit Guess")');
 
     await expect(input).toHaveValue("");
@@ -295,17 +287,13 @@ test.describe("Multiplayer Game - Three Players", () => {
 
     await expect(page.locator("text=Guessing Phase")).toBeVisible();
     await expect(
-      page
-        .locator(".text-center.font-bold.text-lg")
-        .filter({ hasText: "Alice" })
+      page.getByRole("group", { name: "Alice" })
     ).toBeVisible();
     await expect(
-      page.locator(".text-center.font-bold.text-lg").filter({ hasText: "Bob" })
+      page.getByRole("group", { name: "Bob" })
     ).toBeVisible();
     await expect(
-      page
-        .locator(".text-center.font-bold.text-lg")
-        .filter({ hasText: "Charlie" })
+      page.getByRole("group", { name: "Charlie" })
     ).toBeVisible();
   });
 
@@ -409,9 +397,7 @@ test.describe("Multiplayer Game - Four Players", () => {
     // All players should be visible
     for (const player of players) {
       await expect(
-        page
-          .locator(".text-center.font-bold.text-lg")
-          .filter({ hasText: player.name })
+        page.getByRole("group", { name: player.name })
       ).toBeVisible();
     }
   });

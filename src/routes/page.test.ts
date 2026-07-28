@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
+import { get } from "svelte/store";
 import Page from "./+page.svelte";
 import { gameStore } from "$lib/stores/gameStore";
 
@@ -27,10 +28,12 @@ describe("+page.svelte Component", () => {
     render(Page);
 
     const settingsButton = screen.getByLabelText("Open Settings");
+    expect(settingsButton).toHaveAttribute("aria-expanded", "false");
     await user.click(settingsButton);
 
     await waitFor(() => {
       expect(screen.getByText("Game Settings")).toBeInTheDocument();
+      expect(settingsButton).toHaveAttribute("aria-expanded", "true");
     });
   });
 
@@ -141,6 +144,9 @@ describe("+page.svelte Component", () => {
     render(Page);
     await user.click(screen.getByRole("button", { name: /Instructions/ }));
     expect(screen.getByText("How to Play:")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Number Guessing Game."
+    );
   });
 
   it("should display game instructions", async () => {
@@ -158,13 +164,37 @@ describe("+page.svelte Component", () => {
     const user = userEvent.setup();
     render(Page);
     const instructionsCard = screen.getByRole("button", {
-      name: "Instructions",
+      name: /Instructions/,
     });
     await user.click(instructionsCard);
     expect(screen.getByText("How to Play:")).toBeInTheDocument();
     await user.click(instructionsCard);
     expect(screen.queryByText("How to Play:")).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText("Enter number")).toBeInTheDocument();
+  });
+
+  it("should return to the game when New Game is clicked from instructions", async () => {
+    const user = userEvent.setup();
+    render(Page);
+    await user.click(screen.getByRole("button", { name: /Instructions/ }));
+    await user.click(screen.getByText("New Game"));
+
+    expect(screen.queryByText("How to Play:")).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Enter number")).toBeInTheDocument();
+  });
+
+  it("should preserve a draft guess while instructions are open", async () => {
+    const user = userEvent.setup();
+    render(Page);
+    await user.type(screen.getByPlaceholderText("Enter number"), "12");
+
+    const instructionsCard = screen.getByRole("button", {
+      name: /Instructions/,
+    });
+    await user.click(instructionsCard);
+    await user.click(instructionsCard);
+
+    expect(screen.getByPlaceholderText("Enter number")).toHaveValue("12");
   });
 
   it("should switch to multiplayer from the nav card", async () => {
@@ -206,10 +236,57 @@ describe("+page.svelte Component", () => {
     });
   });
 
+  it("should remember an online selection made outside the nav", async () => {
+    const user = userEvent.setup();
+    gameStore.setMode("online");
+    render(Page);
+
+    await user.click(screen.getByRole("button", { name: /Single Player/ }));
+    await user.click(screen.getByRole("button", { name: /Multiplayer/ }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Display name")).toBeInTheDocument();
+    });
+  });
+
   it("should disable New Game in online mode", () => {
     gameStore.setMode("online");
     render(Page);
     expect(screen.getByText("New Game").closest("button")).toBeDisabled();
+  });
+
+  it("should show the authoritative room digit count online", async () => {
+    gameStore.setMode("online");
+    render(Page);
+    gameStore.applyOnlineSnapshot({
+      room: {
+        id: "AB2C3D",
+        hostUid: "host",
+        phase: "lobby",
+        digitCount: 5,
+        maxPlayers: 2,
+        playerOrder: ["host"],
+        currentGuesserUid: null,
+        winnerUid: null,
+        turnNumber: 0,
+      },
+      players: [
+        {
+          uid: "host",
+          name: "Ada",
+          seat: 0,
+          ready: false,
+          eliminated: false,
+        },
+      ],
+      guesses: [],
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("5", { selector: ".accent-value" })
+      ).toBeInTheDocument();
+    });
   });
 
   it("should mark the hero and duplicated ticker content aria-hidden", () => {
@@ -236,9 +313,7 @@ describe("+page.svelte Component", () => {
 
     // Wait for game to be initialized
     await waitFor(() => {
-      let state: any;
-      gameStore.subscribe((s) => (state = s))();
-      expect(state.targetNumber).toBeTruthy();
+      expect(get(gameStore).targetNumber).toBeTruthy();
     });
   });
 

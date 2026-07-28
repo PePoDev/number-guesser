@@ -11,7 +11,44 @@ test.describe("Single Player Game", () => {
 
   test("should display game title and instructions", async ({ page }) => {
     await expect(page.locator("h1")).toContainText("Number Guessing Game");
+    await page.getByRole("button", { name: /Instructions/ }).click();
     await expect(page.locator("text=How to Play:")).toBeVisible();
+    await page.getByRole("button", { name: /Instructions/ }).click();
+    await expect(page.locator("text=How to Play:")).not.toBeVisible();
+  });
+
+  test("should adapt the stage between mobile and desktop", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.locator(".hero")).toBeHidden();
+    await expect(
+      page.getByRole("button", { name: /Single Player/ })
+    ).toBeVisible();
+    await expect(
+      page.locator('input[placeholder="Enter number"]')
+    ).toBeVisible();
+    const mobileNav = page.getByRole("navigation", {
+      name: "Game navigation",
+    });
+    expect(
+      await mobileNav.evaluate(
+        (element) => element.scrollWidth > element.clientWidth
+      )
+    ).toBe(true);
+    await expect(page.locator(".ticker-seq").first()).toHaveCSS(
+      "white-space",
+      "normal"
+    );
+
+    await page.setViewportSize({ width: 640, height: 360 });
+    await page.click('button[title="Game Settings"]');
+    await expect(page.getByRole("dialog")).toHaveCSS("overflow-y", "auto");
+    await page
+      .getByRole("button", { name: "Close", exact: true })
+      .scrollIntoViewIfNeeded();
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+
+    await page.setViewportSize({ width: 1000, height: 800 });
+    await expect(page.locator(".hero")).toBeVisible();
   });
 
   test("should show digit count and attempts remaining", async ({ page }) => {
@@ -437,16 +474,18 @@ test.describe("Single Player Game - Different Configurations", () => {
         await expect(page.locator("text=Guess 1:")).not.toBeVisible();
       });
 
-      test("should show validation errors in yellow", async ({ page }) => {
+      test("should show validation errors with warning styling", async ({
+        page,
+      }) => {
         // Try to submit empty
         await page.click('button:has-text("Submit Guess")');
 
-        // Check for yellow styling
+        // Check for warning styling
         const feedback = page.locator(
           "text=/Please enter a number before submitting/"
         );
-        await expect(feedback).toHaveClass(/bg-yellow-400\/30/);
-        await expect(feedback).toHaveClass(/text-white/);
+        await expect(feedback).toHaveClass(/banner/);
+        await expect(feedback).toHaveClass(/banner-warning/);
       });
 
       test("should allow valid submission after validation error", async ({

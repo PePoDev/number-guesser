@@ -77,7 +77,7 @@
 </script>
 
 <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-md"
+    class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--scrim-bg)] p-4 backdrop-blur-md"
     onclick={handleBackdropClick}
     role="dialog"
     aria-modal="true"
@@ -86,26 +86,28 @@
     onkeydown={handleKeydown}
     bind:this={scrimEl}
 >
-    <div class="panel animate-modal-slide-in w-full max-w-[480px]">
+    <div class="panel animate-modal-slide-in my-auto w-full max-w-[480px]">
         <div class="flex items-center justify-between border-b-[1.5px] border-[var(--glass-border)] p-5">
-            <h3 id="settings-title" class="font-display text-xl font-bold">Game Settings</h3>
+            <h2 id="settings-title" class="font-display text-2xl font-bold">Game Settings</h2>
             <button
                 onclick={handleClose}
-                class="btn-secondary flex !min-h-0 h-10 w-10 items-center justify-center rounded-full !p-0 text-2xl"
+                class="btn-secondary flex h-12 w-12 items-center justify-center rounded-full !p-0"
                 aria-label="Close settings"
             >
-                ×
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+					<path d="M6 6l12 12M18 6 6 18" />
+				</svg>
             </button>
         </div>
         
         <div class="space-y-5 p-5">
-            <div class="flex items-center justify-between gap-4">
+            <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <label for="game-mode" class="font-semibold">Game Mode:</label>
                 <select
                     id="game-mode"
                     bind:value={mode}
                     onchange={updateGameMode}
-                    class="field-select"
+                    class="field-select w-full sm:w-auto"
                 >
                     <option value="single">Single Player</option>
                     <option value="multi">Local Multiplayer</option>
@@ -114,13 +116,13 @@
             </div>
             
             {#if mode === 'multi' || mode === 'online'}
-                <div class="flex items-center justify-between gap-4">
+                <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <label for="player-count" class="font-semibold">Number of Players:</label>
                     <select
                         id="player-count"
                         bind:value={playerCount}
                         onchange={updateSettings}
-                        class="field-select"
+                        class="field-select w-full sm:w-auto"
                     >
                         <option value={2}>2 players</option>
                         <option value={3}>3 players</option>
@@ -129,13 +131,13 @@
                 </div>
             {/if}
             
-            <div class="flex items-center justify-between gap-4">
+            <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <label for="digit-count" class="font-semibold">Number of Digits:</label>
                 <select
                     id="digit-count"
                     bind:value={digitCount}
                     onchange={updateSettings}
-                    class="field-select"
+                    class="field-select w-full sm:w-auto"
                 >
                     <option value={2}>2 digits</option>
                     <option value={3}>3 digits</option>
@@ -145,13 +147,13 @@
             </div>
             
             {#if mode === 'single'}
-                <div class="flex items-center justify-between gap-4">
+                <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <label for="max-attempts" class="font-semibold">Max Attempts:</label>
                     <select
                         id="max-attempts"
                         bind:value={maxAttempts}
                         onchange={updateSettings}
-                        class="field-select"
+                        class="field-select w-full sm:w-auto"
                     >
                         <option value={3}>3 attempts</option>
                         <option value={5}>5 attempts</option>

@@ -19,6 +19,8 @@
 	--glass-fg: #0b1220;
 	--glass-muted: #5b6478;
 	--glass-accent: #facc15;
+	--surface-white: #ffffff;
+	--scrim-bg: rgba(0, 0, 0, 0.4);
 	--accent-blue: #2563eb;
 	--accent-yellow: #facc15;
 	--accent-orange: #f97316;
@@ -28,7 +30,7 @@
 	--accent-yellow-fg: var(--stage-border);
 	--accent-orange-fg: var(--stage-border);
 	--accent-green-fg: var(--stage-border);
-	--accent-purple-fg: #ffffff;
+	--accent-purple-fg: var(--stage-border);
 	--state-correct: #22c55e;
 	--state-incorrect: #ef4444;
 	--state-warning: #f59e0b;
@@ -57,8 +59,9 @@ a {
 }
 
 :focus-visible {
-	outline: 3px solid var(--state-info);
+	outline: 2px solid var(--surface-white);
 	outline-offset: 2px;
+	box-shadow: 0 0 0 6px var(--state-info);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -71,7 +74,7 @@ a {
 
 	.ticker-track,
 	.animate-modal-slide-in {
-		animation: none;
+		animation: none !important;
 	}
 }
 
@@ -84,7 +87,7 @@ a {
 
 .field-input {
 	height: 56px;
-	background: #ffffff;
+	background: var(--surface-white);
 	color: var(--glass-fg);
 	border: 1.5px solid var(--glass-border);
 	border-radius: 14px;
@@ -103,7 +106,7 @@ a {
 
 .field-select {
 	min-height: 48px;
-	background: #ffffff;
+	background: var(--surface-white);
 	color: var(--glass-fg);
 	border: 1.5px solid var(--glass-border);
 	border-radius: 14px;
@@ -139,7 +142,7 @@ a {
 
 .btn-secondary {
 	min-height: 48px;
-	background: #ffffff;
+	background: var(--surface-white);
 	color: var(--glass-fg);
 	border: 1.5px solid var(--glass-border);
 	border-radius: 14px;
@@ -185,10 +188,18 @@ a {
 }
 
 .history-row {
-	background: rgba(255, 255, 255, 0.6);
+	background: color-mix(in srgb, var(--surface-white) 60%, transparent);
 	border: 1.5px solid transparent;
 	border-left: 4px solid transparent;
 	border-radius: 10px;
+}
+
+.surface-translucent {
+	background: color-mix(in srgb, var(--surface-white) 60%, transparent);
+}
+
+.surface-translucent-soft {
+	background: color-mix(in srgb, var(--surface-white) 40%, transparent);
 }
 
 .history-row-newest {
@@ -196,12 +207,12 @@ a {
 }
 
 .history-row-correct {
-	background: color-mix(in srgb, var(--state-correct) 15%, #ffffff);
+	background: color-mix(in srgb, var(--state-correct) 15%, var(--surface-white));
 	border-left-color: var(--state-correct);
 }
 
 .history-row-eliminated {
-	background: color-mix(in srgb, var(--state-incorrect) 12%, #ffffff);
+	background: color-mix(in srgb, var(--state-incorrect) 12%, var(--surface-white));
 	opacity: 0.75;
 }
 

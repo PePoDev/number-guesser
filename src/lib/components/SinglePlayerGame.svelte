@@ -59,7 +59,7 @@
 		// Check if player won
 		if (feedback.correctPositions === $gameStore.settings.digitCount) {
 			const attemptsUsed = $gameStore.settings.maxAttempts - $gameStore.attemptsLeft;
-			winMessage = `🎉 Congratulations! You guessed the number ${$gameStore.targetNumber} correctly!<br>You won with ${attemptsUsed} attempt${attemptsUsed === 1 ? '' : 's'}!`;
+			winMessage = `Congratulations! You guessed the number ${$gameStore.targetNumber} correctly!<br>You won with ${attemptsUsed} attempt${attemptsUsed === 1 ? '' : 's'}!`;
 			feedbackMessage = 'Perfect! All digits in correct positions!';
 			feedbackType = 'correct';
 			gameStore.setGameOver(true);
@@ -92,7 +92,9 @@
 
 <div class="game-area">
 	<div class="mb-5 flex flex-wrap justify-center gap-3">
+		<label for="single-player-guess" class="sr-only">Guess</label>
 		<input
+			id="single-player-guess"
 			type="text"
 			bind:value={guessInput}
 			onkeypress={handleKeyPress}
@@ -116,26 +118,30 @@
 	{/if}
 	
 	{#if feedbackMessage}
-		<div class="banner my-3 text-center {feedbackType === 'correct' ? 'banner-correct' : feedbackType === 'warning' ? 'banner-warning' : 'banner-incorrect'}">
+		<div
+			role={feedbackType === 'warning' ? 'alert' : 'status'}
+			aria-live={feedbackType === 'warning' ? 'assertive' : 'polite'}
+			class="banner my-3 text-center {feedbackType === 'correct' ? 'banner-correct' : feedbackType === 'warning' ? 'banner-warning' : 'banner-incorrect'}"
+		>
 			{feedbackMessage}
 		</div>
 	{/if}
 	
 	{#if winMessage}
-		<div class="banner banner-correct my-5 p-5 text-center text-xl font-bold">
+		<div role="status" aria-live="polite" class="banner banner-correct my-5 p-5 text-center text-xl font-bold">
 			{@html winMessage}
 		</div>
 	{/if}
 	
 	{#if loseMessage}
-		<div class="banner banner-incorrect my-5 p-5 text-center text-xl font-bold">
+		<div role="alert" class="banner banner-incorrect my-5 p-5 text-center text-xl font-bold">
 			{@html loseMessage}
 		</div>
 	{/if}
 	
 	<div class="mt-8">
 		<h3 class="mb-4 text-center font-display text-lg font-bold">Guess History:</h3>
-		<div class="max-h-52 space-y-1 overflow-y-auto rounded-2xl border-[1.5px] border-[var(--glass-border)] bg-white/40 p-2">
+		<div class="surface-translucent-soft max-h-52 space-y-1 overflow-y-auto rounded-2xl border-[1.5px] border-[var(--glass-border)] p-2">
 			{#each $gameStore.guessHistory as entry, index}
 				<div class="history-row flex items-center justify-between px-3 py-2 {index === $gameStore.guessHistory.length - 1 ? 'history-row-newest' : ''}">
 					<span class="font-bold">Guess {index + 1}: {entry.guess}</span>

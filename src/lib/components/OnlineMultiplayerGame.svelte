@@ -166,6 +166,11 @@
 		}
 	}
 
+	function handleGuessSubmit(event: SubmitEvent) {
+		event.preventDefault()
+		void submitGuess()
+	}
+
 	async function restartRoom() {
 		if (!room) {
 			return
@@ -247,7 +252,7 @@
 			<p class="text-sm uppercase tracking-widest text-[var(--glass-muted)]">
 				Online Multiplayer
 			</p>
-			<h2 id="online-entry-heading" class="font-display text-3xl font-bold">
+			<h2 id="online-entry-heading" class="font-display text-2xl font-bold">
 				Play with friends.
 			</h2>
 		</div>
@@ -307,7 +312,7 @@
 				<p class="text-sm uppercase tracking-widest text-[var(--glass-muted)]">
 					Lobby
 				</p>
-				<h2 id="online-lobby-heading" class="font-display text-3xl font-bold">
+				<h2 id="online-lobby-heading" class="font-display text-2xl font-bold">
 					Room <span data-testid="room-id">{room.id}</span>
 				</h2>
 			</div>
@@ -387,7 +392,7 @@
 			<p class="text-sm uppercase tracking-widest text-[var(--glass-muted)]">
 				Room {room.id}
 			</p>
-			<h2 id="online-game-heading" class="font-display text-3xl font-bold">
+			<h2 id="online-game-heading" aria-live="polite" class="font-display text-2xl font-bold">
 				{currentGuesser?.name ?? 'Player'}'s turn
 			</h2>
 		</div>
@@ -405,48 +410,49 @@
 			{/each}
 		</ul>
 
-		<label class="block space-y-2">
-			<span>Target player</span>
-			<select
-				bind:value={targetUid}
-				disabled={!canGuess || busy}
-				class="field-select w-full"
+		<form class="space-y-5" onsubmit={handleGuessSubmit}>
+			<label class="block space-y-2">
+				<span>Target player</span>
+				<select
+					bind:value={targetUid}
+					disabled={!canGuess || busy}
+					class="field-select w-full"
+				>
+					<option value="">Choose a player</option>
+					{#each activeTargets as player (player.uid)}
+						<option value={player.uid}>{player.name}</option>
+					{/each}
+				</select>
+			</label>
+			<label class="block space-y-2">
+				<span>Guess</span>
+				<input
+					bind:value={guess}
+					disabled={!canGuess || busy}
+					inputmode="numeric"
+					maxlength={room.digitCount}
+					class="field-input w-full"
+				/>
+			</label>
+			<button
+				type="submit"
+				disabled={!canGuess ||
+					busy ||
+					!targetUid ||
+					guess.length !== room.digitCount}
+				class="btn-primary"
 			>
-				<option value="">Choose a player</option>
-				{#each activeTargets as player (player.uid)}
-					<option value={player.uid}>{player.name}</option>
-				{/each}
-			</select>
-		</label>
-		<label class="block space-y-2">
-			<span>Guess</span>
-			<input
-				bind:value={guess}
-				disabled={!canGuess || busy}
-				inputmode="numeric"
-				maxlength={room.digitCount}
-				class="field-input w-full"
-			/>
-		</label>
-		<button
-			type="button"
-			onclick={submitGuess}
-			disabled={!canGuess ||
-				busy ||
-				!targetUid ||
-				guess.length !== room.digitCount}
-			class="btn-primary"
-		>
-			Submit Guess
-		</button>
+				Submit Guess
+			</button>
+		</form>
 
-		<h3 class="font-display text-xl font-bold">Guess history</h3>
+		<h3 class="font-display text-lg font-bold">Guess history</h3>
 		{#if $gameStore.online.guesses.length === 0}
 			<p class="text-[var(--glass-muted)]">No guesses yet.</p>
 		{:else}
 			<ol class="space-y-2">
-				{#each $gameStore.online.guesses as entry (entry.id)}
-					<li class="history-row px-3 py-2">
+				{#each $gameStore.online.guesses as entry, index (entry.id)}
+					<li class="history-row px-3 py-2 {index === $gameStore.online.guesses.length - 1 ? 'history-row-newest' : ''}">
 						<strong>
 							{$gameStore.online.players.find(
 								(player) => player.uid === entry.guesserUid,
@@ -470,7 +476,7 @@
 		<p class="text-sm uppercase tracking-widest text-[var(--glass-muted)]">
 			Room {room.id}
 		</p>
-		<h2 id="online-finished-heading" class="font-display text-3xl font-bold">
+		<h2 id="online-finished-heading" class="font-display text-2xl font-bold">
 			{winner?.name ?? 'Player'} wins!
 		</h2>
 		{#if room.hostUid === $gameStore.online.uid}

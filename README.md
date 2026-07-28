@@ -197,11 +197,13 @@ The interface should feel like one well-built editorial object, not a dashboard.
 ### Stage
 
 - A blue grid fills the viewport.
-- One dark-bordered rounded container holds a top ticker, three-column body, and bottom utility row.
+- One dark-bordered rounded container holds a top ticker, three-column body, and bottom utility row with keyboard hints and the current mode.
 - The left rail contains four numbered accent cards and a shorter purple primary-action card.
 - The center contains the cream glass play panel.
 - The right contains a decorative perspective tunnel of numbered tiles.
 - The ticker is the only looping animation.
+
+The Multiplayer card opens the last selected multiplayer variant; a segmented control inside the play panel switches between Local and Online. Instructions replaces the center-panel game content, Settings opens the modal, and the purple New Game action is disabled online because the host-owned restart remains inside the online flow.
 
 Desktop columns are a ~140px nav rail, a flexible play area with a 320px minimum, and a hero using about 40% of the remaining width.
 
@@ -223,6 +225,8 @@ Define tokens on `:root` in `src/app.css`. Components must reference tokens, nev
 | `--glass-fg` | `#0b1220` | Primary panel text |
 | `--glass-muted` | `#5b6478` | Secondary text |
 | `--glass-accent` | `#facc15` | Highlighted values |
+| `--surface-white` | `#ffffff` | Inputs, secondary controls, and translucent surfaces |
+| `--scrim-bg` | `rgba(0,0,0,0.4)` | Settings modal backdrop |
 
 Accent cards map blue to single player, yellow to multiplayer, orange to instructions, green to settings, and purple to the primary action.
 
@@ -234,7 +238,7 @@ Accent cards map blue to single player, yellow to multiplayer, orange to instruc
 | `--accent-green` | `#22c55e` |
 | `--accent-purple` | `#a855f7` |
 
-Each accent has a matching `--accent-*-fg` token. Blue and purple use white; yellow, orange, and green use `--stage-border`.
+Each accent has a matching `--accent-*-fg` token. Blue uses white; yellow, orange, green, and purple use `--stage-border` so every nav label meets WCAG AA.
 
 | State | Token | Value |
 | --- | --- | --- |
@@ -250,6 +254,7 @@ State colors are overlays for borders, low-opacity backgrounds, and small icons�
 - `--font-display`: Space Grotesk 700 or a similar geometric sans, used for display headings and nav labels.
 - `--font-body`: Inter 400/500/600, used everywhere else.
 - Display: `clamp(2rem, 4vw, 3rem)`; H2: `1.5rem`; H3: `1.125rem`; body: `1rem`; meta: `0.8125rem`.
+- Space Grotesk and Inter load from Google Fonts in `src/app.html` with `display=swap` and system fallbacks.
 
 The main display heading ends with one bold italic word in `--glass-accent`. Use this signature treatment once per page.
 
@@ -260,14 +265,18 @@ The main display heading ends with one bold italic word in `--glass-accent`. Use
 | Nav card | Number and arrow above label; solid accent; inset border when active |
 | Ticker | Short labels separated by `✦`; ~40s seamless scroll; static when motion is reduced |
 | Glass panel | Cream surface, dark 1.5px border, 20px radius, 32px/20px responsive padding |
+| Multiplayer switch | Segmented Local/Online control inside the play panel; active choice is dark-filled |
+| Instructions | Orange card swaps the center panel between the game and the how-to-play content |
 | Input | 56px high, white, centered text, 14px radius, visible blue focus ring |
 | Secondary button | 48px high, white, dark border, 14px radius |
+| Setup/control strip | Translucent white, dark border, and wrapping controls on narrow screens |
 | Feedback banner | State-tinted low-opacity background and border |
 | History row | Translucent white; newest row has a purple left border |
-| Player card | Landscape nav-card language; inset turn border; red-tinted eliminated state |
+| Player card | Landscape nav-card language; inset turn border; red-tinted eliminated state and visible badge |
 | Online multiplayer | One cream-panel flow: name/create/join entry, room-ID lobby with readiness, turn/guess state, reconnect status, and host restart |
-| Settings modal | Cream surface, 480px maximum, blurred 40% black scrim, focus trap |
+| Settings modal | Cream surface, 480px maximum, blurred 40% black scrim, focus trap, and viewport-bounded scrolling |
 | Hero | Decorative CSS/SVG tile tunnel with `aria-hidden="true"` |
+| Utility row | Current mode plus visible `Enter` and `Escape` keyboard hints |
 
 Icons are monochrome line icons, normally 18×18px with a 1.5px stroke.
 
@@ -281,7 +290,7 @@ Icons are monochrome line icons, normally 18×18px with a 1.5px stroke.
 ### Accessibility
 
 - Meet WCAG AA: 4.5:1 for body text and 3:1 for large text.
-- Every control needs an accessible name and visible `:focus-visible` state.
+- Every control needs an accessible name and a dual white/blue `:focus-visible` treatment that remains visible across surfaces.
 - Never remove an outline without a replacement.
 - Mark the hero and duplicated ticker content `aria-hidden`.
 - Trap modal focus, restore it on close, and support `Escape`.
@@ -305,12 +314,14 @@ Use Tailwind breakpoints `sm: 600px`, `md: 900px`, and `lg: 1200px`. Document an
 | Multiplayer panels and player cards | `src/lib/components/MultiPlayerGame.svelte` |
 | Online entry, lobby, synchronized game, reconnect, and result states | `src/lib/components/OnlineMultiplayerGame.svelte` |
 | Settings modal | `src/lib/components/SettingsModal.svelte` |
-| Tokens and global motion/focus styles | `src/app.css` |
-| Tailwind token mappings | `tailwind.config.js` |
+| Tokens, Tailwind `@theme` mappings, and global motion/focus styles | `src/app.css` |
+| Display and body font loading | `src/app.html` |
 
 Add new surfaces to this table. The initial editorial design system was recorded on 2026-07-08.
 
 2026-07-27 — Added secure Firebase online rooms while retaining local multiplayer.
+
+2026-07-28 — Implemented the editorial grid stage across all game, navigation, feedback, player, and settings surfaces.
 
 ## Change guide
 

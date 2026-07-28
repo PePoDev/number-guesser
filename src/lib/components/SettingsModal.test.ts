@@ -19,7 +19,7 @@ describe("SettingsModal Component", () => {
 
   it("should have close button", () => {
     render(SettingsModal, { props: { onclose: mockOnClose } });
-    const closeButton = screen.getByText("×");
+    const closeButton = screen.getByRole("button", { name: "Close settings" });
     expect(closeButton).toBeInTheDocument();
   });
 
@@ -27,7 +27,7 @@ describe("SettingsModal Component", () => {
     const user = userEvent.setup();
     render(SettingsModal, { props: { onclose: mockOnClose } });
 
-    const closeButton = screen.getByText("×");
+    const closeButton = screen.getByRole("button", { name: "Close settings" });
     await user.click(closeButton);
 
     expect(mockOnClose).toHaveBeenCalledTimes(1);

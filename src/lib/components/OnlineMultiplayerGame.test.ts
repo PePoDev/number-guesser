@@ -209,7 +209,7 @@ it('keeps one room subscription while snapshots update', async () => {
 	expect(service.subscribeToRoom).toHaveBeenCalledTimes(1)
 })
 
-it('enables guessing only for the active player', async () => {
+it('submits a guess with Enter for the active player', async () => {
 	const service = createFakeOnlineGameService()
 	gameStore.setOnlineIdentity('host', 'AB2C3D')
 	gameStore.applyOnlineSnapshot(
@@ -219,8 +219,7 @@ it('enables guessing only for the active player', async () => {
 	render(OnlineMultiplayerGame, { props: { service } })
 
 	await user.selectOptions(screen.getByLabelText('Target player'), 'p2')
-	await user.type(screen.getByLabelText('Guess'), '456')
-	await user.click(screen.getByRole('button', { name: 'Submit Guess' }))
+	await user.type(screen.getByLabelText('Guess'), '456{Enter}')
 
 	expect(service.submitGuess).toHaveBeenCalledWith({
 		roomId: 'AB2C3D',
@@ -241,6 +240,32 @@ it('shows a waiting state for another player turn', () => {
 
 	expect(screen.getByText("Ada's turn")).toBeInTheDocument()
 	expect(screen.getByLabelText('Guess')).toBeDisabled()
+})
+
+it('marks the newest online guess in history', () => {
+	const snapshot = guessingSnapshot({ currentGuesserUid: 'host' })
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot({
+		...snapshot,
+		guesses: [
+			{
+				id: 'turn-1',
+				turnNumber: 1,
+				guesserUid: 'host',
+				targetUid: 'p2',
+				guess: '111',
+				correct: false,
+				correctDigits: 1,
+				correctPositions: 0,
+			},
+		],
+	})
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService() },
+	})
+
+	const row = screen.getByText(/1 digits, 0 positions/).closest('li')
+	expect(row).toHaveClass('history-row-newest')
 })
 
 it('shows the winner and host restart action', async () => {

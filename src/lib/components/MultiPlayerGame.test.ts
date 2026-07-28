@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
+import { get } from "svelte/store";
 import MultiPlayerGame from "./MultiPlayerGame.svelte";
 import { gameStore } from "$lib/stores/gameStore";
 
@@ -41,6 +42,17 @@ describe("MultiPlayerGame Component", () => {
     it("should have save button", () => {
       render(MultiPlayerGame);
       expect(screen.getByText("Save & Continue")).toBeInTheDocument();
+    });
+
+    it("should show inline feedback when the secret is empty", async () => {
+      const user = userEvent.setup();
+      render(MultiPlayerGame);
+
+      await user.click(screen.getByText("Save & Continue"));
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Please enter a secret number."
+      );
     });
 
     it("should allow entering player name and number", async () => {
@@ -193,8 +205,15 @@ describe("MultiPlayerGame Component", () => {
     });
 
     it("should have guess input and submit button", () => {
-      expect(screen.getByPlaceholderText("Enter guess")).toBeInTheDocument();
+      expect(screen.getByRole("textbox", { name: "Guess" })).toBeInTheDocument();
       expect(screen.getByText("Submit Guess")).toBeInTheDocument();
+    });
+
+    it("should announce the current turn", () => {
+      expect(screen.getByText(/Alice's turn to guess/)).toHaveAttribute(
+        "aria-live",
+        "polite"
+      );
     });
 
     it("should allow making a guess", async () => {
@@ -210,6 +229,16 @@ describe("MultiPlayerGame Component", () => {
       });
     });
 
+    it("should mark the newest guess in history", async () => {
+      const user = userEvent.setup();
+
+      await user.type(screen.getByRole("textbox", { name: "Guess" }), "111");
+      await user.click(screen.getByText("Submit Guess"));
+
+      const row = screen.getByText(/Alice: 111/).closest(".history-row");
+      expect(row).toHaveClass("history-row-newest");
+    });
+
     it("should submit guess on Enter key", async () => {
       const user = userEvent.setup();
 
@@ -223,9 +252,7 @@ describe("MultiPlayerGame Component", () => {
     });
 
     it("should highlight active player", () => {
-      const aliceCard = screen
-        .getAllByTestId("player-card")
-        .find((card) => card.textContent?.includes("Alice"));
+      const aliceCard = screen.getByRole("group", { name: "Alice" });
       expect(aliceCard).toHaveClass("player-card-turn");
     });
 
@@ -270,6 +297,12 @@ describe("MultiPlayerGame Component", () => {
       await waitFor(() => {
         expect(screen.getByText("Game Over!")).toBeInTheDocument();
         expect(screen.getByText(/Alice wins!/)).toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: "Submit Guess" })
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByRole("group", { name: "Bob eliminated" })
+        ).toHaveTextContent("Eliminated");
       });
     });
   });
@@ -343,15 +376,11 @@ describe("MultiPlayerGame Component", () => {
       });
 
       // Verify the number was padded to 012
-      const state = gameStore;
-      let currentState: any;
-      state.subscribe((s) => (currentState = s))();
-      expect(currentState.players[0].number).toBe("012");
+      expect(get(gameStore).players[0].number).toBe("012");
     });
 
-    it("should show alert for invalid guess during guessing phase", async () => {
+    it("should show inline feedback for an invalid guess", async () => {
       const user = userEvent.setup();
-      const alertMock = vi.spyOn(window, "alert").mockImplementation(() => {});
 
       // Reset and configure for 2 players
       gameStore.reset();
@@ -386,9 +415,9 @@ describe("MultiPlayerGame Component", () => {
       await user.type(screen.getByPlaceholderText("Enter guess"), "abc");
       await user.click(screen.getByText("Submit Guess"));
 
-      expect(alertMock).toHaveBeenCalledWith("Please enter a valid number.");
-
-      alertMock.mockRestore();
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Please enter a valid number."
+      );
     });
 
     it("should pad short guesses with leading zeros", async () => {

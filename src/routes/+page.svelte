@@ -12,11 +12,10 @@
 	let showInstructions = $state(false);
 	let sessionRestoreStarted = $state(false);
 	let chosenMultiMode = $state<'multi' | 'online'>('multi');
-
-	const multiMode = $derived<'multi' | 'online'>(
-		$gameStore.mode === 'multi' || $gameStore.mode === 'online'
-			? $gameStore.mode
-			: chosenMultiMode,
+	const displayedDigitCount = $derived(
+		$gameStore.mode === 'online' && $gameStore.online.room
+			? $gameStore.online.room.digitCount
+			: $gameStore.settings.digitCount,
 	);
 
 	const modeLabels: Record<NavMode, string> = {
@@ -44,6 +43,7 @@
 	}
 
 	function startNewGame() {
+		showInstructions = false;
 		gameStore.startNewGame();
 	}
 
@@ -62,6 +62,12 @@
 	function toggleInstructions() {
 		showInstructions = !showInstructions;
 	}
+
+	$effect(() => {
+		if ($gameStore.mode === 'multi' || $gameStore.mode === 'online') {
+			chosenMultiMode = $gameStore.mode;
+		}
+	});
 
 	$effect(() => {
 		if (sessionRestoreStarted) {
@@ -101,7 +107,7 @@
 		</div>
 
 		<div class="stage-body grid gap-3 p-3 sm:gap-4 sm:p-4 md:grid-cols-[140px_minmax(320px,6fr)_minmax(0,4fr)]">
-			<nav class="nav-rail grid grid-cols-5 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-1" aria-label="Game navigation">
+			<nav class="nav-rail flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:pb-0 md:grid-cols-1" aria-label="Game navigation">
 				<button
 					type="button"
 					class="nav-card nav-blue"
@@ -120,7 +126,7 @@
 					type="button"
 					class="nav-card nav-yellow"
 					aria-pressed={($gameStore.mode === 'multi' || $gameStore.mode === 'online') && !showInstructions}
-					onclick={() => selectMode(multiMode)}
+					onclick={() => selectMode(chosenMultiMode)}
 				>
 					<span class="nav-meta">
 						<span>02</span>
@@ -149,7 +155,9 @@
 					class="nav-card nav-green"
 					title="Game Settings"
 					aria-label="Open Settings"
-					aria-pressed="false"
+					aria-pressed={showSettings}
+					aria-haspopup="dialog"
+					aria-expanded={showSettings}
 					onclick={openSettings}
 				>
 					<span class="nav-meta">
@@ -175,24 +183,13 @@
 			</nav>
 
 			<main class="panel p-5 sm:p-6 md:p-8">
-				{#if showInstructions}
-					<section aria-labelledby="instructions-heading" class="space-y-4">
-						<h2 id="instructions-heading" class="font-display text-2xl font-bold">How to Play:</h2>
-						<ul class="list-disc space-y-2 pl-5 text-sm">
-							<li>Choose your preferred number of digits (2-5) and max attempts (3-20)</li>
-							<li>Guess the number within your attempt limit</li>
-							<li><strong>Correct Digits:</strong> How many digits are in the target number (regardless of position)</li>
-							<li><strong>Correct Positions:</strong> How many digits are in the correct position</li>
-							<li>Example: Target is 401, you guess 410 → 3 correct digits, 1 correct position</li>
-						</ul>
-					</section>
-				{:else}
-					<header class="game-info mb-6 space-y-2">
-						<h1 class="font-display text-[clamp(2rem,4vw,3rem)] font-bold leading-tight">
-							Number Guessing <em class="sig">Game.</em>
-						</h1>
+				<header class="game-info mb-6 space-y-2">
+					<h1 class="font-display text-[clamp(2rem,4vw,3rem)] font-bold leading-tight">
+						Number Guessing <em class="sig">Game.</em>
+					</h1>
+					{#if !showInstructions}
 						<p>
-							I'm thinking of a <span class="accent-value">{$gameStore.settings.digitCount}</span>-digit number. Can you guess it?
+							I'm thinking of a <span class="accent-value">{displayedDigitCount}</span>-digit number. Can you guess it?
 						</p>
 						{#if $gameStore.mode === 'single'}
 							<p>
@@ -217,8 +214,22 @@
 								</button>
 							</div>
 						{/if}
-					</header>
+					{/if}
+				</header>
 
+				{#if showInstructions}
+					<section aria-labelledby="instructions-heading" class="space-y-4">
+						<h2 id="instructions-heading" class="font-display text-2xl font-bold">How to Play:</h2>
+						<ul class="list-disc space-y-2 pl-5 text-sm">
+							<li>Choose your preferred number of digits (2-5) and max attempts (3-20)</li>
+							<li>Guess the number within your attempt limit</li>
+							<li><strong>Correct Digits:</strong> How many digits are in the target number (regardless of position)</li>
+							<li><strong>Correct Positions:</strong> How many digits are in the correct position</li>
+							<li>Example: Target is 401, you guess 410 → 3 correct digits, 1 correct position</li>
+						</ul>
+					</section>
+				{/if}
+				<div hidden={showInstructions}>
 					{#if $gameStore.mode === 'single'}
 						<SinglePlayerGame />
 					{:else if $gameStore.mode === 'multi'}
@@ -226,7 +237,7 @@
 					{:else}
 						<OnlineMultiplayerGame />
 					{/if}
-				{/if}
+				</div>
 			</main>
 
 			<aside class="hero hidden md:flex" aria-hidden="true">
@@ -375,7 +386,24 @@
 	}
 
 	@media (max-width: 599px) {
+		.ticker-track {
+			width: auto;
+			animation: none;
+		}
+
+		.ticker-seq {
+			padding: 8px 12px;
+			white-space: normal;
+			text-align: center;
+			line-height: 1.5;
+		}
+
+		.ticker-seq[aria-hidden='true'] {
+			display: none;
+		}
+
 		.nav-card {
+			flex: 0 0 104px;
 			min-height: 72px;
 			padding: 8px;
 		}
@@ -411,7 +439,7 @@
 		border: 1.5px solid var(--glass-border);
 		border-radius: 14px;
 		overflow: hidden;
-		background: #ffffff;
+		background: var(--surface-white);
 	}
 
 	.variant-switch button {
@@ -458,7 +486,7 @@
 		height: 56px;
 		border: 1.5px solid var(--stage-grid);
 		border-radius: 10px;
-		background: rgba(255, 255, 255, 0.06);
+		background: color-mix(in srgb, var(--surface-white) 6%, transparent);
 		color: var(--ticker-fg);
 		font-family: var(--font-display);
 		font-size: 1.5rem;

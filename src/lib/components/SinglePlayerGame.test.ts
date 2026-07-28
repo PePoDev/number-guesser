@@ -21,6 +21,12 @@ describe("SinglePlayerGame Component", () => {
     expect(button).toBeInTheDocument();
   });
 
+  it("should give the guess input an accessible name", () => {
+    render(SinglePlayerGame);
+
+    expect(screen.getByRole("textbox", { name: "Guess" })).toBeInTheDocument();
+  });
+
   it("should allow user to type in input", async () => {
     const user = userEvent.setup();
     render(SinglePlayerGame);
@@ -259,13 +265,16 @@ describe("SinglePlayerGame Component", () => {
       expect(
         screen.getByText(/Please enter a number before submitting/)
       ).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /Please enter a number before submitting/
+      );
     });
 
     // Should not add to history
     expect(screen.queryByText(/Guess 1:/)).not.toBeInTheDocument();
   });
 
-  it("should show validation errors in yellow", async () => {
+  it("should show validation errors with warning styling", async () => {
     const user = userEvent.setup();
     render(SinglePlayerGame);
 
@@ -338,20 +347,16 @@ describe("SinglePlayerGame Component", () => {
       targetNumber = state.targetNumber;
     })();
 
-    // Make wrong guesses first
-    await user.type(screen.getByPlaceholderText("Enter number"), "111");
-    await user.click(screen.getByText("Submit Guess"));
-
-    await waitFor(() => {
-      expect(screen.getByText(/Guess 1:/)).toBeInTheDocument();
-    });
-
-    await user.type(screen.getByPlaceholderText("Enter number"), "222");
-    await user.click(screen.getByText("Submit Guess"));
-
-    await waitFor(() => {
-      expect(screen.getByText(/Guess 2:/)).toBeInTheDocument();
-    });
+    const wrongGuesses = ["111", "222", "333"].filter(
+      (guess) => guess !== targetNumber
+    );
+    for (const [index, guess] of wrongGuesses.slice(0, 2).entries()) {
+      await user.type(screen.getByPlaceholderText("Enter number"), guess);
+      await user.click(screen.getByText("Submit Guess"));
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(`Guess ${index + 1}:`))).toBeInTheDocument();
+      });
+    }
 
     // Now make correct guess
     await user.type(screen.getByPlaceholderText("Enter number"), targetNumber);
