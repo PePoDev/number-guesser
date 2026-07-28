@@ -4,6 +4,7 @@
 	import SinglePlayerGame from '$lib/components/SinglePlayerGame.svelte';
 	import MultiPlayerGame from '$lib/components/MultiPlayerGame.svelte';
 	import OnlineMultiplayerGame from '$lib/components/OnlineMultiplayerGame.svelte';
+	import GitHubStarLink from '$lib/components/GitHubStarLink.svelte';
 	import { onlineGameService } from '$lib/services/onlineGameService';
 
 	type NavMode = 'single' | 'multi' | 'online';
@@ -182,9 +183,12 @@
 
 			<main class="panel p-5 sm:p-6 md:p-8">
 				<header class="game-info mb-6 space-y-2">
-					<h1 class="font-display text-[clamp(2rem,4vw,3rem)] font-bold leading-tight">
-						Number Guessing <em class="sig">Game.</em>
-					</h1>
+					<div class="flex flex-wrap items-start justify-between gap-3">
+						<h1 class="font-display text-[clamp(2rem,4vw,3rem)] font-bold leading-tight">
+							Number Guessing <em class="sig">Game.</em>
+						</h1>
+						<GitHubStarLink />
+					</div>
 					{#if !showInstructions}
 						<p>
 							I'm thinking of a <span class="accent-value">{displayedDigitCount}</span>-digit number. Can you guess it?

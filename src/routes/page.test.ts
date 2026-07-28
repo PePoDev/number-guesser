@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { get } from "svelte/store";
@@ -9,6 +9,17 @@ describe("+page.svelte Component", () => {
   beforeEach(() => {
     gameStore.reset();
     window.history.replaceState({}, "", "/");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ stargazers_count: 128 }),
+      }))
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("should render the main title", () => {
@@ -26,6 +37,21 @@ describe("+page.svelte Component", () => {
     expect(
       screen.getByLabelText("Open Single Player settings")
     ).toBeInTheDocument();
+  });
+
+  it("shows GitHub stars in the game panel header", async () => {
+    render(Page);
+
+    const link = await screen.findByRole("link", {
+      name: "Open number-guesser on GitHub, 128 stars",
+    });
+
+    expect(link).toHaveAttribute(
+      "href",
+      "https://github.com/PePoDev/number-guesser"
+    );
+    expect(link.closest("header")).toHaveClass("game-info");
+    expect(screen.getByText("128")).toBeInTheDocument();
   });
 
   it("opens settings for the active single-player mode", async () => {
