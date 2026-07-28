@@ -14,7 +14,7 @@ Make an online room easy to invite another player into:
 
 The lobby places a **Share** secondary button immediately after **Copy Room ID**.
 
-Selecting **Copy Room ID** writes the six-character room ID to the clipboard and temporarily changes the button label to **Copied!** for two seconds.
+Selecting **Copy Room ID** writes the six-character room ID to the clipboard and shows a **Copied!** tooltip for two seconds.
 
 Selecting **Share** builds an invite URL using the current page URL and a `room` query parameter, for example:
 
@@ -22,7 +22,7 @@ Selecting **Share** builds an invite URL using the current page URL and a `room`
 https://number-guesser.pepo.dev/?room=AB2C3D
 ```
 
-When the Web Share API is available, the browser opens its native share sheet with the game title, invitation text, and invite URL. If Web Share is unavailable or fails, the app copies the invite URL and temporarily changes the button label to **Link copied!** for two seconds.
+When the Web Share API is available, the browser opens its native share sheet with the game title, invitation text, and invite URL. If Web Share is unavailable or fails, the app copies the invite URL and shows a **Link copied!** tooltip for two seconds.
 
 Opening a valid invite URL automatically selects Online Multiplayer and pre-fills the normalized room ID. It does not join automatically because the guest must provide a display name.
 
@@ -38,7 +38,7 @@ No Firebase documents, callable Functions, shared game state, or dependencies ch
 
 - Clipboard or share failures use the existing online error banner.
 - A cancelled or failed native share attempt falls back to copying the link.
-- Temporary labels remain visible for two seconds and are announced through an `aria-live="polite"` status.
+- Temporary tooltips remain visible for two seconds and use the accessible `status` role.
 - Both controls use the existing secondary-button visual contract and wrap on narrow screens.
 - Invalid query values are ignored and leave the normal game mode unchanged.
 
