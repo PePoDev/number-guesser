@@ -450,7 +450,6 @@
 					oninput={handleSecretInput}
 					disabled={busy}
 					inputmode="numeric"
-					maxlength={room.digitCount}
 					class="field-input w-full"
 				/>
 			</label>
@@ -538,7 +537,6 @@
 					oninput={handleOnlineGuessInput}
 					disabled={!canGuess || busy}
 					inputmode="numeric"
-					maxlength={room.digitCount}
 					class="field-input w-full"
 				/>
 			</label>

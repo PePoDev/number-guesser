@@ -1,17 +1,25 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+test.beforeEach(async ({ page }) => {
+  await page.route("https://api.github.com/repos/PePoDev/number-guesser", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ stargazers_count: 128 }),
+    });
+  });
+});
+
+async function selectLocalMode(page: Page, playerCount = "2") {
+  await page.getByRole("button", { name: /Multiplayer/ }).click();
+  await page.getByLabel("Open Local Multiplayer settings").click();
+  await page.getByLabel("Number of Players:").selectOption(playerCount);
+  await page.getByText("Close", { exact: true }).click();
+}
 
 test.describe("Multiplayer Game", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    // Switch to multiplayer mode
-    await page.click('button[title="Game Settings"]');
-    await page.waitForSelector("text=Game Settings", { state: "visible" });
-    await page.selectOption("select#game-mode", "multi");
-    await page.selectOption("select#player-count", "2");
-    // Wait for any animations to complete
-    await page.waitForTimeout(500);
-    await page.click('button:has-text("Close")');
-    await page.waitForSelector("text=Game Settings", { state: "hidden" });
+    await selectLocalMode(page);
   });
 
   test("should display setup phase", async ({ page }) => {
@@ -51,6 +59,16 @@ test.describe("Multiplayer Game", () => {
 
     await expect(nameInput).toHaveValue("Alice");
     await expect(numberInput).toHaveValue("123");
+  });
+
+  test("should keep only digits in a secret number", async ({ page }) => {
+    const numberInput = page.locator(
+      'input[placeholder="Enter your secret number"]'
+    );
+
+    await numberInput.fill("0a1-2");
+
+    await expect(numberInput).toHaveValue("012");
   });
 
   test("should move to next player after saving", async ({ page }) => {
@@ -107,14 +125,7 @@ test.describe("Multiplayer Game", () => {
 test.describe("Multiplayer Game - Guessing Phase", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.click('button[title="Game Settings"]');
-    await page.waitForSelector("text=Game Settings", { state: "visible" });
-    await page.selectOption("select#game-mode", "multi");
-    await page.selectOption("select#player-count", "2");
-    // Wait for any animations to complete
-    await page.waitForTimeout(500);
-    await page.click('button:has-text("Close")');
-    await page.waitForSelector("text=Game Settings", { state: "hidden" });
+    await selectLocalMode(page);
 
     // Setup both players
     await page.fill('input[placeholder="Enter your name"]', "Alice");
@@ -259,14 +270,7 @@ test.describe("Multiplayer Game - Guessing Phase", () => {
 test.describe("Multiplayer Game - Three Players", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.click('button[title="Game Settings"]');
-    await page.waitForSelector("text=Game Settings", { state: "visible" });
-    await page.selectOption("select#game-mode", "multi");
-    await page.selectOption("select#player-count", "3");
-    // Wait for any animations to complete
-    await page.waitForTimeout(500);
-    await page.click('button:has-text("Close")');
-    await page.waitForSelector("text=Game Settings", { state: "hidden" });
+    await selectLocalMode(page, "3");
   });
 
   test("should setup three players", async ({ page }) => {
@@ -365,14 +369,7 @@ test.describe("Multiplayer Game - Three Players", () => {
 test.describe("Multiplayer Game - Four Players", () => {
   test("should setup and play with four players", async ({ page }) => {
     await page.goto("/");
-    await page.click('button[title="Game Settings"]');
-    await page.waitForSelector("text=Game Settings", { state: "visible" });
-    await page.selectOption("select#game-mode", "multi");
-    await page.selectOption("select#player-count", "4");
-    // Wait for any animations to complete
-    await page.waitForTimeout(500);
-    await page.click('button:has-text("Close")');
-    await page.waitForSelector("text=Game Settings", { state: "hidden" });
+    await selectLocalMode(page, "4");
 
     // Setup all four players
     const players = [
@@ -406,13 +403,7 @@ test.describe("Multiplayer Game - Four Players", () => {
 test.describe("Multiplayer Game - New Game", () => {
   test("should restart multiplayer game", async ({ page }) => {
     await page.goto("/");
-    await page.click('button[title="Game Settings"]');
-    await page.waitForSelector("text=Game Settings", { state: "visible" });
-    await page.selectOption("select#game-mode", "multi");
-    // Wait for any animations to complete
-    await page.waitForTimeout(500);
-    await page.click('button:has-text("Close")');
-    await page.waitForSelector("text=Game Settings", { state: "hidden" });
+    await selectLocalMode(page);
 
     // Setup players
     await page.fill('input[placeholder="Enter your name"]', "Alice");

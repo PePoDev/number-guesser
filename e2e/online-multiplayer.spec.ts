@@ -1,8 +1,21 @@
 import { expect, test, type Page } from '@playwright/test'
 
+async function mockGitHubStars(page: Page) {
+	await page.route(
+		'https://api.github.com/repos/PePoDev/number-guesser',
+		async (route) => {
+			await route.fulfill({
+				contentType: 'application/json',
+				body: JSON.stringify({ stargazers_count: 128 }),
+			})
+		},
+	)
+}
+
 async function selectOnlineMode(page: Page, playerCount = '2') {
-	await page.getByLabel('Open Settings').click()
-	await page.getByLabel('Game Mode:').selectOption('online')
+	await page.getByRole('button', { name: /Multiplayer/ }).click()
+	await page.getByRole('button', { name: 'Online', exact: true }).click()
+	await page.getByLabel('Open Online Multiplayer settings').click()
 	await page.getByLabel('Number of Players:').selectOption(playerCount)
 	await page.getByText('Close', { exact: true }).click()
 }
@@ -21,6 +34,7 @@ test('two remote players create, join, play, and finish a room', async ({
 	const host = await hostContext.newPage()
 	const guest = await guestContext.newPage()
 
+	await Promise.all([mockGitHubStars(host), mockGitHubStars(guest)])
 	await host.goto('/')
 	await selectOnlineMode(host)
 
@@ -29,23 +43,23 @@ test('two remote players create, join, play, and finish a room', async ({
 	const roomId = await readRoomId(host)
 
 	await guest.goto(`/?room=${roomId}`)
-	await expect(guest.getByRole('button', { name: 'Online' })).toHaveAttribute(
-		'aria-pressed',
-		'true',
-	)
+	await expect(
+		guest.getByRole('button', { name: 'Online', exact: true }),
+	).toHaveAttribute('aria-pressed', 'true')
 	await expect(guest.getByLabel('Room ID')).toHaveValue(roomId)
 	await guest.getByLabel('Display name').fill('Lin')
 	await guest.getByRole('button', { name: 'Join Room' }).click()
 
 	await expect(host.getByText('Lin', { exact: true })).toBeVisible()
-	await host.getByLabel('Secret number').fill('123')
+	await host.getByLabel('Secret number').fill('1a2-3')
+	await expect(host.getByLabel('Secret number')).toHaveValue('123')
 	await host.getByRole('button', { name: 'Ready' }).click()
 	await guest.getByLabel('Secret number').fill('456')
 	await guest.getByRole('button', { name: 'Ready' }).click()
 	await host.getByRole('button', { name: 'Start Game' }).click()
 
 	await host.getByLabel('Target player').selectOption({ label: 'Lin' })
-	await host.getByLabel('Guess').fill('456')
+	await host.getByLabel('Guess', { exact: true }).fill('456')
 	await host.getByRole('button', { name: 'Submit Guess' }).click()
 
 	await expect(host.getByText('Ada wins!')).toBeVisible()
@@ -59,6 +73,7 @@ test('refresh reconnects the same browser to its room', async ({ browser }) => {
 	const hostContext = await browser.newContext()
 	const host = await hostContext.newPage()
 
+	await mockGitHubStars(host)
 	await host.goto('/')
 	await selectOnlineMode(host)
 	await host.getByLabel('Display name').fill('Ada')
@@ -82,6 +97,11 @@ test('three players rotate turns and the last active player wins', async ({
 	const second = await secondContext.newPage()
 	const third = await thirdContext.newPage()
 
+	await Promise.all([
+		mockGitHubStars(host),
+		mockGitHubStars(second),
+		mockGitHubStars(third),
+	])
 	await Promise.all([host.goto('/'), second.goto('/'), third.goto('/')])
 	await Promise.all([
 		selectOnlineMode(host, '3'),
@@ -109,17 +129,17 @@ test('three players rotate turns and the last active player wins', async ({
 	await host.getByRole('button', { name: 'Start Game' }).click()
 
 	await host.getByLabel('Target player').selectOption({ label: 'Lin' })
-	await host.getByLabel('Guess').fill('999')
+	await host.getByLabel('Guess', { exact: true }).fill('999')
 	await host.getByRole('button', { name: 'Submit Guess' }).click()
 	await expect(second.getByText("Lin's turn")).toBeVisible()
 
 	await second.getByLabel('Target player').selectOption({ label: 'Ada' })
-	await second.getByLabel('Guess').fill('111')
+	await second.getByLabel('Guess', { exact: true }).fill('111')
 	await second.getByRole('button', { name: 'Submit Guess' }).click()
 	await expect(second.getByText("Lin's turn")).toBeVisible()
 
 	await second.getByLabel('Target player').selectOption({ label: 'Grace' })
-	await second.getByLabel('Guess').fill('333')
+	await second.getByLabel('Guess', { exact: true }).fill('333')
 	await second.getByRole('button', { name: 'Submit Guess' }).click()
 	await expect(host.getByText('Lin wins!')).toBeVisible()
 	await expect(second.getByText('Lin wins!')).toBeVisible()
@@ -133,6 +153,7 @@ test('three players rotate turns and the last active player wins', async ({
 })
 
 test('shows a friendly error for a missing room', async ({ page }) => {
+	await mockGitHubStars(page)
 	await page.goto('/')
 	await selectOnlineMode(page)
 	await page.getByLabel('Display name').fill('Ada')

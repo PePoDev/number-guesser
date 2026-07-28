@@ -166,7 +166,6 @@ function handleMultiGuessInput(event: Event) {
 			oninput={handleSecretInput}
 			onkeypress={handleSetupKeyPress}
 			placeholder="Enter your secret number"
-			maxlength={$gameStore.settings.digitCount}
 			inputmode="numeric"
 			pattern="[0-9]*"
 			class="field-input min-w-0 flex-1"
@@ -242,7 +241,6 @@ function handleMultiGuessInput(event: Event) {
 				oninput={handleMultiGuessInput}
 				onkeypress={handleGuessKeyPress}
 				placeholder="Enter guess"
-				maxlength={$gameStore.settings.digitCount}
 				inputmode="numeric"
 				pattern="[0-9]*"
 				class="field-input w-40"

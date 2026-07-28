@@ -114,7 +114,6 @@
 			oninput={handleGuessInput}
 			onkeypress={handleKeyPress}
 			placeholder="Enter number"
-			maxlength={$gameStore.settings.digitCount}
 			inputmode="numeric"
 			pattern="[0-9]*"
 			disabled={$gameStore.gameOver}

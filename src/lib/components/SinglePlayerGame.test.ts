@@ -179,12 +179,15 @@ describe("SinglePlayerGame Component", () => {
     expect(screen.getByText("Guess History:")).toBeInTheDocument();
   });
 
-  it("should respect maxlength attribute", () => {
+  it("should cap guesses at the configured digit count", async () => {
     render(SinglePlayerGame);
     const input = screen.getByPlaceholderText(
       "Enter number"
     ) as HTMLInputElement;
-    expect(input.maxLength).toBe(3);
+
+    await fireEvent.input(input, { target: { value: "1234" } });
+
+    expect(input).toHaveValue("123");
   });
 
   it("should have numeric pattern", () => {

@@ -1,12 +1,17 @@
 import { test, expect } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.route("https://api.github.com/repos/PePoDev/number-guesser", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ stargazers_count: 128 }),
+    });
+  });
+});
+
 test.describe("Single Player Game", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    // Ensure we're in single player mode
-    await page.click('button[title="Game Settings"]');
-    await page.selectOption("select#game-mode", "single");
-    await page.click('button:has-text("Close")');
   });
 
   test("should display game title and instructions", async ({ page }) => {
@@ -21,7 +26,9 @@ test.describe("Single Player Game", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.locator(".hero")).toBeHidden();
     await expect(
-      page.getByRole("button", { name: /Single Player/ })
+      page
+        .getByRole("navigation", { name: "Game navigation" })
+        .getByRole("button", { name: /Single Player/ })
     ).toBeVisible();
     await expect(
       page.locator('input[placeholder="Enter number"]')
@@ -40,7 +47,7 @@ test.describe("Single Player Game", () => {
     );
 
     await page.setViewportSize({ width: 640, height: 360 });
-    await page.click('button[title="Game Settings"]');
+    await page.getByLabel("Open Single Player settings").click();
     await expect(page.getByRole("dialog")).toHaveCSS("overflow-y", "auto");
     await page
       .getByRole("button", { name: "Close", exact: true })
@@ -67,6 +74,14 @@ test.describe("Single Player Game", () => {
     const input = page.locator('input[placeholder="Enter number"]');
     await input.fill("123");
     await expect(input).toHaveValue("123");
+  });
+
+  test("should keep only digits in a guess", async ({ page }) => {
+    const input = page.locator('input[placeholder="Enter number"]');
+
+    await input.fill("0a1-2");
+
+    await expect(input).toHaveValue("012");
   });
 
   test("should submit guess and show feedback", async ({ page }) => {
@@ -124,12 +139,12 @@ test.describe("Single Player Game", () => {
     ).toBeVisible();
   });
 
-  test("should show validation error for invalid input", async ({ page }) => {
+  test("should treat filtered non-digit input as empty", async ({ page }) => {
     await page.fill('input[placeholder="Enter number"]', "abc");
     await page.click('button:has-text("Submit Guess")');
 
     await expect(
-      page.locator("text=/Please enter a valid number/")
+      page.locator("text=/Please enter a number before submitting/")
     ).toBeVisible();
   });
 
@@ -210,12 +225,12 @@ test.describe("Single Player Game", () => {
   });
 
   test("should open settings modal", async ({ page }) => {
-    await page.click('button[title="Game Settings"]');
-    await expect(page.locator("text=Game Settings")).toBeVisible();
+    await page.getByLabel("Open Single Player settings").click();
+    await expect(page.locator("text=Single Player Settings")).toBeVisible();
   });
 
   test("should change digit count in settings", async ({ page }) => {
-    await page.click('button[title="Game Settings"]');
+    await page.getByLabel("Open Single Player settings").click();
     await page.selectOption("select#digit-count", "4");
     await page.click('button:has-text("Close")');
 
@@ -223,7 +238,7 @@ test.describe("Single Player Game", () => {
   });
 
   test("should change max attempts in settings", async ({ page }) => {
-    await page.click('button[title="Game Settings"]');
+    await page.getByLabel("Open Single Player settings").click();
     await page.selectOption("select#max-attempts", "10");
     await page.click('button:has-text("Close")');
 
@@ -234,13 +249,14 @@ test.describe("Single Player Game", () => {
     page,
   }) => {
     // Change to 4 digits
-    await page.click('button[title="Game Settings"]');
+    await page.getByLabel("Open Single Player settings").click();
     await page.selectOption("select#digit-count", "4");
     await page.click('button:has-text("Close")');
 
-    // Input should accept 4 digits
+    // Input should keep at most 4 digits
     const input = page.locator('input[placeholder="Enter number"]');
-    await expect(input).toHaveAttribute("maxlength", "4");
+    await input.fill("12345");
+    await expect(input).toHaveValue("1234");
   });
 
   test("should show guess history section", async ({ page }) => {
@@ -278,7 +294,7 @@ test.describe("Single Player Game", () => {
     await page.click('button:has-text("Submit Guess")');
 
     // Open and close settings without changing anything
-    await page.click('button[title="Game Settings"]');
+    await page.getByLabel("Open Single Player settings").click();
     await page.click('button:has-text("Close")');
 
     // Guess history should still be visible
@@ -289,8 +305,7 @@ test.describe("Single Player Game", () => {
 test.describe("Single Player Game - Different Configurations", () => {
   test("should work with 2-digit numbers", async ({ page }) => {
     await page.goto("/");
-    await page.click('button[title="Game Settings"]');
-    await page.selectOption("select#game-mode", "single");
+    await page.getByLabel("Open Single Player settings").click();
     await page.selectOption("select#digit-count", "2");
     await page.click('button:has-text("Close")');
 
@@ -302,8 +317,7 @@ test.describe("Single Player Game - Different Configurations", () => {
 
   test("should work with 5-digit numbers", async ({ page }) => {
     await page.goto("/");
-    await page.click('button[title="Game Settings"]');
-    await page.selectOption("select#game-mode", "single");
+    await page.getByLabel("Open Single Player settings").click();
     await page.selectOption("select#digit-count", "5");
     await page.click('button:has-text("Close")');
 
@@ -315,8 +329,7 @@ test.describe("Single Player Game - Different Configurations", () => {
 
   test("should work with 3 attempts limit", async ({ page }) => {
     await page.goto("/");
-    await page.click('button[title="Game Settings"]');
-    await page.selectOption("select#game-mode", "single");
+    await page.getByLabel("Open Single Player settings").click();
     await page.selectOption("select#max-attempts", "3");
     await page.click('button:has-text("Close")');
 
@@ -325,8 +338,7 @@ test.describe("Single Player Game - Different Configurations", () => {
 
   test("should work with 20 attempts limit", async ({ page }) => {
     await page.goto("/");
-    await page.click('button[title="Game Settings"]');
-    await page.selectOption("select#game-mode", "single");
+    await page.getByLabel("Open Single Player settings").click();
     await page.selectOption("select#max-attempts", "20");
     await page.click('button:has-text("Close")');
 
@@ -336,13 +348,12 @@ test.describe("Single Player Game - Different Configurations", () => {
   test.describe("Single Player Game - Duplicate Guess Detection", () => {
     test.beforeEach(async ({ page }) => {
       await page.goto("/");
-      await page.click('button[title="Game Settings"]');
-      await page.waitForSelector("text=Game Settings", { state: "visible" });
-      await page.selectOption("select#game-mode", "single");
+      await page.getByLabel("Open Single Player settings").click();
+      await page.waitForSelector("text=Single Player Settings", { state: "visible" });
       // Wait for any animations to complete
       await page.waitForTimeout(500);
       await page.click('button:has-text("Close")');
-      await page.waitForSelector("text=Game Settings", { state: "hidden" });
+      await page.waitForSelector("text=Single Player Settings", { state: "hidden" });
     });
 
     test("should detect and reject duplicate guesses", async ({ page }) => {
@@ -456,9 +467,6 @@ test.describe("Single Player Game - Different Configurations", () => {
     test.describe("Single Player Game - Input Validation", () => {
       test.beforeEach(async ({ page }) => {
         await page.goto("/");
-        await page.click('button[title="Game Settings"]');
-        await page.selectOption("select#game-mode", "single");
-        await page.click('button:has-text("Close")');
       });
 
       test("should prevent submission with empty input", async ({ page }) => {
@@ -553,11 +561,11 @@ test.describe("Single Player Game - Different Configurations", () => {
           page.locator("text=/Please enter a number before submitting/")
         ).toBeVisible();
 
-        // Second error: invalid characters
+        // Second error: filtered non-digit input
         await page.fill('input[placeholder="Enter number"]', "abc");
         await page.click('button:has-text("Submit Guess")');
         await expect(
-          page.locator("text=/Please enter a valid number/")
+          page.locator("text=/Please enter a number before submitting/")
         ).toBeVisible();
 
         // Finally, valid input
