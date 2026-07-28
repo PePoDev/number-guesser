@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte'
-	import { gameStore } from '$lib/stores/gameStore'
+	import { gameStore, sanitizeDigits } from '$lib/stores/gameStore'
 	import {
 		onlineGameService,
 		type OnlineGameService,
@@ -73,6 +73,24 @@
 			return
 		}
 		gameStore.setOnlineStatus('error', message)
+	}
+
+	function handleSecretInput(event: Event) {
+		if (!room) {
+			return
+		}
+		const input = event.currentTarget as HTMLInputElement
+		secret = sanitizeDigits(input.value, room.digitCount)
+		input.value = secret
+	}
+
+	function handleOnlineGuessInput(event: Event) {
+		if (!room) {
+			return
+		}
+		const input = event.currentTarget as HTMLInputElement
+		guess = sanitizeDigits(input.value, room.digitCount)
+		input.value = guess
 	}
 
 	async function createRoom() {
@@ -428,7 +446,8 @@
 			<label class="block space-y-2">
 				<span>Secret number</span>
 				<input
-					bind:value={secret}
+					value={secret}
+					oninput={handleSecretInput}
 					disabled={busy}
 					inputmode="numeric"
 					maxlength={room.digitCount}
@@ -515,7 +534,8 @@
 			<label class="block space-y-2">
 				<span>Guess</span>
 				<input
-					bind:value={guess}
+					value={guess}
+					oninput={handleOnlineGuessInput}
 					disabled={!canGuess || busy}
 					inputmode="numeric"
 					maxlength={room.digitCount}

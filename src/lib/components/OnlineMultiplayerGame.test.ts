@@ -211,6 +211,19 @@ it('shows lobby readiness and lets the host start', async () => {
 	expect(service.startRoom).toHaveBeenCalledWith('AB2C3D')
 })
 
+it('keeps only digits in online secret numbers', async () => {
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(readyLobbySnapshot(false))
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService() },
+	})
+	const input = screen.getByLabelText('Secret number')
+
+	await fireEvent.input(input, { target: { value: '0a1-2' } })
+
+	expect(input).toHaveValue('012')
+})
+
 it('copies the room ID and temporarily shows a confirmation tooltip', async () => {
 	vi.useFakeTimers()
 	const writeText = vi.fn(async () => undefined)
@@ -357,6 +370,21 @@ it('submits a guess with Enter for the active player', async () => {
 		guess: '456',
 		turnNumber: 0,
 	})
+})
+
+it('keeps only digits in online guesses', async () => {
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(
+		guessingSnapshot({ currentGuesserUid: 'host' }),
+	)
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService() },
+	})
+	const input = screen.getByLabelText('Guess')
+
+	await fireEvent.input(input, { target: { value: '4x5-6' } })
+
+	expect(input).toHaveValue('456')
 })
 
 it('shows a waiting state for another player turn', () => {
