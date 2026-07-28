@@ -42,6 +42,8 @@ GitHub Pages serves the static SvelteKit client. Callable Cloud Functions own au
 
 ## Quick start
 
+Install Node.js 22 and pnpm 9, then:
+
 ```bash
 pnpm install
 pnpm dev
