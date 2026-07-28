@@ -273,7 +273,7 @@ The main display heading ends with one bold italic word in `--glass-accent`. Use
 | Feedback banner | State-tinted low-opacity background and border |
 | History row | Translucent white; newest row has a purple left border |
 | Player card | Landscape nav-card language; inset turn border; red-tinted eliminated state and visible badge |
-| Online multiplayer | One cream-panel flow: name/create/join entry, room-ID lobby with readiness, turn/guess state, reconnect status, and host restart |
+| Online multiplayer | One cream-panel flow: name/create/join entry, room-ID lobby with paired Copy and Share actions, accessible confirmation tooltips, readiness, turn/guess state, reconnect status, and host restart |
 | Settings modal | Cream surface, 480px maximum, blurred 40% black scrim, focus trap, and viewport-bounded scrolling |
 | Hero | Decorative CSS/SVG tile tunnel with `aria-hidden="true"` |
 | Utility row | Current mode plus visible `Enter` and `Escape` keyboard hints |
@@ -322,6 +322,8 @@ Add new surfaces to this table. The initial editorial design system was recorded
 2026-07-27 — Added secure Firebase online rooms while retaining local multiplayer.
 
 2026-07-28 — Implemented the editorial grid stage across all game, navigation, feedback, player, and settings surfaces.
+
+2026-07-28 — Added shareable online-room links that select Online Multiplayer and pre-fill the room ID.
 
 ## Change guide
 
