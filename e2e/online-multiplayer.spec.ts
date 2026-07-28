@@ -22,19 +22,22 @@ test('two remote players create, join, play, and finish a room', async ({
 	const guest = await guestContext.newPage()
 
 	await host.goto('/')
-	await guest.goto('/')
 	await selectOnlineMode(host)
-	await selectOnlineMode(guest)
 
 	await host.getByLabel('Display name').fill('Ada')
 	await host.getByRole('button', { name: 'Create Room' }).click()
 	const roomId = await readRoomId(host)
 
+	await guest.goto(`/?room=${roomId}`)
+	await expect(guest.getByRole('button', { name: 'Online' })).toHaveAttribute(
+		'aria-pressed',
+		'true',
+	)
+	await expect(guest.getByLabel('Room ID')).toHaveValue(roomId)
 	await guest.getByLabel('Display name').fill('Lin')
-	await guest.getByLabel('Room ID').fill(roomId)
 	await guest.getByRole('button', { name: 'Join Room' }).click()
 
-	await expect(host.getByText('Lin')).toBeVisible()
+	await expect(host.getByText('Lin', { exact: true })).toBeVisible()
 	await host.getByLabel('Secret number').fill('123')
 	await host.getByRole('button', { name: 'Ready' }).click()
 	await guest.getByLabel('Secret number').fill('456')

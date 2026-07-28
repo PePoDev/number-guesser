@@ -12,6 +12,7 @@
 	let showInstructions = $state(false);
 	let sessionRestoreStarted = $state(false);
 	let chosenMultiMode = $state<'multi' | 'online'>('multi');
+	let invitedRoomId = $state('');
 	const displayedDigitCount = $derived(
 		$gameStore.mode === 'online' && $gameStore.online.room
 			? $gameStore.online.room.digitCount
@@ -75,6 +76,18 @@
 		}
 
 		sessionRestoreStarted = true;
+		const roomId =
+			new URL(window.location.href).searchParams
+				.get('room')
+				?.trim()
+				.toUpperCase() ?? '';
+
+		if (/^[A-Z2-9]{6}$/.test(roomId)) {
+			invitedRoomId = roomId;
+			gameStore.setMode('online');
+			return;
+		}
+
 		void onlineGameService.restoreSession().then((session) => {
 			if (session) {
 				gameStore.setMode('online');
@@ -235,7 +248,7 @@
 					{:else if $gameStore.mode === 'multi'}
 						<MultiPlayerGame />
 					{:else}
-						<OnlineMultiplayerGame />
+						<OnlineMultiplayerGame initialRoomId={invitedRoomId} />
 					{/if}
 				</div>
 			</main>

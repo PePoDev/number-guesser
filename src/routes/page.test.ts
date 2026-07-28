@@ -8,6 +8,7 @@ import { gameStore } from "$lib/stores/gameStore";
 describe("+page.svelte Component", () => {
   beforeEach(() => {
     gameStore.reset();
+    window.history.replaceState({}, "", "/");
   });
 
   it("should render the main title", () => {
@@ -108,6 +109,29 @@ describe("+page.svelte Component", () => {
 
     expect(screen.getByLabelText("Display name")).toBeInTheDocument();
     expect(screen.getByText("New Game").closest("button")).toBeDisabled();
+  });
+
+  it("selects online mode and pre-fills a valid invite room", async () => {
+    window.history.replaceState({}, "", "/?room=ab2c3d");
+    render(Page);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Online" })).toHaveAttribute(
+        "aria-pressed",
+        "true"
+      );
+    });
+    expect(screen.getByLabelText("Room ID")).toHaveValue("AB2C3D");
+  });
+
+  it("ignores an invalid invite room", async () => {
+    window.history.replaceState({}, "", "/?room=invalid");
+    render(Page);
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Enter number")).toBeInTheDocument();
+    });
+    expect(screen.queryByLabelText("Room ID")).not.toBeInTheDocument();
   });
 
   it("should have New Game button", () => {

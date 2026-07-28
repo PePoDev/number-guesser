@@ -7,11 +7,15 @@
 
 	interface Props {
 		service?: OnlineGameService
+		initialRoomId?: string
 	}
 
-	let { service = onlineGameService }: Props = $props()
+	let {
+		service = onlineGameService,
+		initialRoomId = '',
+	}: Props = $props()
 	let name = $state('')
-	let roomIdInput = $state('')
+	let roomIdInput = $state(initialRoomId)
 	let secret = $state('')
 	let guess = $state('')
 	let targetUid = $state('')
@@ -192,7 +196,7 @@
 	}
 
 	$effect(() => {
-		if (restoreStarted || $gameStore.online.roomId) {
+		if (restoreStarted || initialRoomId || $gameStore.online.roomId) {
 			return
 		}
 		restoreStarted = true

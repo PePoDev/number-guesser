@@ -171,6 +171,19 @@ it('normalizes and joins a room', async () => {
 	})
 })
 
+it('pre-fills an invited room without restoring another session', () => {
+	const service = createFakeOnlineGameService({
+		restoreSessionResult: { uid: 'old-player', roomId: 'ZZZZZZ' },
+	})
+
+	render(OnlineMultiplayerGame, {
+		props: { service, initialRoomId: 'AB2C3D' },
+	})
+
+	expect(screen.getByLabelText('Room ID')).toHaveValue('AB2C3D')
+	expect(service.restoreSession).not.toHaveBeenCalled()
+})
+
 it('shows lobby readiness and lets the host start', async () => {
 	const service = createFakeOnlineGameService()
 	gameStore.setOnlineIdentity('host', 'AB2C3D')
