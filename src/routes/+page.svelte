@@ -18,6 +18,9 @@
 			? $gameStore.online.room.digitCount
 			: $gameStore.settings.digitCount,
 	);
+	const canOpenSettings = $derived(
+		$gameStore.mode !== 'online' || $gameStore.online.room === null,
+	);
 
 	const modeLabels: Record<NavMode, string> = {
 		single: 'Single Player',
@@ -165,24 +168,6 @@
 				</button>
 				<button
 					type="button"
-					class="nav-card nav-green"
-					title="Game Settings"
-					aria-label="Open Settings"
-					aria-pressed={showSettings}
-					aria-haspopup="dialog"
-					aria-expanded={showSettings}
-					onclick={openSettings}
-				>
-					<span class="nav-meta">
-						<span>04</span>
-						<svg class="max-sm:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-							<path d="M5 12h14M13 6l6 6-6 6" />
-						</svg>
-					</span>
-					<span class="nav-label">Settings</span>
-				</button>
-				<button
-					type="button"
 					class="nav-card nav-primary"
 					disabled={$gameStore.mode === 'online'}
 					onclick={startNewGame}
@@ -209,24 +194,38 @@
 								You have <span class="accent-value">{$gameStore.attemptsLeft}</span> attempts remaining.
 							</p>
 						{/if}
-						{#if $gameStore.mode === 'multi' || $gameStore.mode === 'online'}
-							<div class="variant-switch mt-4" role="group" aria-label="Multiplayer type">
+						<div class="mt-4 flex flex-wrap items-center gap-3">
+							{#if $gameStore.mode === 'multi' || $gameStore.mode === 'online'}
+								<div class="variant-switch" role="group" aria-label="Multiplayer type">
+									<button
+										type="button"
+										aria-pressed={$gameStore.mode === 'multi'}
+										onclick={() => selectMode('multi')}
+									>
+										Local
+									</button>
+									<button
+										type="button"
+										aria-pressed={$gameStore.mode === 'online'}
+										onclick={() => selectMode('online')}
+									>
+										Online
+									</button>
+								</div>
+							{/if}
+							{#if canOpenSettings}
 								<button
 									type="button"
-									aria-pressed={$gameStore.mode === 'multi'}
-									onclick={() => selectMode('multi')}
+									class="btn-secondary"
+									aria-label={`Open ${modeLabels[$gameStore.mode]} settings`}
+									aria-haspopup="dialog"
+									aria-expanded={showSettings}
+									onclick={openSettings}
 								>
-									Local
+									Settings
 								</button>
-								<button
-									type="button"
-									aria-pressed={$gameStore.mode === 'online'}
-									onclick={() => selectMode('online')}
-								>
-									Online
-								</button>
-							</div>
-						{/if}
+							{/if}
+						</div>
 					{/if}
 				</header>
 
@@ -273,8 +272,8 @@
 	</div>
 </div>
 
-{#if showSettings}
-	<SettingsModal onclose={closeSettings} />
+{#if showSettings && canOpenSettings}
+	<SettingsModal mode={$gameStore.mode} onclose={closeSettings} />
 {/if}
 
 <style>
@@ -381,11 +380,6 @@
 	.nav-orange {
 		--nav-accent: var(--accent-orange);
 		--nav-fg: var(--accent-orange-fg);
-	}
-
-	.nav-green {
-		--nav-accent: var(--accent-green);
-		--nav-fg: var(--accent-green-fg);
 	}
 
 	.nav-primary {

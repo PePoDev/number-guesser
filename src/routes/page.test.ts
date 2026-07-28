@@ -18,22 +18,28 @@ describe("+page.svelte Component", () => {
     );
   });
 
-  it("should render settings button", () => {
-    render(Page);
-    const settingsButton = screen.getByLabelText("Open Settings");
-    expect(settingsButton).toBeInTheDocument();
+  it("moves settings out of the navigation rail", () => {
+    const { container } = render(Page);
+
+    expect(screen.queryByLabelText("Open Settings")).not.toBeInTheDocument();
+    expect(container.querySelector(".nav-green")).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Open Single Player settings")
+    ).toBeInTheDocument();
   });
 
-  it("should open settings modal when settings button clicked", async () => {
+  it("opens settings for the active single-player mode", async () => {
     const user = userEvent.setup();
     render(Page);
 
-    const settingsButton = screen.getByLabelText("Open Settings");
+    const settingsButton = screen.getByLabelText(
+      "Open Single Player settings"
+    );
     expect(settingsButton).toHaveAttribute("aria-expanded", "false");
     await user.click(settingsButton);
 
     await waitFor(() => {
-      expect(screen.getByText("Game Settings")).toBeInTheDocument();
+      expect(screen.getByText("Single Player Settings")).toBeInTheDocument();
       expect(settingsButton).toHaveAttribute("aria-expanded", "true");
     });
   });
@@ -42,20 +48,75 @@ describe("+page.svelte Component", () => {
     const user = userEvent.setup();
     render(Page);
 
-    // Open settings
-    const settingsButton = screen.getByLabelText("Open Settings");
+    const settingsButton = screen.getByLabelText(
+      "Open Single Player settings"
+    );
     await user.click(settingsButton);
 
     await waitFor(() => {
-      expect(screen.getByText("Game Settings")).toBeInTheDocument();
+      expect(screen.getByText("Single Player Settings")).toBeInTheDocument();
     });
 
-    // Close settings
     const closeButton = screen.getByText("Close");
     await user.click(closeButton);
 
     await waitFor(() => {
-      expect(screen.queryByText("Game Settings")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Single Player Settings")
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("opens settings for local multiplayer", async () => {
+    const user = userEvent.setup();
+    gameStore.setMode("multi");
+    gameStore.startNewGame();
+    render(Page);
+
+    await user.click(
+      screen.getByLabelText("Open Local Multiplayer settings")
+    );
+
+    expect(screen.getByText("Local Multiplayer Settings")).toBeInTheDocument();
+    expect(screen.getByLabelText("Number of Players:")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Max Attempts:")).not.toBeInTheDocument();
+  });
+
+  it("shows online settings only before entering a room", async () => {
+    gameStore.setMode("online");
+    render(Page);
+
+    expect(
+      screen.getByLabelText("Open Online Multiplayer settings")
+    ).toBeInTheDocument();
+    gameStore.applyOnlineSnapshot({
+      room: {
+        id: "AB2C3D",
+        hostUid: "host",
+        phase: "lobby",
+        digitCount: 3,
+        maxPlayers: 2,
+        playerOrder: ["host"],
+        currentGuesserUid: null,
+        winnerUid: null,
+        turnNumber: 0,
+      },
+      players: [
+        {
+          uid: "host",
+          name: "Ada",
+          seat: 0,
+          ready: false,
+          eliminated: false,
+        },
+      ],
+      guesses: [],
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByLabelText("Open Online Multiplayer settings")
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -347,11 +408,12 @@ describe("+page.svelte Component", () => {
     expect(gameInfo).toHaveClass("game-info");
   });
 
-  it("should have settings button with proper styling", () => {
+  it("should style the active-mode settings trigger", () => {
     render(Page);
-    const settingsButton = screen.getByLabelText("Open Settings");
-    expect(settingsButton).toHaveClass("nav-card");
-    expect(settingsButton).toHaveClass("nav-green");
+    const settingsButton = screen.getByLabelText(
+      "Open Single Player settings"
+    );
+    expect(settingsButton).toHaveClass("btn-secondary");
   });
 
   it("should have New Game button with proper styling", () => {
