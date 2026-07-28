@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte'
 	import { gameStore } from '$lib/stores/gameStore'
 	import {
 		onlineGameService,
@@ -21,6 +22,8 @@
 	let targetUid = $state('')
 	let restoreStarted = $state(false)
 	let busy = $state(false)
+	let copiedRoomId = $state(false)
+	let copyStatusTimer: ReturnType<typeof setTimeout> | undefined
 	let activeRoomId = $state($gameStore.online.roomId)
 	const room = $derived($gameStore.online.room)
 	const currentPlayer = $derived(
@@ -190,10 +193,24 @@
 	}
 
 	async function copyRoomId() {
-		if (room) {
+		if (!room) {
+			return
+		}
+		try {
 			await navigator.clipboard.writeText(room.id)
+			copiedRoomId = true
+			clearTimeout(copyStatusTimer)
+			copyStatusTimer = setTimeout(() => {
+				copiedRoomId = false
+			}, 2000)
+		} catch (error) {
+			reportError(error)
 		}
 	}
+
+	onDestroy(() => {
+		clearTimeout(copyStatusTimer)
+	})
 
 	$effect(() => {
 		if (restoreStarted || initialRoomId || $gameStore.online.roomId) {
@@ -320,9 +337,19 @@
 					Room <span data-testid="room-id">{room.id}</span>
 				</h2>
 			</div>
-			<button type="button" onclick={copyRoomId} class="btn-secondary">
-				Copy Room ID
-			</button>
+			<div class="relative">
+				{#if copiedRoomId}
+					<span
+						role="status"
+						class="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fg)] px-3 py-2 text-sm text-[var(--glass-bg)] shadow-lg"
+					>
+						Copied!
+					</span>
+				{/if}
+				<button type="button" onclick={copyRoomId} class="btn-secondary">
+					Copy Room ID
+				</button>
+			</div>
 		</div>
 
 		<p>{`${$gameStore.online.players.length} / ${room.maxPlayers} players`}</p>

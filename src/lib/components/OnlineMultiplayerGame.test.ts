@@ -1,5 +1,5 @@
-import { beforeEach, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/svelte'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/svelte'
 import userEvent from '@testing-library/user-event'
 import { tick } from 'svelte'
 import OnlineMultiplayerGame from './OnlineMultiplayerGame.svelte'
@@ -137,6 +137,10 @@ beforeEach(() => {
 	gameStore.updateSettings({ digitCount: 3, playerCount: 2 })
 })
 
+afterEach(() => {
+	vi.useRealTimers()
+})
+
 it('creates a room from the entered name', async () => {
 	const service = createFakeOnlineGameService({
 		createRoomResult: { uid: 'host', roomId: 'AB2C3D' },
@@ -205,6 +209,53 @@ it('shows lobby readiness and lets the host start', async () => {
 		number: '123',
 	})
 	expect(service.startRoom).toHaveBeenCalledWith('AB2C3D')
+})
+
+it('copies the room ID and temporarily shows a confirmation tooltip', async () => {
+	vi.useFakeTimers()
+	const writeText = vi.fn(async () => undefined)
+	Object.defineProperty(navigator, 'clipboard', {
+		configurable: true,
+		value: { writeText },
+	})
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(readyLobbySnapshot(false))
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService() },
+	})
+
+	await fireEvent.click(screen.getByRole('button', { name: 'Copy Room ID' }))
+	await Promise.resolve()
+
+	expect(writeText).toHaveBeenCalledWith('AB2C3D')
+	expect(screen.getByRole('status')).toHaveTextContent('Copied!')
+
+	await vi.advanceTimersByTimeAsync(2000)
+	await tick()
+	expect(screen.queryByText('Copied!')).not.toBeInTheDocument()
+})
+
+it('shows an error when the room ID cannot be copied', async () => {
+	const user = userEvent.setup()
+	Object.defineProperty(navigator, 'clipboard', {
+		configurable: true,
+		value: {
+			writeText: vi.fn(async () => {
+				throw new Error('Clipboard unavailable.')
+			}),
+		},
+	})
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(readyLobbySnapshot(false))
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService() },
+	})
+
+	await user.click(screen.getByRole('button', { name: 'Copy Room ID' }))
+
+	expect(await screen.findByRole('alert')).toHaveTextContent(
+		'Clipboard unavailable.',
+	)
 })
 
 it('keeps one room subscription while snapshots update', async () => {
