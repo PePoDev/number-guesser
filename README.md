@@ -21,6 +21,8 @@ Example: target `401`, guess `410` → 3 correct digits and 1 correct position.
 - **Local multiplayer:** Two to four players share one device, choose names and secret numbers, and take turns guessing.
 - **Online multiplayer:** Two to four remote players enter display names, create or join a room with a six-character ID, and reconnect after refresh. Firebase keeps secrets private and enforces turns on the server.
 
+Secret-number and guess fields discard non-digits and stop at the configured digit count.
+
 `Enter` submits a guess. `Escape` closes the settings modal.
 
 ## Stack
@@ -84,7 +86,8 @@ src/lib/components/
   SinglePlayerGame.svelte      Single-player UI
   MultiPlayerGame.svelte       Multiplayer UI
   OnlineMultiplayerGame.svelte Online room entry, lobby, and synchronized game
-  SettingsModal.svelte         Settings dialog
+  SettingsModal.svelte         Active-mode settings dialog
+  GitHubStarLink.svelte        Repository link and best-effort live star count
 src/lib/stores/
   gameStore.ts                 All shared game state and logic
 src/lib/firebase/client.ts      Firebase browser initialization
@@ -104,7 +107,7 @@ static/                        CNAME, favicon, robots.txt
 
 Components keep only local UI state. They call intent-based store actions such as `startNewGame`, `addGuess`, `savePlayerSetup`, `addMultiPlayerGuess`, and `nextGuesser`.
 
-Pure helpers such as `validateGuess`, `calculateFeedback`, and `generateRandomNumber` are exported from the store for direct unit testing.
+Pure helpers such as `validateGuess`, `calculateFeedback`, `generateRandomNumber`, and `sanitizeDigits` are exported from the store for direct unit testing.
 
 ## Rules
 
@@ -200,12 +203,12 @@ The interface should feel like one well-built editorial object, not a dashboard.
 
 - A blue grid fills the viewport.
 - One dark-bordered rounded container holds a top ticker, three-column body, and bottom utility row with keyboard hints and the current mode.
-- The left rail contains four numbered accent cards and a shorter purple primary-action card.
+- The left rail contains three numbered accent cards and a shorter purple primary-action card.
 - The center contains the cream glass play panel.
 - The right contains a decorative perspective tunnel of numbered tiles.
 - The ticker is the only looping animation.
 
-The Multiplayer card opens the last selected multiplayer variant; a segmented control inside the play panel switches between Local and Online. Instructions replaces the center-panel game content, Settings opens the modal, and the purple New Game action is disabled online because the host-owned restart remains inside the online flow.
+The Multiplayer card opens the last selected multiplayer variant; a segmented control inside the play panel switches between Local and Online. Instructions replaces the center-panel game content. Each active mode exposes its own Settings button; online settings disappear after room entry. The purple New Game action is disabled online because the host-owned restart remains inside the online flow.
 
 Desktop columns are a ~140px nav rail, a flexible play area with a 320px minimum, and a hero using about 40% of the remaining width.
 
@@ -230,7 +233,7 @@ Define tokens on `:root` in `src/app.css`. Components must reference tokens, nev
 | `--surface-white` | `#ffffff` | Inputs, secondary controls, and translucent surfaces |
 | `--scrim-bg` | `rgba(0,0,0,0.4)` | Settings modal backdrop |
 
-Accent cards map blue to single player, yellow to multiplayer, orange to instructions, green to settings, and purple to the primary action.
+Accent cards map blue to single player, yellow to multiplayer, orange to instructions, and purple to the primary action.
 
 | Token | Value |
 | --- | --- |
@@ -269,14 +272,15 @@ The main display heading ends with one bold italic word in `--glass-accent`. Use
 | Glass panel | Cream surface, dark 1.5px border, 20px radius, 32px/20px responsive padding |
 | Multiplayer switch | Segmented Local/Online control inside the play panel; active choice is dark-filled |
 | Instructions | Orange card swaps the center panel between the game and the how-to-play content |
-| Input | 56px high, white, centered text, 14px radius, visible blue focus ring |
+| Input | 56px high, white, centered text, 14px radius, visible blue focus ring; game-number fields filter to digits and enforce the configured length |
 | Secondary button | 48px high, white, dark border, 14px radius |
+| GitHub stars | Top-right repository link in the game header; shows a validated live count when available and remains a labeled link on API failure |
 | Setup/control strip | Translucent white, dark border, and wrapping controls on narrow screens |
 | Feedback banner | State-tinted low-opacity background and border |
 | History row | Translucent white; newest row has a purple left border |
 | Player card | Landscape nav-card language; inset turn border; red-tinted eliminated state and visible badge |
 | Online multiplayer | One cream-panel flow: name/create/join entry, room-ID lobby with paired Copy and Share actions, accessible confirmation tooltips, readiness, turn/guess state, reconnect status, and host restart |
-| Settings modal | Cream surface, 480px maximum, blurred 40% black scrim, focus trap, and viewport-bounded scrolling |
+| Settings modal | Active-mode title and fields, cream surface, 480px maximum, blurred 40% black scrim, focus trap, and viewport-bounded scrolling |
 | Hero | Decorative CSS/SVG tile tunnel with `aria-hidden="true"` |
 | Utility row | Current mode plus visible `Enter` and `Escape` keyboard hints |
 
@@ -296,6 +300,7 @@ Icons are monochrome line icons, normally 18×18px with a 1.5px stroke.
 - Never remove an outline without a replacement.
 - Mark the hero and duplicated ticker content `aria-hidden`.
 - Trap modal focus, restore it on close, and support `Escape`.
+- Keep the GitHub repository link accessible while its star count is loading or unavailable.
 
 ### Responsive behavior
 
@@ -315,7 +320,8 @@ Use Tailwind breakpoints `sm: 600px`, `md: 900px`, and `lg: 1200px`. Document an
 | Single-player panel | `src/lib/components/SinglePlayerGame.svelte` |
 | Multiplayer panels and player cards | `src/lib/components/MultiPlayerGame.svelte` |
 | Online entry, lobby, synchronized game, reconnect, and result states | `src/lib/components/OnlineMultiplayerGame.svelte` |
-| Settings modal | `src/lib/components/SettingsModal.svelte` |
+| Active-mode settings modal | `src/lib/components/SettingsModal.svelte` |
+| GitHub repository link and live star count | `src/lib/components/GitHubStarLink.svelte` |
 | Tokens, Tailwind `@theme` mappings, and global motion/focus styles | `src/app.css` |
 | Display and body font loading | `src/app.html` |
 
@@ -326,6 +332,8 @@ Add new surfaces to this table. The initial editorial design system was recorded
 2026-07-28 — Implemented the editorial grid stage across all game, navigation, feedback, player, and settings surfaces.
 
 2026-07-28 — Added shareable online-room links that select Online Multiplayer and pre-fill the room ID.
+
+2026-07-28 — Moved settings into each game mode, added a best-effort live GitHub star link, and restricted game-number fields to digits.
 
 ## Change guide
 
