@@ -1,5 +1,10 @@
 <script lang="ts">
-	import { gameStore, validateGuess, calculateFeedback } from '$lib/stores/gameStore';
+	import {
+		gameStore,
+		validateGuess,
+		calculateFeedback,
+		sanitizeDigits,
+	} from '$lib/stores/gameStore';
 	
 	let guessInput = $state('');
 	let currentGuess = $state('');
@@ -88,6 +93,15 @@
 			makeGuess();
 		}
 	}
+
+	function handleGuessInput(event: Event) {
+		const input = event.currentTarget as HTMLInputElement
+		guessInput = sanitizeDigits(
+			input.value,
+			$gameStore.settings.digitCount,
+		)
+		input.value = guessInput
+	}
 </script>
 
 <div class="game-area">
@@ -96,10 +110,12 @@
 		<input
 			id="single-player-guess"
 			type="text"
-			bind:value={guessInput}
+			value={guessInput}
+			oninput={handleGuessInput}
 			onkeypress={handleKeyPress}
 			placeholder="Enter number"
 			maxlength={$gameStore.settings.digitCount}
+			inputmode="numeric"
 			pattern="[0-9]*"
 			disabled={$gameStore.gameOver}
 			class="field-input w-52 text-lg"

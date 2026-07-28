@@ -27,6 +27,15 @@ describe("SinglePlayerGame Component", () => {
     expect(screen.getByRole("textbox", { name: "Guess" })).toBeInTheDocument();
   });
 
+  it('keeps only digits in typed or pasted guesses', async () => {
+    render(SinglePlayerGame)
+    const input = screen.getByLabelText('Guess')
+
+    await fireEvent.input(input, { target: { value: '0a1-2' } })
+
+    expect(input).toHaveValue('012')
+  })
+
   it("should allow user to type in input", async () => {
     const user = userEvent.setup();
     render(SinglePlayerGame);
@@ -115,7 +124,7 @@ describe("SinglePlayerGame Component", () => {
     });
   });
 
-  it("should show validation error for invalid input", async () => {
+  it("should treat filtered non-digit input as empty", async () => {
     const user = userEvent.setup();
     render(SinglePlayerGame);
 
@@ -126,7 +135,7 @@ describe("SinglePlayerGame Component", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Please enter a valid number/)
+        screen.getByText(/Please enter a number before submitting/)
       ).toBeInTheDocument();
     });
   });
