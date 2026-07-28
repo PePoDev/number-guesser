@@ -258,6 +258,72 @@ it('shows an error when the room ID cannot be copied', async () => {
 	)
 })
 
+it('shares the room invite link when native sharing is available', async () => {
+	const user = userEvent.setup()
+	const share = vi.fn(async () => undefined)
+	const writeText = vi.fn(async () => undefined)
+	Object.defineProperty(navigator, 'share', {
+		configurable: true,
+		value: share,
+	})
+	Object.defineProperty(navigator, 'clipboard', {
+		configurable: true,
+		value: { writeText },
+	})
+	window.history.replaceState({}, '', '/')
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(readyLobbySnapshot(false))
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService() },
+	})
+
+	await user.click(screen.getByRole('button', { name: 'Share' }))
+
+	expect(share).toHaveBeenCalledWith({
+		title: 'Number Guessing Game',
+		text: 'Join my number guessing room AB2C3D.',
+		url: `${window.location.origin}/?room=AB2C3D`,
+	})
+	expect(writeText).not.toHaveBeenCalled()
+})
+
+it.each([
+	['unavailable', undefined],
+	[
+		'rejected',
+		vi.fn(async () => {
+			throw new Error('Share cancelled.')
+		}),
+	],
+])(
+	'copies the invite link when native sharing is %s',
+	async (_scenario, share) => {
+		const user = userEvent.setup()
+		const writeText = vi.fn(async () => undefined)
+		Object.defineProperty(navigator, 'share', {
+			configurable: true,
+			value: share,
+		})
+		Object.defineProperty(navigator, 'clipboard', {
+			configurable: true,
+			value: { writeText },
+		})
+		window.history.replaceState({}, '', '/')
+		gameStore.setOnlineIdentity('host', 'AB2C3D')
+		gameStore.applyOnlineSnapshot(readyLobbySnapshot(false))
+		render(OnlineMultiplayerGame, {
+			props: { service: createFakeOnlineGameService() },
+		})
+
+		await user.click(screen.getByRole('button', { name: 'Share' }))
+
+		expect(writeText).toHaveBeenCalledWith(
+			`${window.location.origin}/?room=AB2C3D`,
+		)
+		expect(screen.getByRole('status')).toHaveTextContent('Link copied!')
+	},
+)
+
 it('keeps one room subscription while snapshots update', async () => {
 	const service = createFakeOnlineGameService()
 	gameStore.setOnlineIdentity('host', 'AB2C3D')

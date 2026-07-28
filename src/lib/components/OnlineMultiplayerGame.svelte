@@ -23,7 +23,9 @@
 	let restoreStarted = $state(false)
 	let busy = $state(false)
 	let copiedRoomId = $state(false)
+	let copiedInviteLink = $state(false)
 	let copyStatusTimer: ReturnType<typeof setTimeout> | undefined
+	let shareStatusTimer: ReturnType<typeof setTimeout> | undefined
 	let activeRoomId = $state($gameStore.online.roomId)
 	const room = $derived($gameStore.online.room)
 	const currentPlayer = $derived(
@@ -208,8 +210,48 @@
 		}
 	}
 
+	function roomInviteUrl(roomId: string): string {
+		const url = new URL(window.location.href)
+		url.search = ''
+		url.hash = ''
+		url.searchParams.set('room', roomId)
+		return url.toString()
+	}
+
+	async function copyInviteLink(url: string) {
+		await navigator.clipboard.writeText(url)
+		copiedInviteLink = true
+		clearTimeout(shareStatusTimer)
+		shareStatusTimer = setTimeout(() => {
+			copiedInviteLink = false
+		}, 2000)
+	}
+
+	async function shareRoom() {
+		if (!room) {
+			return
+		}
+		const url = roomInviteUrl(room.id)
+		try {
+			if (navigator.share) {
+				await navigator.share({
+					title: 'Number Guessing Game',
+					text: `Join my number guessing room ${room.id}.`,
+					url,
+				})
+				return
+			}
+		} catch {}
+		try {
+			await copyInviteLink(url)
+		} catch (error) {
+			reportError(error)
+		}
+	}
+
 	onDestroy(() => {
 		clearTimeout(copyStatusTimer)
+		clearTimeout(shareStatusTimer)
 	})
 
 	$effect(() => {
@@ -337,18 +379,33 @@
 					Room <span data-testid="room-id">{room.id}</span>
 				</h2>
 			</div>
-			<div class="relative">
-				{#if copiedRoomId}
-					<span
-						role="status"
-						class="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fg)] px-3 py-2 text-sm text-[var(--glass-bg)] shadow-lg"
-					>
-						Copied!
-					</span>
-				{/if}
-				<button type="button" onclick={copyRoomId} class="btn-secondary">
-					Copy Room ID
-				</button>
+			<div class="flex flex-wrap gap-2">
+				<div class="relative">
+					{#if copiedRoomId}
+						<span
+							role="status"
+							class="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fg)] px-3 py-2 text-sm text-[var(--glass-bg)] shadow-lg"
+						>
+							Copied!
+						</span>
+					{/if}
+					<button type="button" onclick={copyRoomId} class="btn-secondary">
+						Copy Room ID
+					</button>
+				</div>
+				<div class="relative">
+					{#if copiedInviteLink}
+						<span
+							role="status"
+							class="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fg)] px-3 py-2 text-sm text-[var(--glass-bg)] shadow-lg"
+						>
+							Link copied!
+						</span>
+					{/if}
+					<button type="button" onclick={shareRoom} class="btn-secondary">
+						Share
+					</button>
+				</div>
 			</div>
 		</div>
 
