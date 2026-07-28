@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/svelte";
+import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { get } from "svelte/store";
 import MultiPlayerGame from "./MultiPlayerGame.svelte";
@@ -43,6 +43,15 @@ describe("MultiPlayerGame Component", () => {
       render(MultiPlayerGame);
       expect(screen.getByText("Save & Continue")).toBeInTheDocument();
     });
+
+    it('keeps only digits in local secret numbers', async () => {
+      render(MultiPlayerGame)
+      const input = screen.getByPlaceholderText('Enter your secret number')
+
+      await fireEvent.input(input, { target: { value: '0a1-2' } })
+
+      expect(input).toHaveValue('012')
+    })
 
     it("should show inline feedback when the secret is empty", async () => {
       const user = userEvent.setup();
@@ -208,6 +217,14 @@ describe("MultiPlayerGame Component", () => {
       expect(screen.getByRole("textbox", { name: "Guess" })).toBeInTheDocument();
       expect(screen.getByText("Submit Guess")).toBeInTheDocument();
     });
+
+    it('keeps only digits in local guesses', async () => {
+      const input = screen.getByLabelText('Guess')
+
+      await fireEvent.input(input, { target: { value: '4x5-6' } })
+
+      expect(input).toHaveValue('456')
+    })
 
     it("should announce the current turn", () => {
       expect(screen.getByText(/Alice's turn to guess/)).toHaveAttribute(
@@ -379,7 +396,7 @@ describe("MultiPlayerGame Component", () => {
       expect(get(gameStore).players[0].number).toBe("012");
     });
 
-    it("should show inline feedback for an invalid guess", async () => {
+    it("should filter a non-digit guess before submission", async () => {
       const user = userEvent.setup();
 
       // Reset and configure for 2 players
@@ -411,13 +428,24 @@ describe("MultiPlayerGame Component", () => {
         timeout: 3000,
       });
 
-      // Try to submit invalid guess (non-numeric)
-      await user.type(screen.getByPlaceholderText("Enter guess"), "abc");
+      const input = screen.getByPlaceholderText("Enter guess");
+      const guessCount = get(gameStore).players.reduce(
+        (total, player) => total + player.guesses.length,
+        0,
+      );
+      await user.type(input, "abc");
       await user.click(screen.getByText("Submit Guess"));
 
+      expect(input).toHaveValue("");
       expect(screen.getByRole("alert")).toHaveTextContent(
-        "Please enter a valid number."
+        "Please enter a number before submitting.",
       );
+      expect(
+        get(gameStore).players.reduce(
+          (total, player) => total + player.guesses.length,
+          0,
+        ),
+      ).toBe(guessCount);
     });
 
     it("should pad short guesses with leading zeros", async () => {

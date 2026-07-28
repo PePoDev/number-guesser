@@ -1,5 +1,11 @@
 <script lang="ts">
-import { gameStore, validateGuess, calculateFeedback, type GuessEntry } from '$lib/stores/gameStore';
+import {
+	gameStore,
+	validateGuess,
+	calculateFeedback,
+	sanitizeDigits,
+	type GuessEntry,
+} from '$lib/stores/gameStore';
 	
 const playerAccents = ['blue', 'yellow', 'orange', 'green'];
 	
@@ -53,6 +59,11 @@ function makeMultiPlayerGuess() {
 	if ($gameStore.gamePhase !== 'guessing') return;
 	
 	let guess = multiGuessInput.trim();
+
+	if (!guess) {
+		feedbackMessage = 'Please enter a number before submitting.';
+		return;
+	}
 	
 	// Pad with leading zeros if needed
 	if (guess.length < $gameStore.settings.digitCount && !isNaN(Number(guess))) {
@@ -100,6 +111,24 @@ function handleGuessKeyPress(e: KeyboardEvent) {
 		makeMultiPlayerGuess();
 	}
 }
+
+function handleSecretInput(event: Event) {
+	const input = event.currentTarget as HTMLInputElement
+	playerNumberInput = sanitizeDigits(
+		input.value,
+		$gameStore.settings.digitCount,
+	)
+	input.value = playerNumberInput
+}
+
+function handleMultiGuessInput(event: Event) {
+	const input = event.currentTarget as HTMLInputElement
+	multiGuessInput = sanitizeDigits(
+		input.value,
+		$gameStore.settings.digitCount,
+	)
+	input.value = multiGuessInput
+}
 </script>
 
 {#if $gameStore.gamePhase === 'setup'}
@@ -133,10 +162,12 @@ function handleGuessKeyPress(e: KeyboardEvent) {
 		<input
 			id="player-number-input"
 			type="text"
-			bind:value={playerNumberInput}
+			value={playerNumberInput}
+			oninput={handleSecretInput}
 			onkeypress={handleSetupKeyPress}
 			placeholder="Enter your secret number"
 			maxlength={$gameStore.settings.digitCount}
+			inputmode="numeric"
 			pattern="[0-9]*"
 			class="field-input min-w-0 flex-1"
 		/>
@@ -207,10 +238,12 @@ function handleGuessKeyPress(e: KeyboardEvent) {
 			<input
 				id="multiplayer-guess"
 				type="text"
-				bind:value={multiGuessInput}
+				value={multiGuessInput}
+				oninput={handleMultiGuessInput}
 				onkeypress={handleGuessKeyPress}
 				placeholder="Enter guess"
 				maxlength={$gameStore.settings.digitCount}
+				inputmode="numeric"
 				pattern="[0-9]*"
 				class="field-input w-40"
 			/>
