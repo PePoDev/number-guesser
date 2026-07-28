@@ -156,6 +156,7 @@ Firebase dependencies and backend deployment are explicitly approved for online 
 | End-to-end | `e2e/*.spec.ts` | Complete single-player and multiplayer flows |
 | Firebase integration | `functions/src/*.test.ts`, `src/lib/firebase/firestore.rules.test.ts` | Emulator-only transactions, cleanup, and security rules |
 | Online end-to-end | `e2e/online-multiplayer.spec.ts` | Separate browser contexts for create/join, turns, reconnect, and errors |
+| Deployment | `src/tests/deploymentWorkflows.test.ts` | Secret injection, missing-config guard, and Java runtime requirements |
 | Setup | `src/tests/setup.ts` | DOM environment and matchers |
 
 ### Test requirements
@@ -360,7 +361,7 @@ Add new surfaces to this table. The initial editorial design system was recorded
 
 `@sveltejs/adapter-static` builds to `build/`. GitHub Pages deploys the static client from `main` through `.github/workflows/deploy.yml`; `static/CNAME` sets `number-guesser.pepo.dev`. `.github/workflows/deploy-firebase.yml` deploys Cloud Functions and Firestore rules/indexes to `asia-southeast1`.
 
-Before the first backend deploy, create the Firestore database and enable Anonymous Auth. Configure these GitHub repository variables:
+Before the first backend deploy, create the Firestore database and enable Anonymous Auth. Configure these GitHub repository secrets:
 
 - `PUBLIC_FIREBASE_API_KEY`
 - `PUBLIC_FIREBASE_AUTH_DOMAIN`
