@@ -240,6 +240,10 @@ function createGameStore() {
 
 export const gameStore = createGameStore();
 
+export function sanitizeDigits(value: string, maxLength: number): string {
+  return value.replace(/\D/g, '').slice(0, maxLength)
+}
+
 // Helper function to generate random number
 function generateRandomNumber(digitCount: number): string {
   const max = Math.pow(10, digitCount) - 1;

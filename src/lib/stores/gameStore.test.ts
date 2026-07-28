@@ -4,6 +4,7 @@ import {
   gameStore,
   validateGuess,
   calculateFeedback,
+  sanitizeDigits,
   type GameState,
 } from "./gameStore";
 
@@ -461,3 +462,17 @@ describe("calculateFeedback", () => {
     expect(result.correctPositions).toBe(1);
   });
 });
+
+describe('sanitizeDigits', () => {
+  it('removes non-digit characters', () => {
+    expect(sanitizeDigits('a1-2.3b', 5)).toBe('123')
+  })
+
+  it('limits the result without removing leading zeroes', () => {
+    expect(sanitizeDigits('001234', 4)).toBe('0012')
+  })
+
+  it('handles a pasted mixed value', () => {
+    expect(sanitizeDigits(' 0a9\n8 ', 3)).toBe('098')
+  })
+})
