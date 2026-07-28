@@ -1,23 +1,24 @@
 <script lang="ts">
-    import { gameStore } from '$lib/stores/gameStore';
+    import { gameStore, type GameMode } from '$lib/stores/gameStore';
     
     interface Props {
+        mode: GameMode;
         onclose: () => void;
     }
     
-    let { onclose }: Props = $props();
+    let { mode, onclose }: Props = $props();
     
-    let mode = $state($gameStore.mode);
     let digitCount = $state($gameStore.settings.digitCount);
     let maxAttempts = $state($gameStore.settings.maxAttempts);
     let playerCount = $state($gameStore.settings.playerCount);
     let scrimEl: HTMLDivElement | undefined = $state(undefined);
     let previouslyFocused: HTMLElement | null = null;
     
-    function updateGameMode() {
-        gameStore.setMode(mode);
-        updateSettings();
-    }
+    const titles: Record<GameMode, string> = {
+        single: 'Single Player Settings',
+        multi: 'Local Multiplayer Settings',
+        online: 'Online Multiplayer Settings'
+    };
     
     function updateSettings() {
         gameStore.updateSettings({
@@ -88,7 +89,7 @@
 >
     <div class="panel animate-modal-slide-in my-auto w-full max-w-[480px]">
         <div class="flex items-center justify-between border-b-[1.5px] border-[var(--glass-border)] p-5">
-            <h2 id="settings-title" class="font-display text-2xl font-bold">Game Settings</h2>
+            <h2 id="settings-title" class="font-display text-2xl font-bold">{titles[mode]}</h2>
             <button
                 onclick={handleClose}
                 class="btn-secondary flex h-12 w-12 items-center justify-center rounded-full !p-0"
@@ -101,20 +102,6 @@
         </div>
         
         <div class="space-y-5 p-5">
-            <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                <label for="game-mode" class="font-semibold">Game Mode:</label>
-                <select
-                    id="game-mode"
-                    bind:value={mode}
-                    onchange={updateGameMode}
-                    class="field-select w-full sm:w-auto"
-                >
-                    <option value="single">Single Player</option>
-                    <option value="multi">Local Multiplayer</option>
-                    <option value="online">Online Multiplayer</option>
-                </select>
-            </div>
-            
             {#if mode === 'multi' || mode === 'online'}
                 <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <label for="player-count" class="font-semibold">Number of Players:</label>
