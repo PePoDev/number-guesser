@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { get } from "svelte/store";
 import {
   gameStore,
   validateGuess,
   calculateFeedback,
   sanitizeDigits,
-  type GameState,
+  keepDigits,
 } from "./gameStore";
 
 describe("Game Store", () => {
@@ -516,5 +516,21 @@ describe('sanitizeDigits', () => {
   it('reads Thai numerals as digits', () => {
     expect(sanitizeDigits('๑๒๓', 3)).toBe('123')
     expect(sanitizeDigits('๐9๕', 3)).toBe('095')
+  })
+})
+
+describe('keepDigits', () => {
+  it('filters the field it was typed into and returns the digits', () => {
+    const input = document.createElement('input')
+    input.value = '๑2a34'
+    let kept = ''
+    input.addEventListener('input', (event) => {
+      kept = keepDigits(event, 3)
+    })
+
+    input.dispatchEvent(new Event('input'))
+
+    expect(kept).toBe('123')
+    expect(input.value).toBe('123')
   })
 })

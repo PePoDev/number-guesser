@@ -1,4 +1,4 @@
-import { writable, derived } from "svelte/store";
+import { writable } from "svelte/store";
 import type {
   OnlineConnectionStatus,
   OnlineErrorCode,
@@ -151,7 +151,6 @@ function createGameStore() {
             guessHistory: [],
           };
         } else if (state.mode === "multi") {
-          // Initialize multiplayer
           const players: Player[] = [];
           for (let i = 0; i < state.settings.playerCount; i++) {
             players.push({
@@ -263,11 +262,17 @@ export function sanitizeDigits(value: string, maxLength: number): string {
     .slice(0, maxLength)
 }
 
-// Helper function to generate random number
+// Rewrites the field itself so stripped characters never show.
+export function keepDigits(event: Event, maxLength: number): string {
+  const input = event.currentTarget as HTMLInputElement
+  input.value = sanitizeDigits(input.value, maxLength)
+  return input.value
+}
+
 function generateRandomNumber(digitCount: number): string {
-  const max = Math.pow(10, digitCount) - 1;
-  const randomNum = Math.floor(Math.random() * (max + 1));
-  return randomNum.toString().padStart(digitCount, "0");
+  return Math.floor(Math.random() * 10 ** digitCount)
+    .toString()
+    .padStart(digitCount, "0");
 }
 
 export function validateGuess(
@@ -277,56 +282,32 @@ export function validateGuess(
   if (guess.includes("-") || isNaN(Number(guess))) {
     return { valid: false, problem: "invalid" };
   }
-
-  const num = parseInt(guess);
-  if (num < 0 || num > Math.pow(10, digitCount) - 1) {
+  if (parseInt(guess) >= 10 ** digitCount) {
     return { valid: false, problem: "range" };
   }
-
   if (guess.length !== digitCount) {
     return { valid: false, problem: "length" };
   }
-
   return { valid: true, problem: null };
 }
 
+// Each guessed digit can match at most one unused digit of the target.
 export function calculateFeedback(
   guess: string,
   target: string
 ): { correctDigits: number; correctPositions: number } {
-  const guessDigits = guess.split("");
-  const targetDigits = target.split("");
-  const digitCount = guess.length;
-
-  let correctPositions = 0;
+  const unmatched = [...target];
   let correctDigits = 0;
-
-  // Count correct positions
-  for (let i = 0; i < digitCount; i++) {
-    if (guessDigits[i] === targetDigits[i]) {
+  let correctPositions = 0;
+  [...guess].forEach((digit, index) => {
+    if (digit === target[index]) {
       correctPositions++;
     }
-  }
-
-  // Count correct digits
-  const targetDigitCount: Record<string, number> = {};
-  const guessDigitCount: Record<string, number> = {};
-
-  for (let i = 0; i < digitCount; i++) {
-    targetDigitCount[targetDigits[i]] =
-      (targetDigitCount[targetDigits[i]] || 0) + 1;
-    guessDigitCount[guessDigits[i]] =
-      (guessDigitCount[guessDigits[i]] || 0) + 1;
-  }
-
-  for (const digit in guessDigitCount) {
-    if (targetDigitCount[digit]) {
-      correctDigits += Math.min(
-        guessDigitCount[digit],
-        targetDigitCount[digit]
-      );
+    const match = unmatched.indexOf(digit);
+    if (match !== -1) {
+      unmatched.splice(match, 1);
+      correctDigits++;
     }
-  }
-
+  });
   return { correctDigits, correctPositions };
 }

@@ -1,4 +1,4 @@
-export type DomainErrorCode =
+type DomainErrorCode =
 	| 'ROOM_ID_INVALID'
 	| 'NAME_INVALID'
 	| 'DIGIT_COUNT_INVALID'

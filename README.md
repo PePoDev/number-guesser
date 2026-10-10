@@ -113,7 +113,7 @@ static/                        CNAME, favicon, robots.txt
 
 Components keep only local UI state. They call intent-based store actions such as `startNewGame`, `addGuess`, `savePlayerSetup`, `addMultiPlayerGuess`, and `nextGuesser`.
 
-Pure helpers such as `validateGuess`, `calculateFeedback`, `generateRandomNumber`, and `sanitizeDigits` are exported from the store for direct unit testing.
+Pure helpers such as `validateGuess`, `calculateFeedback`, `generateRandomNumber`, and `sanitizeDigits` are exported from the store for direct unit testing. `keepDigits` applies `sanitizeDigits` to an input event, so every number field filters the same way.
 
 Online rooms are server-authoritative:
 

@@ -5,7 +5,7 @@ export const locales = ['en', 'th'] as const
 
 export type Locale = (typeof locales)[number]
 
-export type RichText = Array<string | { value: string | number }>
+type RichText = Array<string | { value: string | number }>
 
 export type NoteMark = 'none' | 'out' | 'in'
 
@@ -250,7 +250,6 @@ const en = {
 			ROOM_NOT_READY: 'The room is not ready to start.',
 			ROOM_NOT_GUESSING: 'This game is not accepting guesses.',
 			ROOM_NOT_FINISHED: 'The game must finish before restarting.',
-			ACTIVE_MATCH_LEAVE_DENIED: 'You cannot leave during an active match.',
 			GUESS_INVALID: 'Enter a number with the configured digit count.',
 			GUESS_INPUT_INVALID: 'Enter a valid guess and target.',
 			TURN_STALE: 'The turn changed. Try again.',
@@ -486,7 +485,6 @@ const th: Messages = {
 			ROOM_NOT_READY: 'ห้องยังไม่พร้อมเริ่มเกม',
 			ROOM_NOT_GUESSING: 'ตอนนี้ยังทายไม่ได้',
 			ROOM_NOT_FINISHED: 'ต้องจบเกมก่อนจึงจะเริ่มใหม่ได้',
-			ACTIVE_MATCH_LEAVE_DENIED: 'ออกจากห้องระหว่างเกมไม่ได้',
 			GUESS_INVALID: 'ใส่ตัวเลขให้ครบตามจำนวนหลักที่กำหนด',
 			GUESS_INPUT_INVALID: 'ใส่คำทายและเลือกผู้เล่นเป้าหมายให้ถูกต้อง',
 			TURN_STALE: 'ตาเปลี่ยนไปแล้ว ลองใหม่อีกครั้ง',

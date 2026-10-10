@@ -4,7 +4,7 @@ import {
 	gameStore,
 	validateGuess,
 	calculateFeedback,
-	sanitizeDigits,
+	keepDigits,
 	type GuessEntry,
 } from '$lib/stores/gameStore';
 import { messages, type Messages } from '$lib/i18n/messages';
@@ -192,23 +192,6 @@ function handleGuessKeyDown(e: KeyboardEvent) {
 	}
 }
 
-function handleSecretInput(event: Event) {
-	const input = event.currentTarget as HTMLInputElement
-	playerNumberInput = sanitizeDigits(
-		input.value,
-		$gameStore.settings.digitCount,
-	)
-	input.value = playerNumberInput
-}
-
-function handleMultiGuessInput(event: Event) {
-	const input = event.currentTarget as HTMLInputElement
-	multiGuessInput = sanitizeDigits(
-		input.value,
-		$gameStore.settings.digitCount,
-	)
-	input.value = multiGuessInput
-}
 </script>
 
 {#if $gameStore.gamePhase === 'setup'}
@@ -248,7 +231,7 @@ function handleMultiGuessInput(event: Event) {
 				id="player-number-input"
 				type={secretVisible ? 'text' : 'password'}
 				value={playerNumberInput}
-				oninput={handleSecretInput}
+				oninput={(event) => (playerNumberInput = keepDigits(event, $gameStore.settings.digitCount))}
 				onkeydown={handleSetupKeyDown}
 				placeholder={t.multi.secretPlaceholder}
 				inputmode="numeric"
@@ -352,7 +335,7 @@ function handleMultiGuessInput(event: Event) {
 				type="text"
 				bind:this={guessField}
 				value={multiGuessInput}
-				oninput={handleMultiGuessInput}
+				oninput={(event) => (multiGuessInput = keepDigits(event, $gameStore.settings.digitCount))}
 				onkeydown={handleGuessKeyDown}
 				placeholder={t.multi.guessPlaceholder}
 				inputmode="numeric"

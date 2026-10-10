@@ -211,7 +211,6 @@ describe("+page.svelte Component", () => {
   });
 
   it("should not display attempts in multiplayer mode", async () => {
-    const user = userEvent.setup();
     gameStore.setMode("multi");
     gameStore.startNewGame();
     render(Page);

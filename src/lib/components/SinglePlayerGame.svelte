@@ -4,7 +4,7 @@
 		gameStore,
 		validateGuess,
 		calculateFeedback,
-		sanitizeDigits,
+		keepDigits,
 		type SinglePlayerGuess,
 	} from '$lib/stores/gameStore'
 	import { messages, type Messages, type NoteMark } from '$lib/i18n/messages'
@@ -92,11 +92,6 @@
 			return
 		}
 
-		if (guess.length !== digitCount) {
-			warn((t) => t.validation.length(digitCount))
-			return
-		}
-
 		const validation = validateGuess(guess, digitCount)
 		if (!validation.valid) {
 			const { problem } = validation
@@ -148,14 +143,6 @@
 		}
 	}
 
-	function handleGuessInput(event: Event) {
-		const input = event.currentTarget as HTMLInputElement
-		guessInput = sanitizeDigits(
-			input.value,
-			$gameStore.settings.digitCount,
-		)
-		input.value = guessInput
-	}
 </script>
 
 <div class="game-area">
@@ -166,7 +153,7 @@
 			type="text"
 			bind:this={guessField}
 			value={guessInput}
-			oninput={handleGuessInput}
+			oninput={(event) => (guessInput = keepDigits(event, $gameStore.settings.digitCount))}
 			onkeydown={handleKeyDown}
 			placeholder={t.single.placeholder}
 			inputmode="numeric"
@@ -275,7 +262,8 @@
 	.note-out {
 		background: color-mix(in srgb, var(--glass-muted) 16%, var(--surface-white));
 		color: var(--glass-muted);
-		text-decoration: line-through 2px;
+		text-decoration-line: line-through;
+		text-decoration-thickness: 2px;
 	}
 
 	.note-in {

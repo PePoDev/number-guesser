@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { gameStore } from '$lib/stores/gameStore';
+	import { onMount } from 'svelte';
+	import { gameStore, type GameMode } from '$lib/stores/gameStore';
 	import SettingsModal from '$lib/components/SettingsModal.svelte';
 	import SinglePlayerGame from '$lib/components/SinglePlayerGame.svelte';
 	import MultiPlayerGame from '$lib/components/MultiPlayerGame.svelte';
@@ -8,11 +9,8 @@
 	import { onlineGameService } from '$lib/services/onlineGameService';
 	import { messages } from '$lib/i18n/messages';
 
-	type NavMode = 'single' | 'multi' | 'online';
-
 	let showSettings = $state(false);
 	let showInstructions = $state(false);
-	let sessionRestoreStarted = $state(false);
 	let chosenMultiMode = $state<'multi' | 'online'>('multi');
 	let invitedRoomId = $state('');
 	const displayedDigitCount = $derived(
@@ -25,24 +23,13 @@
 	const settingsLabel = $derived(t.header.openSettings(t.modes[$gameStore.mode]));
 	const tickerText = $derived(`${t.ticker.join(' ✦ ')} ✦ `);
 
-	function openSettings() {
-		showSettings = true;
-	}
-
-	function closeSettings() {
-		showSettings = false;
-	}
-
 	function startNewGame() {
 		showInstructions = false;
 		gameStore.startNewGame();
 	}
 
-	function selectMode(mode: NavMode) {
+	function selectMode(mode: GameMode) {
 		showInstructions = false;
-		if (mode === 'multi' || mode === 'online') {
-			chosenMultiMode = mode;
-		}
 		if ($gameStore.mode === mode) {
 			return;
 		}
@@ -50,9 +37,29 @@
 		gameStore.startNewGame();
 	}
 
-	function toggleInstructions() {
-		showInstructions = !showInstructions;
-	}
+	const navCards = $derived([
+		{
+			number: '01',
+			accent: 'nav-blue',
+			label: t.nav.single,
+			pressed: $gameStore.mode === 'single' && !showInstructions,
+			onclick: () => selectMode('single'),
+		},
+		{
+			number: '02',
+			accent: 'nav-yellow',
+			label: t.nav.multi,
+			pressed: $gameStore.mode !== 'single' && !showInstructions,
+			onclick: () => selectMode(chosenMultiMode),
+		},
+		{
+			number: '03',
+			accent: 'nav-orange',
+			label: t.nav.instructions,
+			pressed: showInstructions,
+			onclick: () => (showInstructions = !showInstructions),
+		},
+	]);
 
 	$effect(() => {
 		if ($gameStore.mode === 'multi' || $gameStore.mode === 'online') {
@@ -60,12 +67,7 @@
 		}
 	});
 
-	$effect(() => {
-		if (sessionRestoreStarted) {
-			return;
-		}
-
-		sessionRestoreStarted = true;
+	onMount(() => {
 		// Single player is always ready to play; the online component reconnects
 		// a saved room or pre-fills an invite on its own.
 		gameStore.startNewGame();
@@ -100,48 +102,22 @@
 
 		<div class="stage-body grid grid-cols-1 gap-3 p-3 sm:gap-4 sm:p-4 md:grid-cols-[140px_minmax(320px,6fr)_minmax(0,4fr)]">
 			<nav class="nav-rail grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 md:grid-cols-1 md:grid-rows-[1fr_1fr_1fr_auto]" aria-label={t.nav.label}>
-				<button
-					type="button"
-					class="nav-card nav-blue"
-					aria-pressed={$gameStore.mode === 'single' && !showInstructions}
-					onclick={() => selectMode('single')}
-				>
-					<span class="nav-meta">
-						<span>01</span>
-						<svg class="max-sm:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-							<path d="M5 12h14M13 6l6 6-6 6" />
-						</svg>
-					</span>
-					<span class="nav-label">{t.nav.single}</span>
-				</button>
-				<button
-					type="button"
-					class="nav-card nav-yellow"
-					aria-pressed={($gameStore.mode === 'multi' || $gameStore.mode === 'online') && !showInstructions}
-					onclick={() => selectMode(chosenMultiMode)}
-				>
-					<span class="nav-meta">
-						<span>02</span>
-						<svg class="max-sm:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-							<path d="M5 12h14M13 6l6 6-6 6" />
-						</svg>
-					</span>
-					<span class="nav-label">{t.nav.multi}</span>
-				</button>
-				<button
-					type="button"
-					class="nav-card nav-orange"
-					aria-pressed={showInstructions}
-					onclick={toggleInstructions}
-				>
-					<span class="nav-meta">
-						<span>03</span>
-						<svg class="max-sm:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-							<path d="M5 12h14M13 6l6 6-6 6" />
-						</svg>
-					</span>
-					<span class="nav-label">{t.nav.instructions}</span>
-				</button>
+				{#each navCards as card (card.number)}
+					<button
+						type="button"
+						class="nav-card {card.accent}"
+						aria-pressed={card.pressed}
+						onclick={card.onclick}
+					>
+						<span class="nav-meta">
+							<span>{card.number}</span>
+							<svg class="max-sm:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M5 12h14M13 6l6 6-6 6" />
+							</svg>
+						</span>
+						<span class="nav-label">{card.label}</span>
+					</button>
+				{/each}
 				<button
 					type="button"
 					class="nav-card nav-primary"
@@ -171,7 +147,7 @@
 								title={settingsLabel}
 								aria-haspopup="dialog"
 								aria-expanded={showSettings}
-								onclick={openSettings}
+								onclick={() => (showSettings = true)}
 							>
 								<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 									<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
@@ -261,7 +237,7 @@
 </div>
 
 {#if showSettings}
-	<SettingsModal mode={$gameStore.mode} onclose={closeSettings} />
+	<SettingsModal mode={$gameStore.mode} onclose={() => (showSettings = false)} />
 {/if}
 
 <style>

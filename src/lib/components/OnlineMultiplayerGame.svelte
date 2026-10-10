@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { onDestroy, onMount, tick, untrack } from 'svelte'
+	import { onMount, tick, untrack } from 'svelte'
 	import { replaceState } from '$app/navigation'
-	import { gameStore, sanitizeDigits } from '$lib/stores/gameStore'
+	import { gameStore, keepDigits } from '$lib/stores/gameStore'
 	import {
 		onlineGameService,
 		preloadOnlineBackend,
@@ -24,7 +24,6 @@
 	let secret = $state('')
 	let guess = $state('')
 	let targetChoice = $state('')
-	let restoreStarted = $state(false)
 	let confirmingForfeit = $state(false)
 	let guessField = $state<HTMLInputElement>()
 	let heading = $state<HTMLElement>()
@@ -33,10 +32,8 @@
 	let clock = $state(Date.now())
 	let turnSeenAt = $state(Date.now())
 	let busy = $state(false)
-	let copiedRoomId = $state(false)
-	let copiedInviteLink = $state(false)
-	let copyStatusTimer: ReturnType<typeof setTimeout> | undefined
-	let shareStatusTimer: ReturnType<typeof setTimeout> | undefined
+	let copied = $state({ room: false, link: false })
+	const copiedTimers: Partial<Record<'room' | 'link', ReturnType<typeof setTimeout>>> = {}
 	let activeRoomId = $state($gameStore.online.roomId)
 	const t = $derived(messages[$gameStore.locale])
 	const room = $derived($gameStore.online.room)
@@ -95,9 +92,9 @@
 	const announcement = $derived(
 		$gameStore.online.status === 'reconnecting'
 			? t.online.reconnecting
-			: copiedRoomId
+			: copied.room
 				? t.online.copied
-				: copiedInviteLink
+				: copied.link
 					? t.online.linkCopied
 					: room?.phase === 'lobby' && currentPlayer?.ready
 						? t.online.secretReady
@@ -138,41 +135,26 @@
 		gameStore.setOnlineStatus('error', code)
 	}
 
-	function handleSecretInput(event: Event) {
-		if (!room) {
-			return
-		}
-		const input = event.currentTarget as HTMLInputElement
-		secret = sanitizeDigits(input.value, room.digitCount)
-		input.value = secret
-	}
-
-	function handleOnlineGuessInput(event: Event) {
-		if (!room) {
-			return
-		}
-		const input = event.currentTarget as HTMLInputElement
-		guess = sanitizeDigits(input.value, room.digitCount)
-		input.value = guess
-	}
-
-	async function createRoom() {
+	// Runs one server command at a time and shows any failure as an online error.
+	async function act(command: () => Promise<void>) {
 		busy = true
-		gameStore.setOnlineStatus('connecting')
 		try {
-			const session = await service.createRoom({
-				name,
-				digitCount: $gameStore.settings.digitCount,
-				maxPlayers: $gameStore.settings.playerCount,
-			})
-			gameStore.setOnlineIdentity(session.uid, session.roomId)
-			activeRoomId = session.roomId
-			forgetInvite()
+			await command()
 		} catch (error) {
 			reportError(error)
 		} finally {
 			busy = false
 		}
+	}
+
+	function enterRoom(enter: () => Promise<{ uid: string; roomId: string }>) {
+		gameStore.setOnlineStatus('connecting')
+		return act(async () => {
+			const session = await enter()
+			gameStore.setOnlineIdentity(session.uid, session.roomId)
+			activeRoomId = session.roomId
+			forgetInvite()
+		})
 	}
 
 	// Once joined, the saved session is the way back in; a lingering ?room=
@@ -186,86 +168,44 @@
 		replaceState(url, {})
 	}
 
-	async function joinRoom() {
-		busy = true
-		gameStore.setOnlineStatus('connecting')
-		try {
-			const session = await service.joinRoom({
+	const createRoom = () =>
+		enterRoom(() =>
+			service.createRoom({
 				name,
-				roomId: roomIdInput.trim().toUpperCase(),
-			})
-			gameStore.setOnlineIdentity(session.uid, session.roomId)
-			activeRoomId = session.roomId
-			forgetInvite()
-		} catch (error) {
-			reportError(error)
-		} finally {
-			busy = false
-		}
-	}
+				digitCount: $gameStore.settings.digitCount,
+				maxPlayers: $gameStore.settings.playerCount,
+			}),
+		)
 
-	async function setSecret() {
-		busy = true
-		try {
-			await service.setSecret({
-				roomId: $gameStore.online.roomId,
-				number: secret,
-			})
+	const joinRoom = () =>
+		enterRoom(() =>
+			service.joinRoom({ name, roomId: roomIdInput.trim().toUpperCase() }),
+		)
+
+	const setSecret = () =>
+		act(async () => {
+			await service.setSecret({ roomId: $gameStore.online.roomId, number: secret })
 			secret = ''
-		} catch (error) {
-			reportError(error)
-		} finally {
-			busy = false
-		}
-	}
+		})
 
-	async function startRoom() {
-		if (!room) {
-			return
-		}
-		busy = true
-		try {
-			await service.startRoom(room.id)
-		} catch (error) {
-			reportError(error)
-		} finally {
-			busy = false
-		}
-	}
+	const startRoom = () => room && act(() => service.startRoom(room.id))
 
-	async function leaveRoom() {
-		if (!room) {
-			return
-		}
-		busy = true
-		try {
+	const restartRoom = () => room && act(() => service.restartRoom(room.id))
+
+	const removeIdlePlayer = () =>
+		room &&
+		act(() =>
+			service.removeIdlePlayer({ roomId: room.id, turnNumber: room.turnNumber }),
+		)
+
+	const leaveRoom = () =>
+		room &&
+		act(async () => {
 			await service.leaveRoom(room.id)
 			activeRoomId = ''
 			confirmingForfeit = false
 			gameStore.clearOnlineSession()
-		} catch (error) {
-			reportError(error)
-		} finally {
-			busy = false
-		}
-	}
-
-	async function removeIdlePlayer() {
-		if (!room) {
-			return
-		}
-		busy = true
-		try {
-			await service.removeIdlePlayer({
-				roomId: room.id,
-				turnNumber: room.turnNumber,
-			})
-		} catch (error) {
-			reportError(error)
-		} finally {
-			busy = false
-		}
-	}
+		})
 
 	function chooseTarget(event: Event) {
 		targetChoice = (event.currentTarget as HTMLSelectElement).value
@@ -275,20 +215,11 @@
 		if (!room || !targetUid) {
 			return
 		}
-		busy = true
-		try {
-			await service.submitGuess({
-				roomId: room.id,
-				targetUid,
-				guess,
-				turnNumber: room.turnNumber,
-			})
+		const { id: roomId, turnNumber } = room
+		await act(async () => {
+			await service.submitGuess({ roomId, targetUid, guess, turnNumber })
 			guess = ''
-		} catch (error) {
-			reportError(error)
-		} finally {
-			busy = false
-		}
+		})
 		await tick()
 		if (canGuess) {
 			guessField?.focus()
@@ -302,18 +233,13 @@
 		void submitGuess()
 	}
 
-	async function restartRoom() {
-		if (!room) {
-			return
-		}
-		busy = true
-		try {
-			await service.restartRoom(room.id)
-		} catch (error) {
-			reportError(error)
-		} finally {
-			busy = false
-		}
+	async function copy(kind: 'room' | 'link', text: string) {
+		await navigator.clipboard.writeText(text)
+		copied[kind] = true
+		clearTimeout(copiedTimers[kind])
+		copiedTimers[kind] = setTimeout(() => {
+			copied[kind] = false
+		}, 2000)
 	}
 
 	async function copyRoomId() {
@@ -321,51 +247,32 @@
 			return
 		}
 		try {
-			await navigator.clipboard.writeText(room.id)
-			copiedRoomId = true
-			clearTimeout(copyStatusTimer)
-			copyStatusTimer = setTimeout(() => {
-				copiedRoomId = false
-			}, 2000)
+			await copy('room', room.id)
 		} catch (error) {
 			reportError(error, 'CLIPBOARD_FAILED')
 		}
-	}
-
-	function roomInviteUrl(roomId: string): string {
-		const url = new URL(window.location.href)
-		url.search = ''
-		url.hash = ''
-		url.searchParams.set('room', roomId)
-		return url.toString()
-	}
-
-	async function copyInviteLink(url: string) {
-		await navigator.clipboard.writeText(url)
-		copiedInviteLink = true
-		clearTimeout(shareStatusTimer)
-		shareStatusTimer = setTimeout(() => {
-			copiedInviteLink = false
-		}, 2000)
 	}
 
 	async function shareRoom() {
 		if (!room) {
 			return
 		}
-		const url = roomInviteUrl(room.id)
+		const url = new URL(window.location.href)
+		url.search = ''
+		url.hash = ''
+		url.searchParams.set('room', room.id)
 		try {
 			if (navigator.share) {
 				await navigator.share({
 					title: t.title,
 					text: t.online.shareText(room.id),
-					url,
+					url: url.toString(),
 				})
 				return
 			}
 		} catch {}
 		try {
-			await copyInviteLink(url)
+			await copy('link', url.toString())
 		} catch (error) {
 			reportError(error, 'CLIPBOARD_FAILED')
 		}
@@ -375,10 +282,32 @@
 		if (service === onlineGameService) {
 			preloadOnlineBackend()
 		}
+		if (!initialRoomId && !$gameStore.online.roomId) {
+			void service
+				.restoreSession()
+				.then((session) => {
+					if (session) {
+						gameStore.setOnlineIdentity(session.uid, session.roomId)
+						activeRoomId = session.roomId
+					}
+				})
+				.catch((error: unknown) => {
+					// Nothing retries a failed restore, so never claim to be reconnecting.
+					const code = errorCode(error, 'RESTORE_FAILED')
+					gameStore.setOnlineStatus(
+						'error',
+						code === 'CONNECTION_INTERRUPTED' ? 'RESTORE_FAILED' : code,
+					)
+				})
+		}
 		const timer = setInterval(() => {
 			clock = Date.now()
 		}, 5000)
-		return () => clearInterval(timer)
+		return () => {
+			clearInterval(timer)
+			clearTimeout(copiedTimers.room)
+			clearTimeout(copiedTimers.link)
+		}
 	})
 
 	$effect(() => {
@@ -408,34 +337,6 @@
 		})
 	})
 
-	onDestroy(() => {
-		clearTimeout(copyStatusTimer)
-		clearTimeout(shareStatusTimer)
-	})
-
-	$effect(() => {
-		if (restoreStarted || initialRoomId || $gameStore.online.roomId) {
-			return
-		}
-		restoreStarted = true
-		void service
-			.restoreSession()
-			.then((session) => {
-				if (session) {
-					gameStore.setOnlineIdentity(session.uid, session.roomId)
-					activeRoomId = session.roomId
-				}
-			})
-			.catch((error: unknown) => {
-				// Nothing retries a failed restore, so never claim to be reconnecting.
-				const code = errorCode(error, 'RESTORE_FAILED')
-				gameStore.setOnlineStatus(
-					'error',
-					code === 'CONNECTION_INTERRUPTED' ? 'RESTORE_FAILED' : code,
-				)
-			})
-	})
-
 	$effect(() => {
 		const roomId = activeRoomId
 		if (!roomId) {
@@ -457,6 +358,12 @@
 		)
 	})
 </script>
+
+{#snippet tooltip(show: boolean, text: string)}
+	{#if show}
+		<span aria-hidden="true" class="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fg)] px-3 py-2 text-sm text-[var(--glass-bg)] shadow-lg">{text}</span>
+	{/if}
+{/snippet}
 
 <!-- Live regions stay mounted so screen readers announce every change. -->
 <div role="alert">
@@ -547,27 +454,13 @@
 			</div>
 			<div class="flex flex-wrap gap-2">
 				<div class="relative">
-					{#if copiedRoomId}
-						<span
-							aria-hidden="true"
-							class="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fg)] px-3 py-2 text-sm text-[var(--glass-bg)] shadow-lg"
-						>
-							{t.online.copied}
-						</span>
-					{/if}
+					{@render tooltip(copied.room, t.online.copied)}
 					<button type="button" onclick={copyRoomId} class="btn-secondary">
 						{t.online.copyRoomId}
 					</button>
 				</div>
 				<div class="relative">
-					{#if copiedInviteLink}
-						<span
-							aria-hidden="true"
-							class="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fg)] px-3 py-2 text-sm text-[var(--glass-bg)] shadow-lg"
-						>
-							{t.online.linkCopied}
-						</span>
-					{/if}
+					{@render tooltip(copied.link, t.online.linkCopied)}
 					<button type="button" onclick={shareRoom} class="btn-secondary">
 						{t.online.share}
 					</button>
@@ -595,7 +488,7 @@
 				<span>{t.online.secretLabel}</span>
 				<input
 					value={secret}
-					oninput={handleSecretInput}
+					oninput={(event) => (secret = keepDigits(event, room.digitCount))}
 					disabled={busy}
 					inputmode="numeric"
 					class="field-input w-full"
@@ -691,7 +584,7 @@
 				<input
 					bind:this={guessField}
 					value={guess}
-					oninput={handleOnlineGuessInput}
+					oninput={(event) => (guess = keepDigits(event, room.digitCount))}
 					disabled={!canGuess || busy}
 					inputmode="numeric"
 					class="field-input w-full"

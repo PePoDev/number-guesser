@@ -1,6 +1,5 @@
 import { getApps, initializeApp } from 'firebase-admin/app'
 import {
-	FieldValue,
 	Timestamp,
 	getFirestore,
 	type DocumentSnapshot,
@@ -13,7 +12,7 @@ if (getApps().length === 0) {
 }
 
 export const db = getFirestore()
-export { FieldValue, Timestamp }
+export { Timestamp }
 
 export type RoomPhase = 'lobby' | 'guessing' | 'finished'
 
