@@ -14,7 +14,6 @@ interface InstructionStep {
 
 const en = {
 	languageName: 'English',
-	languageShort: 'EN',
 	title: 'Number Guessing Game',
 	ticker: [
 		'Guess the number',
@@ -49,7 +48,6 @@ const en = {
 			{ value: count },
 			` ${count === 1 ? 'attempt' : 'attempts'} remaining.`,
 		],
-		language: 'Language',
 		multiplayerType: 'Multiplayer type',
 		local: 'Local',
 		online: 'Online',
@@ -94,6 +92,7 @@ const en = {
 		digitOption: (count: number) => `${count} digits`,
 		attempts: 'Max Attempts:',
 		attemptOption: (count: number) => `${count} attempts`,
+		language: 'Language:',
 	},
 	validation: {
 		invalid: () => 'Please enter a valid number.',
@@ -227,7 +226,6 @@ export type Messages = typeof en
 
 const th: Messages = {
 	languageName: 'ภาษาไทย',
-	languageShort: 'ไทย',
 	title: 'เกมทายตัวเลข',
 	ticker: [
 		'ทายตัวเลข',
@@ -258,7 +256,6 @@ const th: Messages = {
 			' หลักไว้แล้ว ลองทายดูสิ!',
 		],
 		attemptsLeft: (count) => ['เหลือโอกาสทายอีก ', { value: count }, ' ครั้ง'],
-		language: 'ภาษา',
 		multiplayerType: 'รูปแบบการเล่นหลายคน',
 		local: 'เครื่องเดียว',
 		online: 'ออนไลน์',
@@ -302,6 +299,7 @@ const th: Messages = {
 		digitOption: (count) => `${count} หลัก`,
 		attempts: 'จำนวนครั้งที่ทายได้:',
 		attemptOption: (count) => `${count} ครั้ง`,
+		language: 'ภาษา:',
 	},
 	validation: {
 		invalid: () => 'กรุณากรอกตัวเลขให้ถูกต้อง',

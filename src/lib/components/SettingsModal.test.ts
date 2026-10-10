@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/svelte'
 import userEvent from '@testing-library/user-event'
 import { get } from 'svelte/store'
@@ -18,6 +18,65 @@ describe('SettingsModal Component', () => {
 	beforeEach(() => {
 		mockOnClose.mockClear()
 		gameStore.reset()
+		localStorage.clear()
+	})
+
+	afterEach(() => {
+		localStorage.clear()
+	})
+
+	it('switches the language and saves the choice', async () => {
+		const user = userEvent.setup()
+		renderSettings('single')
+
+		await user.selectOptions(screen.getByLabelText('Language:'), 'th')
+
+		expect(get(gameStore).locale).toBe('th')
+		expect(localStorage.getItem('number-guessing-locale')).toBe('th')
+		expect(
+			screen.getByRole('heading', { name: 'ตั้งค่าโหมดเล่นคนเดียว' }),
+		).toBeInTheDocument()
+		expect(screen.getByLabelText('ภาษา:')).toHaveValue('th')
+	})
+
+	it('writes each language option in its own language', () => {
+		renderSettings('single')
+
+		expect(screen.getByRole('option', { name: 'English' })).toHaveAttribute(
+			'lang',
+			'en',
+		)
+		expect(screen.getByRole('option', { name: 'ภาษาไทย' })).toHaveAttribute(
+			'lang',
+			'th',
+		)
+	})
+
+	it('offers only the language once an online room starts', () => {
+		gameStore.setMode('online')
+		gameStore.applyOnlineSnapshot({
+			room: {
+				id: 'AB2C3D',
+				hostUid: 'host',
+				phase: 'lobby',
+				digitCount: 3,
+				maxPlayers: 2,
+				playerOrder: ['host'],
+				currentGuesserUid: null,
+				winnerUid: null,
+				turnNumber: 0,
+			},
+			players: [],
+			guesses: [],
+		})
+
+		renderSettings('online')
+
+		expect(screen.getByLabelText('Language:')).toHaveValue('en')
+		expect(screen.queryByLabelText('Number of Digits:')).not.toBeInTheDocument()
+		expect(
+			screen.queryByLabelText('Number of Players:'),
+		).not.toBeInTheDocument()
 	})
 
 	it('shows Thai titles, labels, and options', () => {

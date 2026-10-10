@@ -29,7 +29,11 @@ test('opens in Thai for a Thai browser and remembers English', async ({
 	await input.press('Enter')
 	await expect(page.getByText('ครั้งที่ 1: 123')).toBeVisible()
 
-	await page.getByRole('button', { name: 'English' }).click()
+	await page
+		.getByRole('button', { name: 'เปิดการตั้งค่าโหมดเล่นคนเดียว' })
+		.click()
+	await page.getByLabel('ภาษา:').selectOption('en')
+	await page.getByRole('button', { name: 'Close', exact: true }).click()
 
 	await expect(page.locator('html')).toHaveAttribute('lang', 'en')
 	await expect(page.getByText('Guess 1: 123')).toBeVisible()

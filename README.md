@@ -121,7 +121,7 @@ The interface ships in English (`en`) and Thai (`th`).
 - All user-visible copy lives in `src/lib/i18n/messages.ts`. `en` is the source dictionary and `th` is typed against it, so a missing or mistyped Thai entry fails `pnpm check`.
 - Copy that depends on a count or embeds a value is a function. Copy that wraps a highlighted value returns `RichText` parts, and each component renders the value with its own markup.
 - `gameStore` owns `locale` and the `setLocale` action. Components read `messages[$gameStore.locale]`.
-- On load the root layout uses the saved choice in local storage key `number-guessing-locale`, then the first browser language that starts with `th` or `en`, then English. Choosing a language saves it.
+- On load the root layout uses the saved choice in local storage key `number-guessing-locale`, then the first browser language that starts with `th` or `en`, then English. Choosing a language in Settings saves it.
 - The layout keeps `<html lang>` and the page keeps the document title in the active language.
 - Stores and services return codes, not copy: `validateGuess` reports a `GuessProblem`, online commands report an `OnlineErrorCode`, and unnamed local players stay blank until a component renders their localized default name.
 - Player-entered names, room IDs, numbers, and the `Enter` and `Escape` key names are not translated.
@@ -230,7 +230,7 @@ The interface should feel like one well-built editorial object, not a dashboard.
 - The right contains a decorative perspective tunnel of numbered tiles.
 - The ticker is the only looping animation.
 
-The Multiplayer card opens the last selected multiplayer variant; a segmented control inside the play panel switches between Local and Online. Instructions replaces the center-panel game content. Each active mode exposes its own icon-only Settings (gear) button beside the GitHub link in the panel header; it hides while Instructions are open and, online, after room entry. The purple New Game action is disabled online because the host-owned restart remains inside the online flow.
+The Multiplayer card opens the last selected multiplayer variant; a segmented control inside the play panel switches between Local and Online. Instructions replaces the center-panel game content. The icon-only Settings (gear) button beside the GitHub link in the panel header is always available. It opens the active mode's game settings plus the language; once an online room exists its rules are fixed, so only the language remains. The purple New Game action is disabled online because the host-owned restart remains inside the online flow.
 
 Desktop columns are a ~140px nav rail, a flexible play area with a 320px minimum, and a hero using about 40% of the remaining width.
 
@@ -298,8 +298,7 @@ The main display heading ends with one bold italic word in `--glass-accent`. Use
 | Input | 56px high, white, centered text, 14px radius, visible blue focus ring; game-number fields filter to digits and enforce the configured length; the single-player guess field grows beside Submit Guess and wraps above it on narrow screens |
 | Secondary button | 48px high, white, dark border, 14px radius |
 | Icon button | 44px square `.btn-icon` secondary variant with a 20px glyph, an `aria-label`, and a matching `title` tooltip |
-| Panel header | Display title with the language switch, Settings, and GitHub group top-right; the group wraps above the title when the title needs the full width |
-| Language switch | 44px high segmented `EN`/`ไทย` control at the start of the header group; each option is written in its own language with a matching `lang`, and the active one is dark-filled |
+| Panel header | Display title with the Settings and GitHub icon group top-right; the group wraps above the title when the title needs the full width |
 | GitHub stars | Icon-only GitHub mark beside Settings in the panel header; puts a validated live count in its accessible name and tooltip when available and remains a labeled link on API failure |
 | Setup/control strip | Translucent white, dark border, and wrapping controls on narrow screens |
 | Feedback banner | State-tinted low-opacity background and border; warning for validation, info for an unfinished guess, correct/incorrect only for the final result; clears when a new game starts |
@@ -307,7 +306,7 @@ The main display heading ends with one bold italic word in `--glass-accent`. Use
 | History row | Translucent white; newest row has a purple left border; single-player history lists newest first, shows an empty-state hint, and wraps the guess and score as whole phrases |
 | Player card | Landscape nav-card language; inset turn border; red-tinted eliminated state and visible badge |
 | Online multiplayer | One cream-panel flow: name/create/join entry, room-ID lobby with paired Copy and Share actions, accessible confirmation tooltips, readiness, turn/guess state, reconnect status, and host restart |
-| Settings modal | Active-mode title and fields, cream surface, 480px maximum, blurred 40% black scrim, focus trap, and viewport-bounded scrolling |
+| Settings modal | Active-mode title and fields, then a Language select whose options are written in their own language with a matching `lang`; cream surface, 480px maximum, blurred 40% black scrim, focus trap, and viewport-bounded scrolling |
 | Hero | Decorative CSS/SVG tile tunnel with `aria-hidden="true"` |
 | Utility row | Current mode plus visible `Enter` and `Escape` keyboard hints |
 
@@ -368,6 +367,8 @@ Add new surfaces to this table. The initial editorial design system was recorded
 2026-10-10 — Replaced the text Settings and GitHub buttons with a gear and GitHub icon pair in the panel header.
 
 2026-10-10 — Localized the interface for English and Thai with an `EN`/`ไทย` switch in the panel header.
+
+2026-10-10 — Moved the language choice into the Settings modal and kept Settings available during Instructions and inside online rooms.
 
 ## Change guide
 

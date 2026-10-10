@@ -1,6 +1,7 @@
 <script lang="ts">
     import { gameStore, type GameMode } from '$lib/stores/gameStore';
-    import { messages } from '$lib/i18n/messages';
+    import { locales, messages } from '$lib/i18n/messages';
+    import { isLocale, storeLocale } from '$lib/i18n/locale';
     
     interface Props {
         mode: GameMode;
@@ -16,6 +17,10 @@
     let previouslyFocused: HTMLElement | null = null;
     
     const t = $derived(messages[$gameStore.locale]);
+    // A started online room owns its rules, so only the language stays editable.
+    const gameSettingsLocked = $derived(
+        mode === 'online' && $gameStore.online.room !== null
+    );
     
     function updateSettings() {
         gameStore.updateSettings({
@@ -24,6 +29,14 @@
             playerCount
         });
         gameStore.startNewGame();
+    }
+    
+    function updateLocale(event: Event) {
+        const { value } = event.currentTarget as HTMLSelectElement;
+        if (isLocale(value)) {
+            gameStore.setLocale(value);
+            storeLocale(value);
+        }
     }
     
     function handleClose() {
@@ -99,7 +112,7 @@
         </div>
         
         <div class="space-y-5 p-5">
-            {#if mode === 'multi' || mode === 'online'}
+            {#if (mode === 'multi' || mode === 'online') && !gameSettingsLocked}
                 <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <label for="player-count" class="font-semibold">{t.settings.players}</label>
                     <select
@@ -115,19 +128,21 @@
                 </div>
             {/if}
             
-            <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                <label for="digit-count" class="font-semibold">{t.settings.digits}</label>
-                <select
-                    id="digit-count"
-                    bind:value={digitCount}
-                    onchange={updateSettings}
-                    class="field-select w-full sm:w-auto"
-                >
-                    {#each [2, 3, 4, 5] as count}
-                        <option value={count}>{t.settings.digitOption(count)}</option>
-                    {/each}
-                </select>
-            </div>
+            {#if !gameSettingsLocked}
+                <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                    <label for="digit-count" class="font-semibold">{t.settings.digits}</label>
+                    <select
+                        id="digit-count"
+                        bind:value={digitCount}
+                        onchange={updateSettings}
+                        class="field-select w-full sm:w-auto"
+                    >
+                        {#each [2, 3, 4, 5] as count}
+                            <option value={count}>{t.settings.digitOption(count)}</option>
+                        {/each}
+                    </select>
+                </div>
+            {/if}
             
             {#if mode === 'single'}
                 <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
@@ -144,6 +159,20 @@
                     </select>
                 </div>
             {/if}
+
+            <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <label for="language" class="font-semibold">{t.settings.language}</label>
+                <select
+                    id="language"
+                    value={$gameStore.locale}
+                    onchange={updateLocale}
+                    class="field-select w-full sm:w-auto"
+                >
+                    {#each locales as locale (locale)}
+                        <option value={locale} lang={locale}>{messages[locale].languageName}</option>
+                    {/each}
+                </select>
+            </div>
         </div>
         
         <div class="border-t-[1.5px] border-[var(--glass-border)] p-5 text-center">

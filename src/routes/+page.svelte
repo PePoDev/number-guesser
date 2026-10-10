@@ -7,8 +7,7 @@
 	import GitHubStarLink from '$lib/components/GitHubStarLink.svelte';
 	import { onlineGameService } from '$lib/services/onlineGameService';
 	import { isOnlineErrorCode } from '$lib/online/types';
-	import { locales, messages, type Locale } from '$lib/i18n/messages';
-	import { storeLocale } from '$lib/i18n/locale';
+	import { messages } from '$lib/i18n/messages';
 
 	type NavMode = 'single' | 'multi' | 'online';
 
@@ -22,18 +21,10 @@
 			? $gameStore.online.room.digitCount
 			: $gameStore.settings.digitCount,
 	);
-	const canOpenSettings = $derived(
-		$gameStore.mode !== 'online' || $gameStore.online.room === null,
-	);
 
 	const t = $derived(messages[$gameStore.locale]);
 	const settingsLabel = $derived(t.header.openSettings(t.modes[$gameStore.mode]));
 	const tickerText = $derived(`${t.ticker.join(' ✦ ')} ✦ `);
-
-	function selectLocale(locale: Locale) {
-		gameStore.setLocale(locale);
-		storeLocale(locale);
-	}
 
 	function openSettings() {
 		showSettings = true;
@@ -187,35 +178,20 @@
 							{t.header.title} <em class="sig">{t.header.titleSignature}</em>
 						</h1>
 						<div class="ml-auto flex shrink-0 items-center gap-2">
-							<div class="variant-switch lang-switch" role="group" aria-label={t.header.language}>
-								{#each locales as locale (locale)}
-									<button
-										type="button"
-										lang={locale}
-										aria-label={messages[locale].languageName}
-										aria-pressed={$gameStore.locale === locale}
-										onclick={() => selectLocale(locale)}
-									>
-										{messages[locale].languageShort}
-									</button>
-								{/each}
-							</div>
-							{#if canOpenSettings && !showInstructions}
-								<button
-									type="button"
-									class="btn-secondary btn-icon"
-									aria-label={settingsLabel}
-									title={settingsLabel}
-									aria-haspopup="dialog"
-									aria-expanded={showSettings}
-									onclick={openSettings}
-								>
-									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-										<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-										<circle cx="12" cy="12" r="3" />
-									</svg>
-								</button>
-							{/if}
+							<button
+								type="button"
+								class="btn-secondary btn-icon"
+								aria-label={settingsLabel}
+								title={settingsLabel}
+								aria-haspopup="dialog"
+								aria-expanded={showSettings}
+								onclick={openSettings}
+							>
+								<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+									<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+									<circle cx="12" cy="12" r="3" />
+								</svg>
+							</button>
 							<GitHubStarLink />
 						</div>
 					</div>
@@ -292,7 +268,7 @@
 	</div>
 </div>
 
-{#if showSettings && canOpenSettings}
+{#if showSettings}
 	<SettingsModal mode={$gameStore.mode} onclose={closeSettings} />
 {/if}
 
@@ -488,12 +464,6 @@
 	.variant-switch button[aria-pressed='true'] {
 		background: var(--stage-border);
 		color: var(--glass-bg);
-	}
-
-	.lang-switch button {
-		min-height: 41px;
-		padding: 0 12px;
-		font-size: 0.875rem;
 	}
 
 	.hero {

@@ -70,15 +70,15 @@ describe("+page.svelte Component", () => {
     expect(settings).toHaveAttribute('title', 'Open Single Player settings')
   })
 
-  it('hides Settings while Instructions are open', async () => {
+  it('keeps Settings available while Instructions are open', async () => {
     const user = userEvent.setup()
     render(Page)
 
     await user.click(screen.getByRole('button', { name: /Instructions/ }))
 
     expect(
-      screen.queryByRole('button', { name: 'Open Single Player settings' }),
-    ).not.toBeInTheDocument()
+      screen.getByRole('button', { name: 'Open Single Player settings' }),
+    ).toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: /Open number-guesser on GitHub/ }),
     ).toBeInTheDocument()
@@ -138,7 +138,8 @@ describe("+page.svelte Component", () => {
     expect(screen.queryByLabelText("Max Attempts:")).not.toBeInTheDocument();
   });
 
-  it("shows online settings only before entering a room", async () => {
+  it('keeps only the language setting once an online room starts', async () => {
+    const user = userEvent.setup();
     gameStore.setMode("online");
     render(Page);
 
@@ -169,11 +170,13 @@ describe("+page.svelte Component", () => {
       guesses: [],
     });
 
-    await waitFor(() => {
-      expect(
-        screen.queryByLabelText("Open Online Multiplayer settings")
-      ).not.toBeInTheDocument();
-    });
+    await user.click(
+      await screen.findByLabelText("Open Online Multiplayer settings")
+    );
+
+    expect(screen.getByLabelText("Language:")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Number of Digits:")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Number of Players:")).not.toBeInTheDocument();
   });
 
   it("should display digit count from settings", () => {
@@ -499,20 +502,20 @@ describe('+page.svelte in Thai', () => {
 		localStorage.clear()
 	})
 
-	it('switches to Thai and remembers the choice', async () => {
+	it('switches to Thai from Settings and remembers the choice', async () => {
 		const user = userEvent.setup()
 		render(Page)
-		expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute(
-			'aria-pressed',
-			'true',
-		)
+		expect(screen.queryByRole('group', { name: 'Language' })).toBeNull()
 
-		await user.click(screen.getByRole('button', { name: 'ภาษาไทย' }))
-
-		expect(screen.getByRole('button', { name: 'ภาษาไทย' })).toHaveAttribute(
-			'aria-pressed',
-			'true',
+		await user.click(
+			screen.getByRole('button', { name: 'Open Single Player settings' }),
 		)
+		await user.selectOptions(screen.getByLabelText('Language:'), 'th')
+
+		expect(
+			screen.getByRole('heading', { name: 'ตั้งค่าโหมดเล่นคนเดียว' }),
+		).toBeInTheDocument()
+		expect(screen.getByLabelText('ภาษา:')).toHaveValue('th')
 		expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
 			'เกมทาย ตัวเลข',
 		)
@@ -526,22 +529,6 @@ describe('+page.svelte in Thai', () => {
 		await waitFor(() => {
 			expect(document.title).toBe('เกมทายตัวเลข')
 		})
-	})
-
-	it('writes each language option in its own language', () => {
-		render(Page)
-
-		expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute(
-			'lang',
-			'en',
-		)
-		expect(screen.getByRole('button', { name: 'ภาษาไทย' })).toHaveAttribute(
-			'lang',
-			'th',
-		)
-		expect(screen.getByRole('button', { name: 'ภาษาไทย' })).toHaveTextContent(
-			'ไทย',
-		)
 	})
 
 	it('renders the header, footer, and instructions in Thai', async () => {
