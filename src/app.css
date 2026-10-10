@@ -224,6 +224,18 @@ a {
 	opacity: 0.75;
 }
 
+.eyebrow {
+	color: var(--glass-muted);
+	font-size: 0.875rem;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+/* Thai writes words without spaces, so wide tracking breaks them apart. */
+.eyebrow:lang(th) {
+	letter-spacing: normal;
+}
+
 .accent-value {
 	background: var(--glass-accent);
 	color: var(--stage-border);

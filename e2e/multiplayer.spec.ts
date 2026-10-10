@@ -110,15 +110,13 @@ test.describe("Multiplayer Game", () => {
     await expect(page.locator("text=Guessing Phase")).toBeVisible();
   });
 
-  test("should pad short numbers with leading zeros during setup", async ({
-    page,
-  }) => {
+  test("should require every digit of a secret number", async ({ page }) => {
     await page.fill('input[placeholder="Enter your name"]', "Alice");
     await page.fill('input[placeholder="Enter your secret number"]', "12");
     await page.click('button:has-text("Save & Continue")');
 
-    // Should accept and move to next player
-    await expect(page.locator("text=/Player 2's turn to setup/")).toBeVisible();
+    await expect(page.getByRole("alert")).toHaveText("Please enter exactly 3 digits.");
+    await expect(page.locator("text=/Player 1's turn to setup/")).toBeVisible();
   });
 });
 
@@ -274,11 +272,21 @@ test.describe("Multiplayer Game - Guessing Phase", () => {
     await expect(input).toHaveValue("");
   });
 
-  test("should pad short guesses with leading zeros", async ({ page }) => {
+  test("should require every digit of a guess", async ({ page }) => {
     await page.fill('input[placeholder="Enter guess"]', "12");
     await page.click('button:has-text("Submit Guess")');
 
-    await expect(page.locator("text=/Alice: 012/")).toBeVisible();
+    await expect(page.getByRole("alert")).toHaveText("Please enter exactly 3 digits.");
+    await expect(page.locator("text=/Alice's turn to guess/")).toBeVisible();
+  });
+
+  test("does not restart when Enter makes the winning guess", async ({ page }) => {
+    await page.fill('input[placeholder="Enter guess"]', "456");
+    await page.press('input[placeholder="Enter guess"]', "Enter");
+
+    await expect(page.locator("text=Game Over!")).toBeVisible();
+    await expect(page.locator("text=/Alice: 456/")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Play again" })).toBeVisible();
   });
 });
 

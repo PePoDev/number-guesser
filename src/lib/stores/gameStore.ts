@@ -253,8 +253,14 @@ function createGameStore() {
 
 export const gameStore = createGameStore();
 
+// Thai keyboards type Thai numerals (๐–๙); they mean the same digits.
 export function sanitizeDigits(value: string, maxLength: number): string {
-  return value.replace(/\D/g, '').slice(0, maxLength)
+  return value
+    .replace(/[\u0E50-\u0E59]/g, (digit) =>
+      String(digit.charCodeAt(0) - 0x0e50),
+    )
+    .replace(/\D/g, '')
+    .slice(0, maxLength)
 }
 
 // Helper function to generate random number

@@ -34,6 +34,7 @@ export default defineConfig({
   resolve: {
     alias: {
       $lib: resolve(__dirname, "./src/lib"),
+      "$app/navigation": resolve(__dirname, "./src/tests/appNavigation.ts"),
     },
     conditions: ["browser"],
   },

@@ -139,8 +139,11 @@
 		guessField?.focus()
 	}
 
-	function handleKeyPress(e: KeyboardEvent) {
-		if (e.key === 'Enter') {
+	// Enter during IME composition (e.g. a Thai keyboard) confirms the
+	// composition, not the guess.
+	function handleKeyDown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && !e.isComposing) {
+			e.preventDefault()
 			void submitGuess()
 		}
 	}
@@ -164,7 +167,7 @@
 			bind:this={guessField}
 			value={guessInput}
 			oninput={handleGuessInput}
-			onkeypress={handleKeyPress}
+			onkeydown={handleKeyDown}
 			placeholder={t.single.placeholder}
 			inputmode="numeric"
 			pattern="[0-9]*"
@@ -183,20 +186,21 @@
 		</button>
 	</div>
 
-	{#if warningMessage}
-		<div role="alert" aria-live="assertive" class="banner banner-warning my-3 text-center">
-			{warningMessage}
-		</div>
-	{:else if result}
-		<div role="status" aria-live="polite" class="banner banner-{result.tone} my-3 text-center">
-			{result.message}
-		</div>
-	{/if}
+	<!-- Live regions stay mounted so screen readers announce every change, including the first. -->
+	<div role="alert">
+		{#if warningMessage}
+			<div class="banner banner-warning my-3 text-center">{warningMessage}</div>
+		{/if}
+	</div>
+	<div role="status">
+		{#if !warningMessage && result}
+			<div class="banner banner-{result.tone} my-3 text-center">{result.message}</div>
+		{/if}
+	</div>
 
 	{#if $gameStore.gameOver && latestGuess}
 		<div
 			bind:this={resultPanel}
-			role={won ? 'status' : 'alert'}
 			tabindex="-1"
 			class="banner {won ? 'banner-correct' : 'banner-incorrect'} my-5 space-y-4 p-5 text-center"
 		>
@@ -278,6 +282,12 @@
 		background: color-mix(in srgb, var(--state-correct) 22%, var(--surface-white));
 		border-color: var(--state-correct);
 		box-shadow: inset 0 0 0 1.5px var(--state-correct);
+	}
+
+	.note-in:focus-visible {
+		box-shadow:
+			inset 0 0 0 1.5px var(--state-correct),
+			0 0 0 6px var(--state-info);
 	}
 
 	.note-clear {

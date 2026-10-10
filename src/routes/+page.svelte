@@ -6,7 +6,6 @@
 	import OnlineMultiplayerGame from '$lib/components/OnlineMultiplayerGame.svelte';
 	import GitHubStarLink from '$lib/components/GitHubStarLink.svelte';
 	import { onlineGameService } from '$lib/services/onlineGameService';
-	import { isOnlineErrorCode } from '$lib/online/types';
 	import { messages } from '$lib/i18n/messages';
 
 	type NavMode = 'single' | 'multi' | 'online';
@@ -67,35 +66,22 @@
 		}
 
 		sessionRestoreStarted = true;
+		// Single player is always ready to play; the online component reconnects
+		// a saved room or pre-fills an invite on its own.
+		gameStore.startNewGame();
 		const roomId =
 			new URL(window.location.href).searchParams
 				.get('room')
 				?.trim()
 				.toUpperCase() ?? '';
+		const savedRoomId = onlineGameService.savedRoomId();
 
 		if (/^[A-Z2-9]{6}$/.test(roomId)) {
-			invitedRoomId = roomId;
+			invitedRoomId = roomId === savedRoomId ? '' : roomId;
 			gameStore.setMode('online');
-			return;
+		} else if (savedRoomId) {
+			gameStore.setMode('online');
 		}
-
-		void onlineGameService.restoreSession().then((session) => {
-			if (session) {
-				gameStore.setMode('online');
-				gameStore.setOnlineIdentity(session.uid, session.roomId);
-				return;
-			}
-
-			gameStore.startNewGame();
-		}).catch((error: unknown) => {
-			gameStore.setMode('online');
-			gameStore.setOnlineStatus(
-				'error',
-				error instanceof Error && isOnlineErrorCode(error.message)
-					? error.message
-					: 'RESTORE_FAILED',
-			);
-		});
 	});
 </script>
 
@@ -319,6 +305,10 @@
 		text-transform: uppercase;
 	}
 
+	.ticker-seq:lang(th) {
+		letter-spacing: 0.02em;
+	}
+
 	@keyframes ticker-scroll {
 		to {
 			transform: translateX(-50%);
@@ -471,6 +461,12 @@
 	.variant-switch button[aria-pressed='true'] {
 		background: var(--stage-border);
 		color: var(--glass-bg);
+	}
+
+	/* The switch clips overflow for its rounded corners, so the focus ring sits inside. */
+	.variant-switch button:focus-visible {
+		outline-offset: -4px;
+		box-shadow: inset 0 0 0 6px var(--state-info);
 	}
 
 	.hero {

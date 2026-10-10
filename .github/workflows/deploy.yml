@@ -20,21 +20,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
         with:
           version: 9
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        run: pnpm check
 
       - name: Run unit and component tests
         run: pnpm test:run
@@ -47,7 +50,7 @@ jobs:
 
       - name: Upload test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-results
           path: |
@@ -92,7 +95,7 @@ jobs:
           PUBLIC_FIREBASE_FUNCTIONS_REGION: asia-southeast1
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ./build
 
@@ -105,4 +108,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

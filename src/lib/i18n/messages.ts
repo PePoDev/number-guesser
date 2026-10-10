@@ -158,6 +158,16 @@ const en = {
 		namePlaceholder: 'Enter your name',
 		secretLabel: 'Secret Number:',
 		secretPlaceholder: 'Enter your secret number',
+		guessResult: (
+			guesser: string,
+			guess: string,
+			target: string,
+			digits: number,
+			positions: number,
+		) =>
+			`${guesser} guessed ${guess} for ${target}: ${digits} correct digits, ${positions} in the right position.`,
+		guessCorrect: (guesser: string, target: string) =>
+			`${guesser} guessed ${target}'s number. ${target} is out.`,
 		showSecret: 'Show secret number',
 		hideSecret: 'Hide secret number',
 		playAgain: 'Play again',
@@ -207,6 +217,14 @@ const en = {
 		turn: (name: string) => `${name}'s turn`,
 		eliminated: 'Eliminated',
 		active: 'Active',
+		left: 'Left',
+		startHint: "Players who aren't ready yet will be left out.",
+		leaveGame: 'Leave game',
+		forfeitConfirm: 'Leave now? You forfeit this match.',
+		forfeit: 'Forfeit and leave',
+		keepPlaying: 'Keep playing',
+		idleHint: (name: string) => `${name} hasn't played for 2 minutes.`,
+		removeIdle: (name: string) => `Remove ${name} for inactivity`,
 		targetLabel: 'Target player',
 		choosePlayer: 'Choose a player',
 		guessLabel: 'Guess',
@@ -245,6 +263,8 @@ const en = {
 			CLIPBOARD_FAILED: 'Could not copy. Please copy it manually.',
 			ONLINE_UNAVAILABLE:
 				"Online play isn't available right now. Try Single Player or Local Multiplayer.",
+			ROOM_CREATE_LIMIT: "You've created a lot of rooms. Try again in a little while.",
+			TURN_NOT_IDLE: 'That player still has time to take their turn.',
 		} satisfies Record<OnlineErrorCode, string>,
 	},
 }
@@ -381,6 +401,10 @@ const th: Messages = {
 		namePlaceholder: 'ใส่ชื่อของคุณ',
 		secretLabel: 'เลขลับ:',
 		secretPlaceholder: 'ใส่เลขลับของคุณ',
+		guessResult: (guesser, guess, target, digits, positions) =>
+			`${guesser} ทาย ${guess} ของ ${target}: เลขถูก ${digits} ตัว ตำแหน่งถูก ${positions} ตัว`,
+		guessCorrect: (guesser, target) =>
+			`${guesser} ทายเลขของ ${target} ถูก ${target} ตกรอบ`,
 		showSecret: 'แสดงเลขลับ',
 		hideSecret: 'ซ่อนเลขลับ',
 		playAgain: 'เล่นอีกครั้ง',
@@ -429,6 +453,14 @@ const th: Messages = {
 		turn: (name) => `ตาของ ${name}`,
 		eliminated: 'ตกรอบ',
 		active: 'ยังอยู่ในเกม',
+		left: 'ออกแล้ว',
+		startHint: 'ผู้เล่นที่ยังไม่พร้อมจะไม่ได้เข้าร่วมเกมนี้',
+		leaveGame: 'ออกจากเกม',
+		forfeitConfirm: 'ออกตอนนี้เลยไหม? คุณจะแพ้ในแมตช์นี้',
+		forfeit: 'ยอมแพ้และออก',
+		keepPlaying: 'เล่นต่อ',
+		idleHint: (name) => `${name} ไม่ได้เล่นมา 2 นาทีแล้ว`,
+		removeIdle: (name) => `นำ ${name} ออกเพราะไม่ได้เล่น`,
 		targetLabel: 'ผู้เล่นเป้าหมาย',
 		choosePlayer: 'เลือกผู้เล่น',
 		guessLabel: 'คำทาย',
@@ -467,6 +499,8 @@ const th: Messages = {
 			CLIPBOARD_FAILED: 'คัดลอกไม่สำเร็จ กรุณาคัดลอกเอง',
 			ONLINE_UNAVAILABLE:
 				'ตอนนี้ยังเล่นออนไลน์ไม่ได้ ลองเล่นคนเดียวหรือเล่นหลายคนในเครื่องเดียวก่อนนะ',
+			ROOM_CREATE_LIMIT: 'คุณสร้างห้องหลายครั้งแล้ว ลองใหม่อีกสักพักนะ',
+			TURN_NOT_IDLE: 'ผู้เล่นคนนั้นยังมีเวลาเล่นตาของตัวเองอยู่',
 		},
 	},
 }

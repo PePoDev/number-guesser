@@ -27,6 +27,8 @@ export interface OnlineGameService {
 	}): Promise<void>
 	leaveRoom(roomId: string): Promise<void>
 	restartRoom(roomId: string): Promise<void>
+	removeIdlePlayer(input: { roomId: string; turnNumber: number }): Promise<void>
+	savedRoomId(): string
 	clearSession(): void
 	subscribeToRoom(
 		roomId: string,
@@ -75,6 +77,8 @@ const serverReasons: OnlineErrorCode[] = [
 	'TARGET_INVALID',
 	'TARGET_ELIMINATED',
 	'ONLINE_GAME_INTERNAL',
+	'ROOM_CREATE_LIMIT',
+	'TURN_NOT_IDLE',
 ]
 
 function record(value: unknown): Record<string, unknown> {
@@ -103,6 +107,15 @@ function number(value: unknown): number {
 		throw new Error('ONLINE_SNAPSHOT_INVALID')
 	}
 	return value
+}
+
+// Fields added after rooms first shipped may be missing on older documents.
+function optionalNumber(value: unknown, fallback: number): number {
+	return value === undefined ? fallback : number(value)
+}
+
+function optionalBoolean(value: unknown): boolean {
+	return value === undefined ? false : boolean(value)
 }
 
 function boolean(value: unknown): boolean {
@@ -135,6 +148,7 @@ function decodeRoom(id: string, value: unknown): OnlineRoom {
 		currentGuesserUid: nullableString(data.currentGuesserUid),
 		winnerUid: nullableString(data.winnerUid),
 		turnNumber: number(data.turnNumber),
+		match: optionalNumber(data.match, 1),
 	}
 }
 
@@ -146,6 +160,7 @@ function decodePlayer(id: string, value: unknown): OnlinePlayer {
 		seat: number(data.seat),
 		ready: boolean(data.ready),
 		eliminated: boolean(data.eliminated),
+		left: optionalBoolean(data.left),
 	}
 }
 
@@ -160,6 +175,7 @@ function decodeGuess(id: string, value: unknown): OnlineGuess {
 		correct: boolean(data.correct),
 		correctDigits: number(data.correctDigits),
 		correctPositions: number(data.correctPositions),
+		match: optionalNumber(data.match, 1),
 	}
 }
 
@@ -280,6 +296,12 @@ export function createOnlineGameService(
 		},
 		async restartRoom(roomId) {
 			await run('restartRoom', { roomId })
+		},
+		async removeIdlePlayer(input) {
+			await run('removeIdlePlayer', input)
+		},
+		savedRoomId() {
+			return dependencies.getStoredRoomId()
 		},
 		clearSession() {
 			dependencies.clearStoredRoomId()

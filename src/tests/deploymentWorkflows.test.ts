@@ -29,10 +29,20 @@ describe('deployment workflows', () => {
 		expect(workflow).not.toContain('vars.PUBLIC_FIREBASE_')
 	})
 
+	it('type-checks and tests the client before it builds', () => {
+		const workflow = readWorkflow('deploy.yml')
+		const check = workflow.indexOf('run: pnpm check')
+		const build = workflow.indexOf('run: pnpm run build')
+
+		expect(check).toBeGreaterThan(-1)
+		expect(check).toBeLessThan(workflow.indexOf('run: pnpm test:run'))
+		expect(check).toBeLessThan(build)
+	})
+
 	it('runs Firebase deployment with Java 21 and the secret project ID', () => {
 		const workflow = readWorkflow('deploy-firebase.yml')
 
-		expect(workflow).toContain('uses: actions/setup-java@v4')
+		expect(workflow).toContain('uses: actions/setup-java@v5')
 		expect(workflow).toMatch(/java-version:\s*["']?21/)
 		expect(workflow).toContain(
 			'--project "${{ secrets.PUBLIC_FIREBASE_PROJECT_ID }}"',

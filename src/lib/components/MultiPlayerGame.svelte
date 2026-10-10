@@ -14,18 +14,36 @@ const playerAccents = ['blue', 'yellow', 'orange', 'green'];
 let playerNameInput = $state('');
 let playerNumberInput = $state('');
 let multiGuessInput = $state('');
-let targetPlayerIndex = $state(0);
 let secretVisible = $state(false);
 let nameField = $state<HTMLInputElement>();
+let guessField = $state<HTMLInputElement>();
+let resultHeader = $state<HTMLElement>();
 // Changes only when a new player starts setup, so typing is never overwritten.
 const setupSlot = $derived(
 	$gameStore.gamePhase === 'setup'
 		? `${$gameStore.round}:${$gameStore.currentSetupPlayer}`
 		: '',
 );
-// Feedback keeps a renderer rather than text so it follows language changes.
+const round = $derived($gameStore.round);
+// Feedback and announcements keep a renderer rather than text so they follow
+// language changes.
 let feedback = $state<((t: Messages) => string) | null>(null);
+let lastResult = $state<((t: Messages) => string) | null>(null);
 const t = $derived(messages[$gameStore.locale]);
+
+const targetOptions = $derived(
+	$gameStore.activePlayers.filter((index) => index !== $gameStore.currentGuesser),
+);
+// A choice lasts for the current guesser's turn and falls back to the first
+// option once that player is eliminated.
+let targetChoice = $state<{ guesser: number; index: number } | null>(null);
+const targetPlayerIndex = $derived(
+	targetChoice &&
+		targetChoice.guesser === $gameStore.currentGuesser &&
+		targetOptions.includes(targetChoice.index)
+		? targetChoice.index
+		: (targetOptions[0] ?? 0),
+);
 
 function playerName(index: number): string {
 	return $gameStore.players[index]?.name || t.multi.playerName(index + 1);
@@ -40,27 +58,30 @@ $effect(() => {
 });
 
 $effect(() => {
-	if ($gameStore.gamePhase === 'guessing' && $gameStore.activePlayers.length > 0) {
-		// Set default target to first available player that's not current guesser
-		const availableTargets = $gameStore.activePlayers.filter(p => p !== $gameStore.currentGuesser);
-		if (availableTargets.length > 0) {
-			targetPlayerIndex = availableTargets[0];
-		}
-	}
+	void round;
+	untrack(() => {
+		feedback = null;
+		lastResult = null;
+		playerNumberInput = '';
+		multiGuessInput = '';
+		targetChoice = null;
+	});
 });
 
-function savePlayerSetup() {
+function chooseTarget(event: Event) {
+	targetChoice = {
+		guesser: $gameStore.currentGuesser,
+		index: Number((event.currentTarget as HTMLSelectElement).value),
+	};
+}
+
+async function savePlayerSetup() {
 	const name = playerNameInput.trim();
-	let number = playerNumberInput.trim();
+	const number = playerNumberInput.trim();
 	
 	if (!number) {
 		feedback = (t) => t.multi.secretRequired;
 		return;
-	}
-	
-	// Pad with leading zeros if needed
-	if (number.length < $gameStore.settings.digitCount && !isNaN(Number(number)) && number.length > 0) {
-		number = number.padStart($gameStore.settings.digitCount, '0');
 	}
 	
 	const { digitCount } = $gameStore.settings;
@@ -76,6 +97,12 @@ function savePlayerSetup() {
 	playerNameInput = '';
 	playerNumberInput = '';
 	secretVisible = false;
+	await tick();
+	if ($gameStore.gamePhase === 'guessing') {
+		guessField?.focus();
+	} else {
+		nameField?.focus();
+	}
 }
 
 async function playAgain() {
@@ -85,19 +112,14 @@ async function playAgain() {
 	nameField?.focus();
 }
 
-function makeMultiPlayerGuess() {
+async function makeMultiPlayerGuess() {
 	if ($gameStore.gamePhase !== 'guessing') return;
 	
-	let guess = multiGuessInput.trim();
+	const guess = multiGuessInput.trim();
 
 	if (!guess) {
 		feedback = (t) => t.multi.empty;
 		return;
-	}
-	
-	// Pad with leading zeros if needed
-	if (guess.length < $gameStore.settings.digitCount && !isNaN(Number(guess))) {
-		guess = guess.padStart($gameStore.settings.digitCount, '0');
 	}
 	
 	const { digitCount } = $gameStore.settings;
@@ -109,13 +131,15 @@ function makeMultiPlayerGuess() {
 	}
 	
 	feedback = null;
-	const targetPlayer = $gameStore.players[targetPlayerIndex];
+	const guesser = $gameStore.currentGuesser;
+	const target = targetPlayerIndex;
+	const targetPlayer = $gameStore.players[target];
 	const isCorrect = guess === targetPlayer.number;
 	const score = calculateFeedback(guess, targetPlayer.number);
 	
 	const guessEntry: GuessEntry = {
-		guesser: $gameStore.currentGuesser,
-		target: targetPlayerIndex,
+		guesser,
+		target,
 		guess,
 		correct: isCorrect,
 		correctDigits: score.correctDigits,
@@ -123,24 +147,48 @@ function makeMultiPlayerGuess() {
 	};
 	
 	gameStore.addMultiPlayerGuess(guessEntry);
-	
-	// Clear input immediately after adding guess
+	lastResult = isCorrect
+		? (t) => t.multi.guessCorrect(playerName(guesser), playerName(target))
+		: (t) =>
+				t.multi.guessResult(
+					playerName(guesser),
+					guess,
+					playerName(target),
+					score.correctDigits,
+					score.correctPositions,
+				);
 	multiGuessInput = '';
 	
 	if (!isCorrect && $gameStore.activePlayers.length > 1) {
 		gameStore.nextGuesser();
 	}
-}
-
-function handleSetupKeyPress(e: KeyboardEvent) {
-	if (e.key === 'Enter') {
-		savePlayerSetup();
+	await tick();
+	if ($gameStore.gameOver) {
+		resultHeader?.focus();
+	} else {
+		guessField?.focus();
 	}
 }
 
-function handleGuessKeyPress(e: KeyboardEvent) {
-	if (e.key === 'Enter') {
-		makeMultiPlayerGuess();
+// Enter during IME composition (e.g. a Thai keyboard) confirms the
+// composition, not the form.
+function isSubmitKey(e: KeyboardEvent) {
+	return e.key === 'Enter' && !e.isComposing;
+}
+
+// preventDefault stops the same keypress from activating whatever control
+// receives focus next, such as Play again.
+function handleSetupKeyDown(e: KeyboardEvent) {
+	if (isSubmitKey(e)) {
+		e.preventDefault();
+		void savePlayerSetup();
+	}
+}
+
+function handleGuessKeyDown(e: KeyboardEvent) {
+	if (isSubmitKey(e)) {
+		e.preventDefault();
+		void makeMultiPlayerGuess();
 	}
 }
 
@@ -173,9 +221,11 @@ function handleMultiGuessInput(event: Event) {
 	{t.multi.setupTurn(playerName($gameStore.currentSetupPlayer))}
 </p>
 
-{#if feedback}
-	<p role="alert" class="banner banner-warning mb-5 text-center">{feedback(t)}</p>
-{/if}
+<div role="alert">
+	{#if feedback}
+		<p class="banner banner-warning mb-5 text-center">{feedback(t)}</p>
+	{/if}
+</div>
 	
 <div class="surface-translucent mx-auto max-w-md space-y-4 rounded-2xl border-[1.5px] border-[var(--glass-border)] p-5">
 	<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -199,7 +249,7 @@ function handleMultiGuessInput(event: Event) {
 				type={secretVisible ? 'text' : 'password'}
 				value={playerNumberInput}
 				oninput={handleSecretInput}
-				onkeypress={handleSetupKeyPress}
+				onkeydown={handleSetupKeyDown}
 				placeholder={t.multi.secretPlaceholder}
 				inputmode="numeric"
 				pattern="[0-9]*"
@@ -230,23 +280,26 @@ function handleMultiGuessInput(event: Event) {
 		</div>
 	</div>
 	<div class="text-center">
-		<button onclick={savePlayerSetup} class="btn-primary">
+		<button type="button" onclick={savePlayerSetup} class="btn-primary">
 			{t.multi.save}
 		</button>
 	</div>
 </div>
 {:else if $gameStore.gamePhase === 'guessing' || $gameStore.gamePhase === 'finished'}
-<header class="mb-6 space-y-1 text-center {$gameStore.gamePhase === 'finished' ? 'banner banner-correct' : ''}">
+<header bind:this={resultHeader} tabindex="-1" class="mb-6 space-y-1 text-center {$gameStore.gamePhase === 'finished' ? 'banner banner-correct' : ''}">
 	<h2 class="font-display text-2xl font-bold">{$gameStore.gamePhase === 'finished' ? t.multi.gameOver : t.multi.guessingPhase}</h2>
 	<p aria-live="polite" class="text-[var(--glass-muted)]">{$gameStore.gamePhase === 'finished' ? t.multi.wins(playerName($gameStore.activePlayers[0])) : t.multi.turnToGuess(playerName($gameStore.currentGuesser))}</p>
 	{#if $gameStore.gamePhase === 'finished'}
 		<button type="button" class="btn-primary mt-3" onclick={playAgain}>{t.multi.playAgain}</button>
 	{/if}
 </header>
+<p class="sr-only" role="status">{lastResult ? lastResult(t) : ''}</p>
 
-{#if feedback}
-	<p role="alert" class="banner banner-warning mb-5 text-center">{feedback(t)}</p>
-{/if}
+<div role="alert">
+	{#if feedback}
+		<p class="banner banner-warning mb-5 text-center">{feedback(t)}</p>
+	{/if}
+</div>
 	
 <div class="my-5">
 	<div class="flex flex-wrap justify-center gap-4">
@@ -283,13 +336,12 @@ function handleMultiGuessInput(event: Event) {
 			<label for="target-player" class="font-semibold">{t.multi.guessFor}</label>
 			<select
 				id="target-player"
-				bind:value={targetPlayerIndex}
+				value={targetPlayerIndex}
+				onchange={chooseTarget}
 				class="field-select"
 			>
-				{#each $gameStore.activePlayers as playerIdx}
-					{#if playerIdx !== $gameStore.currentGuesser}
-						<option value={playerIdx}>{playerName(playerIdx)}</option>
-					{/if}
+				{#each targetOptions as playerIdx (playerIdx)}
+					<option value={playerIdx}>{playerName(playerIdx)}</option>
 				{/each}
 			</select>
 		</div>
@@ -298,15 +350,17 @@ function handleMultiGuessInput(event: Event) {
 			<input
 				id="multiplayer-guess"
 				type="text"
+				bind:this={guessField}
 				value={multiGuessInput}
 				oninput={handleMultiGuessInput}
-				onkeypress={handleGuessKeyPress}
+				onkeydown={handleGuessKeyDown}
 				placeholder={t.multi.guessPlaceholder}
 				inputmode="numeric"
 				pattern="[0-9]*"
 				class="field-input w-40"
 			/>
 			<button
+				type="button"
 				onclick={makeMultiPlayerGuess}
 				class="btn-primary"
 			>
@@ -329,7 +383,6 @@ function handleMultiGuessInput(event: Event) {
 
 	.player-card-eliminated {
 		background: color-mix(in srgb, var(--state-incorrect) 12%, var(--surface-white));
-		opacity: 0.75;
 	}
 
 	.player-card-name {

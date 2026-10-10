@@ -506,7 +506,7 @@ describe('SinglePlayerGame round lifecycle', () => {
 		gameStore.startNewGame()
 
 		await waitFor(() => {
-			expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+			expect(screen.getByRole('alert').textContent?.trim()).toBe('')
 		})
 	})
 

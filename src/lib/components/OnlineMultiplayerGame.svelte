@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte'
+	import { onDestroy, onMount, tick, untrack } from 'svelte'
+	import { replaceState } from '$app/navigation'
 	import { gameStore, sanitizeDigits } from '$lib/stores/gameStore'
 	import {
 		onlineGameService,
@@ -22,8 +23,15 @@
 	let roomIdInput = $state(initialRoomId)
 	let secret = $state('')
 	let guess = $state('')
-	let targetUid = $state('')
+	let targetChoice = $state('')
 	let restoreStarted = $state(false)
+	let confirmingForfeit = $state(false)
+	let guessField = $state<HTMLInputElement>()
+	let heading = $state<HTMLElement>()
+	// Mirrors IDLE_TURN_SECONDS on the server, which makes the final check.
+	const idleTurnMs = 120_000
+	let clock = $state(Date.now())
+	let turnSeenAt = $state(Date.now())
 	let busy = $state(false)
 	let copiedRoomId = $state(false)
 	let copiedInviteLink = $state(false)
@@ -37,12 +45,13 @@
 			(player) => player.uid === $gameStore.online.uid,
 		),
 	)
-	const canStart = $derived(
-		room !== null &&
-			room.hostUid === $gameStore.online.uid &&
-			$gameStore.online.players.length === room.maxPlayers &&
-			$gameStore.online.players.every((player) => player.ready),
+	const readyCount = $derived(
+		$gameStore.online.players.filter((player) => player.ready).length,
 	)
+	const canStart = $derived(
+		room !== null && room.hostUid === $gameStore.online.uid && readyCount >= 2,
+	)
+	const connecting = $derived(busy || $gameStore.online.status === 'connecting')
 	const currentGuesser = $derived(
 		$gameStore.online.players.find(
 			(player) => player.uid === $gameStore.online.room?.currentGuesserUid,
@@ -53,6 +62,41 @@
 			(player) =>
 				player.uid !== $gameStore.online.uid && !player.eliminated,
 		),
+	)
+	// A choice only counts while that player is still in; with one opponent
+	// left there is nothing to choose.
+	const targetUid = $derived(
+		activeTargets.some((player) => player.uid === targetChoice)
+			? targetChoice
+			: activeTargets.length === 1
+				? activeTargets[0].uid
+				: '',
+	)
+	const guesses = $derived(
+		$gameStore.online.guesses.filter(
+			(entry) => (entry.match ?? 1) === (room?.match ?? 1),
+		),
+	)
+	const turnKey = $derived(
+		room ? `${room.id}:${room.match ?? 1}:${room.turnNumber}` : '',
+	)
+	const canRemoveIdle = $derived(
+		room?.phase === 'guessing' &&
+			currentPlayer !== undefined &&
+			!currentPlayer.eliminated &&
+			room.currentGuesserUid !== $gameStore.online.uid &&
+			clock - turnSeenAt >= idleTurnMs,
+	)
+	const announcement = $derived(
+		$gameStore.online.status === 'reconnecting'
+			? t.online.reconnecting
+			: copiedRoomId
+				? t.online.copied
+				: copiedInviteLink
+					? t.online.linkCopied
+					: room?.phase === 'lobby' && currentPlayer?.ready
+						? t.online.secretReady
+						: '',
 	)
 	const winner = $derived(
 		$gameStore.online.players.find(
@@ -71,14 +115,17 @@
 		)
 	}
 
+	function errorCode(error: unknown, fallback: OnlineErrorCode): OnlineErrorCode {
+		return error instanceof Error && isOnlineErrorCode(error.message)
+			? error.message
+			: fallback
+	}
+
 	function reportError(
 		error: unknown,
 		fallback: OnlineErrorCode = 'ONLINE_GAME_INTERNAL',
 	): void {
-		const code =
-			error instanceof Error && isOnlineErrorCode(error.message)
-				? error.message
-				: fallback
+		const code = errorCode(error, fallback)
 		if (code === 'CONNECTION_INTERRUPTED') {
 			gameStore.setOnlineStatus('reconnecting')
 			return
@@ -115,11 +162,23 @@
 			})
 			gameStore.setOnlineIdentity(session.uid, session.roomId)
 			activeRoomId = session.roomId
+			forgetInvite()
 		} catch (error) {
 			reportError(error)
 		} finally {
 			busy = false
 		}
+	}
+
+	// Once joined, the saved session is the way back in; a lingering ?room=
+	// would send a refresh to the join form instead.
+	function forgetInvite() {
+		const url = new URL(window.location.href)
+		if (!url.searchParams.has('room')) {
+			return
+		}
+		url.searchParams.delete('room')
+		replaceState(url, {})
 	}
 
 	async function joinRoom() {
@@ -132,6 +191,7 @@
 			})
 			gameStore.setOnlineIdentity(session.uid, session.roomId)
 			activeRoomId = session.roomId
+			forgetInvite()
 		} catch (error) {
 			reportError(error)
 		} finally {
@@ -176,12 +236,34 @@
 		try {
 			await service.leaveRoom(room.id)
 			activeRoomId = ''
+			confirmingForfeit = false
 			gameStore.clearOnlineSession()
 		} catch (error) {
 			reportError(error)
 		} finally {
 			busy = false
 		}
+	}
+
+	async function removeIdlePlayer() {
+		if (!room) {
+			return
+		}
+		busy = true
+		try {
+			await service.removeIdlePlayer({
+				roomId: room.id,
+				turnNumber: room.turnNumber,
+			})
+		} catch (error) {
+			reportError(error)
+		} finally {
+			busy = false
+		}
+	}
+
+	function chooseTarget(event: Event) {
+		targetChoice = (event.currentTarget as HTMLSelectElement).value
 	}
 
 	async function submitGuess() {
@@ -201,6 +283,12 @@
 			reportError(error)
 		} finally {
 			busy = false
+		}
+		await tick()
+		if (canGuess) {
+			guessField?.focus()
+		} else if (document.activeElement === document.body) {
+			heading?.focus()
 		}
 	}
 
@@ -282,6 +370,37 @@
 		if (service === onlineGameService) {
 			preloadOnlineBackend()
 		}
+		const timer = setInterval(() => {
+			clock = Date.now()
+		}, 5000)
+		return () => clearInterval(timer)
+	})
+
+	$effect(() => {
+		void turnKey
+		untrack(() => {
+			turnSeenAt = Date.now()
+			clock = turnSeenAt
+			confirmingForfeit = false
+		})
+	})
+
+	// When a new screen replaces the focused control, focus its heading so
+	// keyboard and screen-reader users land in the new content.
+	let lastPhaseKey: string | null = null
+	const phaseKey = $derived(room ? `${room.id}:${room.phase}` : 'entry')
+	$effect(() => {
+		const key = phaseKey
+		const changed = lastPhaseKey !== null && lastPhaseKey !== key
+		lastPhaseKey = key
+		if (!changed) {
+			return
+		}
+		void tick().then(() => {
+			if (!document.activeElement || document.activeElement === document.body) {
+				heading?.focus()
+			}
+		})
 	})
 
 	onDestroy(() => {
@@ -303,7 +422,12 @@
 				}
 			})
 			.catch((error: unknown) => {
-				reportError(error)
+				// Nothing retries a failed restore, so never claim to be reconnecting.
+				const code = errorCode(error, 'RESTORE_FAILED')
+				gameStore.setOnlineStatus(
+					'error',
+					code === 'CONNECTION_INTERRUPTED' ? 'RESTORE_FAILED' : code,
+				)
 			})
 	})
 
@@ -329,14 +453,18 @@
 	})
 </script>
 
-{#if $gameStore.online.error}
-	<p role="alert" class="banner banner-incorrect mb-4">
-		{t.online.errors[$gameStore.online.error]}
-	</p>
-{/if}
+<!-- Live regions stay mounted so screen readers announce every change. -->
+<div role="alert">
+	{#if $gameStore.online.error}
+		<p class="banner banner-incorrect mb-4">
+			{t.online.errors[$gameStore.online.error]}
+		</p>
+	{/if}
+</div>
+<p class="sr-only" role="status">{announcement}</p>
 
 {#if $gameStore.online.status === 'reconnecting'}
-	<p aria-live="polite" class="banner banner-warning mb-4">
+	<p class="banner banner-warning mb-4">
 		{t.online.reconnecting}
 	</p>
 {/if}
@@ -347,10 +475,10 @@
 		class="space-y-5 text-[var(--glass-fg)]"
 	>
 		<div>
-			<p class="text-sm uppercase tracking-widest text-[var(--glass-muted)]">
+			<p class="eyebrow">
 				{t.modes.online}
 			</p>
-			<h2 id="online-entry-heading" class="font-display text-2xl font-bold">
+			<h2 id="online-entry-heading" bind:this={heading} tabindex="-1" class="font-display text-2xl font-bold">
 				{t.online.entryHeading}
 			</h2>
 		</div>
@@ -369,7 +497,7 @@
 			<button
 				type="button"
 				onclick={createRoom}
-				disabled={busy || !name.trim()}
+				disabled={connecting || !name.trim()}
 				class="btn-primary"
 			>
 				{t.online.createRoom}
@@ -387,7 +515,7 @@
 				<button
 					type="button"
 					onclick={joinRoom}
-					disabled={busy || !name.trim() || roomIdInput.trim().length !== 6}
+					disabled={connecting || !name.trim() || roomIdInput.trim().length !== 6}
 					class="btn-primary w-full"
 				>
 					{t.online.joinRoom}
@@ -395,7 +523,7 @@
 			</div>
 		</div>
 		<p aria-live="polite" class="text-sm text-[var(--glass-muted)]">
-			{busy ? t.online.connecting : t.online.entryHint}
+			{connecting ? t.online.connecting : t.online.entryHint}
 		</p>
 	</section>
 {:else if room.phase === 'lobby'}
@@ -405,10 +533,10 @@
 	>
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<div>
-				<p class="text-sm uppercase tracking-widest text-[var(--glass-muted)]">
+				<p class="eyebrow">
 					{t.online.lobby}
 				</p>
-				<h2 id="online-lobby-heading" class="font-display text-2xl font-bold">
+				<h2 id="online-lobby-heading" bind:this={heading} tabindex="-1" class="font-display text-2xl font-bold">
 					{t.online.room} <span data-testid="room-id">{room.id}</span>
 				</h2>
 			</div>
@@ -416,7 +544,7 @@
 				<div class="relative">
 					{#if copiedRoomId}
 						<span
-							role="status"
+							aria-hidden="true"
 							class="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fg)] px-3 py-2 text-sm text-[var(--glass-bg)] shadow-lg"
 						>
 							{t.online.copied}
@@ -429,7 +557,7 @@
 				<div class="relative">
 					{#if copiedInviteLink}
 						<span
-							role="status"
+							aria-hidden="true"
 							class="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fg)] px-3 py-2 text-sm text-[var(--glass-bg)] shadow-lg"
 						>
 							{t.online.linkCopied}
@@ -477,9 +605,7 @@
 				{currentPlayer.ready ? t.online.updateSecret : t.online.markReady}
 			</button>
 			{#if currentPlayer.ready}
-				<p aria-live="polite">
-					{t.online.secretReady}
-				</p>
+				<p>{t.online.secretReady}</p>
 			{/if}
 		{/if}
 
@@ -493,6 +619,9 @@
 				>
 					{t.online.startGame}
 				</button>
+			{/if}
+			{#if canStart && readyCount < $gameStore.online.players.length}
+				<p class="w-full text-sm text-[var(--glass-muted)]">{t.online.startHint}</p>
 			{/if}
 			<button
 				type="button"
@@ -510,10 +639,10 @@
 		class="space-y-5 text-[var(--glass-fg)]"
 	>
 		<div>
-			<p class="text-sm uppercase tracking-widest text-[var(--glass-muted)]">
+			<p class="eyebrow">
 				{t.online.roomLabel(room.id)}
 			</p>
-			<h2 id="online-game-heading" aria-live="polite" class="font-display text-2xl font-bold">
+			<h2 id="online-game-heading" bind:this={heading} tabindex="-1" aria-live="polite" class="font-display text-2xl font-bold">
 				{t.online.turn(currentGuesser?.name ?? t.online.unknownPlayer)}
 			</h2>
 		</div>
@@ -525,7 +654,11 @@
 				>
 					<strong>{player.name}</strong>
 					<span class="ml-2">
-						{player.eliminated ? t.online.eliminated : t.online.active}
+						{player.left
+							? t.online.left
+							: player.eliminated
+								? t.online.eliminated
+								: t.online.active}
 					</span>
 				</li>
 			{/each}
@@ -535,11 +668,14 @@
 			<label class="block space-y-2">
 				<span>{t.online.targetLabel}</span>
 				<select
-					bind:value={targetUid}
+					value={targetUid}
+					onchange={chooseTarget}
 					disabled={!canGuess || busy}
 					class="field-select w-full"
 				>
-					<option value="">{t.online.choosePlayer}</option>
+					{#if activeTargets.length !== 1}
+						<option value="">{t.online.choosePlayer}</option>
+					{/if}
 					{#each activeTargets as player (player.uid)}
 						<option value={player.uid}>{player.name}</option>
 					{/each}
@@ -548,6 +684,7 @@
 			<label class="block space-y-2">
 				<span>{t.online.guessLabel}</span>
 				<input
+					bind:this={guessField}
 					value={guess}
 					oninput={handleOnlineGuessInput}
 					disabled={!canGuess || busy}
@@ -567,13 +704,45 @@
 			</button>
 		</form>
 
+		{#if canRemoveIdle && currentGuesser}
+			<div class="banner banner-warning space-y-3">
+				<p>{t.online.idleHint(currentGuesser.name)}</p>
+				<button type="button" class="btn-secondary" disabled={busy} onclick={removeIdlePlayer}>
+					{t.online.removeIdle(currentGuesser.name)}
+				</button>
+			</div>
+		{/if}
+
+		{#if confirmingForfeit}
+			<div class="banner banner-warning space-y-3">
+				<p>{t.online.forfeitConfirm}</p>
+				<div class="flex flex-wrap gap-3">
+					<button type="button" class="btn-primary" disabled={busy} onclick={leaveRoom}>
+						{t.online.forfeit}
+					</button>
+					<button type="button" class="btn-secondary" onclick={() => (confirmingForfeit = false)}>
+						{t.online.keepPlaying}
+					</button>
+				</div>
+			</div>
+		{:else}
+			<button
+				type="button"
+				class="btn-secondary"
+				disabled={busy}
+				onclick={() => (currentPlayer?.eliminated ? leaveRoom() : (confirmingForfeit = true))}
+			>
+				{currentPlayer?.eliminated ? t.online.leaveRoom : t.online.leaveGame}
+			</button>
+		{/if}
+
 		<h3 class="font-display text-lg font-bold">{t.online.historyHeading}</h3>
-		{#if $gameStore.online.guesses.length === 0}
+		{#if guesses.length === 0}
 			<p class="text-[var(--glass-muted)]">{t.online.historyEmpty}</p>
 		{:else}
 			<ol class="space-y-2">
-				{#each $gameStore.online.guesses as entry, index (entry.id)}
-					<li class="history-row px-3 py-2 {index === $gameStore.online.guesses.length - 1 ? 'history-row-newest' : ''}">
+				{#each guesses as entry, index (entry.id)}
+					<li class="history-row px-3 py-2 {index === guesses.length - 1 ? 'history-row-newest' : ''}">
 						<strong>{playerName(entry.guesserUid)}</strong>{t.online.historyEntry(
 							entry.guess,
 							playerName(entry.targetUid),
@@ -590,10 +759,10 @@
 		aria-labelledby="online-finished-heading"
 		class="space-y-5 text-[var(--glass-fg)]"
 	>
-		<p class="text-sm uppercase tracking-widest text-[var(--glass-muted)]">
+		<p class="eyebrow">
 			{t.online.roomLabel(room.id)}
 		</p>
-		<h2 id="online-finished-heading" class="font-display text-2xl font-bold">
+		<h2 id="online-finished-heading" bind:this={heading} tabindex="-1" class="font-display text-2xl font-bold">
 			{t.online.wins(winner?.name ?? t.online.unknownPlayer)}
 		</h2>
 		{#if room.hostUid === $gameStore.online.uid}

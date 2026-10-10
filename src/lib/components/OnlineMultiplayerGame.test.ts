@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/svelte'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte'
 import userEvent from '@testing-library/user-event'
 import { tick } from 'svelte'
 import OnlineMultiplayerGame from './OnlineMultiplayerGame.svelte'
@@ -25,6 +25,8 @@ function createFakeOnlineGameService(input?: {
 		submitGuess: vi.fn(async () => undefined),
 		leaveRoom: vi.fn(async () => undefined),
 		restartRoom: vi.fn(async () => undefined),
+		removeIdlePlayer: vi.fn(async () => undefined),
+		savedRoomId: vi.fn(() => input?.restoreSessionResult?.roomId ?? ''),
 		clearSession: vi.fn(),
 		subscribeToRoom: vi.fn(() => vi.fn()),
 	}
@@ -455,7 +457,7 @@ it('restores a saved room and clears an expired saved session', async () => {
 	const onError = vi.mocked(service.subscribeToRoom).mock.calls[0][2]
 	onError('CONNECTION_INTERRUPTED')
 	await waitFor(() => {
-		expect(screen.getByText('Reconnecting…')).toBeInTheDocument()
+		expect(screen.getByRole('status')).toHaveTextContent('Reconnecting…')
 	})
 
 	onError('ROOM_NOT_FOUND')
@@ -495,4 +497,237 @@ it('shows the lobby in Thai', () => {
 		screen.getByRole('button', { name: 'คัดลอกรหัสห้อง' }),
 	).toBeInTheDocument()
 	expect(screen.getByRole('button', { name: 'ออกจากห้อง' })).toBeInTheDocument()
+})
+
+function threePlayerGuessing(input: {
+	currentGuesserUid: string
+	eliminated?: string[]
+	left?: string[]
+	turnNumber?: number
+}): OnlineSnapshot {
+	const names: Record<string, string> = { host: 'Ada', p2: 'Lin', p3: 'Mo' }
+	return {
+		room: {
+			id: 'AB2C3D',
+			hostUid: 'host',
+			phase: 'guessing',
+			digitCount: 3,
+			maxPlayers: 3,
+			playerOrder: ['host', 'p2', 'p3'],
+			currentGuesserUid: input.currentGuesserUid,
+			winnerUid: null,
+			turnNumber: input.turnNumber ?? 0,
+			match: 2,
+		},
+		players: ['host', 'p2', 'p3'].map((uid, seat) => ({
+			uid,
+			name: names[uid],
+			seat,
+			ready: true,
+			eliminated: (input.eliminated ?? []).includes(uid),
+			left: (input.left ?? []).includes(uid),
+		})),
+		guesses: [],
+	}
+}
+
+it('drops a target who is eliminated and picks the last one left', async () => {
+	const user = userEvent.setup()
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(threePlayerGuessing({ currentGuesserUid: 'host' }))
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService() },
+	})
+	await user.selectOptions(screen.getByLabelText('Target player'), 'p3')
+
+	gameStore.applyOnlineSnapshot(
+		threePlayerGuessing({ currentGuesserUid: 'host', eliminated: ['p3'] }),
+	)
+
+	await waitFor(() => {
+		expect(screen.getByLabelText('Target player')).toHaveValue('p2')
+	})
+	expect(screen.queryByRole('option', { name: 'Mo' })).not.toBeInTheDocument()
+})
+
+it('blocks a second Create Room while the first is connecting', () => {
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService() },
+	})
+	gameStore.setOnlineStatus('connecting')
+
+	return waitFor(() => {
+		expect(screen.getByRole('button', { name: 'Create Room' })).toBeDisabled()
+		expect(screen.getByRole('button', { name: 'Join Room' })).toBeDisabled()
+	})
+})
+
+it('asks before forfeiting a match in progress', async () => {
+	const user = userEvent.setup()
+	const service = createFakeOnlineGameService()
+	gameStore.setOnlineIdentity('p2', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(threePlayerGuessing({ currentGuesserUid: 'host' }))
+	render(OnlineMultiplayerGame, { props: { service } })
+
+	await user.click(screen.getByRole('button', { name: 'Leave game' }))
+	expect(screen.getByText('Leave now? You forfeit this match.')).toBeInTheDocument()
+	await user.click(screen.getByRole('button', { name: 'Keep playing' }))
+	expect(service.leaveRoom).not.toHaveBeenCalled()
+
+	await user.click(screen.getByRole('button', { name: 'Leave game' }))
+	await user.click(screen.getByRole('button', { name: 'Forfeit and leave' }))
+
+	expect(service.leaveRoom).toHaveBeenCalledWith('AB2C3D')
+})
+
+it('lets an eliminated player leave without a forfeit prompt', async () => {
+	const user = userEvent.setup()
+	const service = createFakeOnlineGameService()
+	gameStore.setOnlineIdentity('p3', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(
+		threePlayerGuessing({ currentGuesserUid: 'host', eliminated: ['p3'] }),
+	)
+	render(OnlineMultiplayerGame, { props: { service } })
+
+	await user.click(screen.getByRole('button', { name: 'Leave Room' }))
+
+	expect(service.leaveRoom).toHaveBeenCalledWith('AB2C3D')
+})
+
+it('offers to remove a player who has been idle for two minutes', async () => {
+	vi.useFakeTimers()
+	const service = createFakeOnlineGameService()
+	gameStore.setOnlineIdentity('p2', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(
+		threePlayerGuessing({ currentGuesserUid: 'host', turnNumber: 4 }),
+	)
+	render(OnlineMultiplayerGame, { props: { service } })
+	expect(
+		screen.queryByRole('button', { name: 'Remove Ada for inactivity' }),
+	).not.toBeInTheDocument()
+
+	await vi.advanceTimersByTimeAsync(119_000)
+	expect(
+		screen.queryByRole('button', { name: 'Remove Ada for inactivity' }),
+	).not.toBeInTheDocument()
+
+	await vi.advanceTimersByTimeAsync(6_000)
+	await fireEvent.click(
+		screen.getByRole('button', { name: 'Remove Ada for inactivity' }),
+	)
+
+	expect(service.removeIdlePlayer).toHaveBeenCalledWith({
+		roomId: 'AB2C3D',
+		turnNumber: 4,
+	})
+})
+
+it('never offers idle removal to the player whose turn it is', async () => {
+	vi.useFakeTimers()
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(threePlayerGuessing({ currentGuesserUid: 'host' }))
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService() },
+	})
+
+	await vi.advanceTimersByTimeAsync(180_000)
+
+	expect(screen.queryByText(/for inactivity/)).not.toBeInTheDocument()
+})
+
+it('labels players who left the match', () => {
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(
+		threePlayerGuessing({
+			currentGuesserUid: 'host',
+			eliminated: ['p3'],
+			left: ['p3'],
+		}),
+	)
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService() },
+	})
+
+	expect(
+		within(screen.getByText('Mo').closest('li') as HTMLElement).getByText('Left'),
+	).toBeInTheDocument()
+})
+
+it('shows only the current match in the guess history', () => {
+	const snapshot = threePlayerGuessing({ currentGuesserUid: 'host' })
+	const guess = {
+		turnNumber: 1,
+		guesserUid: 'host',
+		targetUid: 'p2',
+		correct: false,
+		correctDigits: 0,
+		correctPositions: 0,
+	}
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot({
+		...snapshot,
+		guesses: [
+			{ ...guess, id: 'old', guess: '111', match: 1 },
+			{ ...guess, id: 'new', guess: '222', match: 2 },
+		],
+	})
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService() },
+	})
+
+	expect(screen.queryByText(/guessed 111/)).not.toBeInTheDocument()
+	expect(screen.getByText(/guessed 222/)).toBeInTheDocument()
+})
+
+it('lets the host start once two players are ready', async () => {
+	const user = userEvent.setup()
+	const service = createFakeOnlineGameService()
+	const lobby = readyLobbySnapshot(true)
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot({
+		...lobby,
+		room: { ...lobby.room, maxPlayers: 3, playerOrder: ['host', 'p2', 'p3'] },
+		players: [
+			...lobby.players,
+			{ uid: 'p3', name: 'Mo', seat: 2, ready: false, eliminated: false },
+		],
+	})
+	render(OnlineMultiplayerGame, { props: { service } })
+
+	expect(
+		screen.getByText("Players who aren't ready yet will be left out."),
+	).toBeInTheDocument()
+	await user.click(screen.getByRole('button', { name: 'Start Game' }))
+
+	expect(service.startRoom).toHaveBeenCalledWith('AB2C3D')
+})
+
+it('forgets the invite link once the player has joined', async () => {
+	const user = userEvent.setup()
+	window.history.replaceState({}, '', '/?room=AB2C3D')
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService(), initialRoomId: 'AB2C3D' },
+	})
+
+	await user.type(screen.getByLabelText('Display name'), 'Lin')
+	await user.click(screen.getByRole('button', { name: 'Join Room' }))
+
+	await waitFor(() => {
+		expect(window.location.search).toBe('')
+	})
+})
+
+it('reports a failed reconnect instead of waiting forever', async () => {
+	const service = createFakeOnlineGameService()
+	vi.mocked(service.restoreSession).mockRejectedValue(
+		new Error('CONNECTION_INTERRUPTED'),
+	)
+	render(OnlineMultiplayerGame, { props: { service } })
+
+	await waitFor(() => {
+		expect(screen.getByRole('alert')).toHaveTextContent(
+			'Could not restore the room.',
+		)
+	})
+	expect(screen.getByRole('status')).not.toHaveTextContent('Reconnecting…')
 })

@@ -375,7 +375,7 @@ describe("MultiPlayerGame Component", () => {
       });
     });
 
-    it("should pad short numbers with leading zeros during setup", async () => {
+    it("should require the full digit count for a secret number", async () => {
       const user = userEvent.setup();
       render(MultiPlayerGame);
 
@@ -386,14 +386,11 @@ describe("MultiPlayerGame Component", () => {
       );
       await user.click(screen.getByText("Save & Continue"));
 
-      await waitFor(() => {
-        expect(
-          screen.getByText(/Player 2's turn to setup/)
-        ).toBeInTheDocument();
-      });
-
-      // Verify the number was padded to 012
-      expect(get(gameStore).players[0].number).toBe("012");
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Please enter exactly 3 digits."
+      );
+      expect(screen.getByText(/Player 1's turn to setup/)).toBeInTheDocument();
+      expect(get(gameStore).players[0].number).toBe("");
     });
 
     it("should filter a non-digit guess before submission", async () => {
@@ -448,7 +445,7 @@ describe("MultiPlayerGame Component", () => {
       ).toBe(guessCount);
     });
 
-    it("should pad short guesses with leading zeros", async () => {
+    it("should require the full digit count for a guess", async () => {
       const user = userEvent.setup();
 
       // Reset and configure for 2 players
@@ -480,11 +477,18 @@ describe("MultiPlayerGame Component", () => {
         timeout: 3000,
       });
 
-      // Make a guess with short number that should be padded
       await user.type(screen.getByPlaceholderText("Enter guess"), "12");
       await user.click(screen.getByText("Submit Guess"));
 
-      // The guess should be padded to 012 and match Bob's number
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Please enter exactly 3 digits."
+      );
+      expect(screen.queryByText("Game Over!")).not.toBeInTheDocument();
+
+      await user.clear(screen.getByPlaceholderText("Enter guess"));
+      await user.type(screen.getByPlaceholderText("Enter guess"), "012");
+      await user.click(screen.getByText("Submit Guess"));
+
       await waitFor(() => {
         expect(screen.getByText("Game Over!")).toBeInTheDocument();
       });
@@ -533,7 +537,7 @@ describe("MultiPlayerGame Component", () => {
       // Alice's turn - make incorrect guess
       expect(screen.getByText(/Alice's turn to guess/)).toBeInTheDocument();
 
-      await user.type(screen.getByPlaceholderText("Enter guess"), "11");
+      await user.type(screen.getByPlaceholderText("Enter guess"), "111");
       await user.click(screen.getByText("Submit Guess"));
 
       // Should move to Bob's turn
@@ -692,5 +696,121 @@ describe('MultiPlayerGame pass-and-play', () => {
 		await user.click(screen.getByRole('button', { name: 'Save & Continue' }))
 
 		expect(screen.getByLabelText('Name:')).toHaveValue('Bob')
+	})
+})
+
+describe('MultiPlayerGame turn handling', () => {
+	beforeEach(() => {
+		gameStore.reset()
+		gameStore.setMode('multi')
+	})
+
+	async function setUpPlayers(
+		user: ReturnType<typeof userEvent.setup>,
+		secrets: string[],
+	) {
+		gameStore.updateSettings({ playerCount: secrets.length })
+		gameStore.startNewGame()
+		render(MultiPlayerGame)
+		for (const secret of secrets) {
+			await user.type(screen.getByLabelText('Secret Number:'), secret)
+			await user.click(screen.getByRole('button', { name: 'Save & Continue' }))
+		}
+	}
+
+	async function guess(user: ReturnType<typeof userEvent.setup>, value: string) {
+		await user.type(screen.getByLabelText('Guess'), value)
+		await user.click(screen.getByRole('button', { name: 'Submit Guess' }))
+	}
+
+	it('moves focus to the guess field once setup ends', async () => {
+		const user = userEvent.setup()
+		await setUpPlayers(user, ['123', '456'])
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Guess')).toHaveFocus()
+		})
+	})
+
+	it('keeps the chosen target when the language changes', async () => {
+		const user = userEvent.setup()
+		await setUpPlayers(user, ['123', '456', '789'])
+		await user.selectOptions(screen.getByLabelText('Guess for:'), '2')
+
+		gameStore.setLocale('th')
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('ทายเลขของ:')).toHaveValue('2')
+		})
+	})
+
+	it('moves the target off a player who was just eliminated', async () => {
+		const user = userEvent.setup()
+		await setUpPlayers(user, ['123', '456', '789'])
+		await user.selectOptions(screen.getByLabelText('Guess for:'), '2')
+
+		await guess(user, '789')
+
+		expect(screen.getByText("Player 1's turn to guess")).toBeInTheDocument()
+		expect(screen.getByLabelText('Guess for:')).toHaveValue('1')
+		expect(
+			screen.queryByRole('option', { name: 'Player 3' }),
+		).not.toBeInTheDocument()
+	})
+
+	it('announces each guess result and focuses the result at the end', async () => {
+		const user = userEvent.setup()
+		await setUpPlayers(user, ['123', '456'])
+
+		await guess(user, '465')
+		expect(screen.getByRole('status')).toHaveTextContent(
+			'Player 1 guessed 465 for Player 2: 3 correct digits, 1 in the right position.',
+		)
+		await waitFor(() => {
+			expect(screen.getByLabelText('Guess')).toHaveFocus()
+		})
+
+		await guess(user, '123')
+
+		expect(screen.getByRole('status')).toHaveTextContent(
+			"Player 2 guessed Player 1's number. Player 1 is out.",
+		)
+		await waitFor(() => {
+			expect(screen.getByText('Game Over!').closest('header')).toHaveFocus()
+		})
+	})
+
+	it('clears warnings and typed numbers when a new game starts', async () => {
+		const user = userEvent.setup()
+		gameStore.updateSettings({ playerCount: 2, digitCount: 4 })
+		gameStore.startNewGame()
+		render(MultiPlayerGame)
+		await user.type(screen.getByLabelText('Secret Number:'), '12')
+		await user.click(screen.getByRole('button', { name: 'Save & Continue' }))
+		expect(screen.getByRole('alert')).toHaveTextContent(
+			'Please enter exactly 4 digits.',
+		)
+
+		gameStore.updateSettings({ digitCount: 3 })
+		gameStore.startNewGame()
+
+		await waitFor(() => {
+			expect(screen.getByRole('alert').textContent?.trim()).toBe('')
+		})
+		expect(screen.getByLabelText('Secret Number:')).toHaveValue('')
+	})
+
+	it('ignores Enter while an input method is composing', async () => {
+		gameStore.updateSettings({ playerCount: 2 })
+		gameStore.startNewGame()
+		render(MultiPlayerGame)
+		const secret = screen.getByLabelText('Secret Number:')
+		await fireEvent.input(secret, { target: { value: '123' } })
+
+		await fireEvent.keyDown(secret, { key: 'Enter', isComposing: true })
+		expect(screen.getByText("Player 1's turn to setup")).toBeInTheDocument()
+
+		await fireEvent.keyDown(secret, { key: 'Enter' })
+		expect(screen.getByText("Player 2's turn to setup")).toBeInTheDocument()
 	})
 })

@@ -512,4 +512,9 @@ describe('sanitizeDigits', () => {
   it('handles a pasted mixed value', () => {
     expect(sanitizeDigits(' 0a9\n8 ', 3)).toBe('098')
   })
+
+  it('reads Thai numerals as digits', () => {
+    expect(sanitizeDigits('๑๒๓', 3)).toBe('123')
+    expect(sanitizeDigits('๐9๕', 3)).toBe('095')
+  })
 })

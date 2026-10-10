@@ -16,6 +16,7 @@ export interface OnlineRoom {
 	currentGuesserUid: string | null
 	winnerUid: string | null
 	turnNumber: number
+	match?: number
 }
 
 export interface OnlinePlayer {
@@ -24,6 +25,7 @@ export interface OnlinePlayer {
 	seat: number
 	ready: boolean
 	eliminated: boolean
+	left?: boolean
 }
 
 export interface OnlineGuess {
@@ -35,6 +37,7 @@ export interface OnlineGuess {
 	correct: boolean
 	correctDigits: number
 	correctPositions: number
+	match?: number
 }
 
 export interface OnlineSnapshot {
@@ -68,6 +71,8 @@ export const ONLINE_ERROR_CODES = [
 	'RESTORE_FAILED',
 	'CLIPBOARD_FAILED',
 	'ONLINE_UNAVAILABLE',
+	'ROOM_CREATE_LIMIT',
+	'TURN_NOT_IDLE',
 ] as const
 
 export type OnlineErrorCode = (typeof ONLINE_ERROR_CODES)[number]

@@ -258,6 +258,20 @@ describe('SettingsModal Component', () => {
 		expect(last).toHaveFocus()
 	})
 
+	it('keeps focus inside when the backdrop itself has focus', async () => {
+		const user = userEvent.setup()
+		renderSettings()
+		const dialog = screen.getByRole('dialog')
+		const focusables = dialog.querySelectorAll<HTMLElement>(
+			'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+		)
+
+		dialog.focus()
+		await user.tab({ shift: true })
+
+		expect(focusables[focusables.length - 1]).toHaveFocus()
+	})
+
 	it('restores focus when unmounted', () => {
 		const trigger = document.createElement('button')
 		document.body.appendChild(trigger)

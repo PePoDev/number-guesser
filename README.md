@@ -19,9 +19,9 @@ Example: target `401`, guess `410` → 3 correct digits and 1 correct position.
 
 - **Single player:** The computer generates a number. The player has 3–20 attempts, with 7 by default. Duplicate guesses are rejected without consuming an attempt.
 - **Local multiplayer:** Two to four players share one device, choose names and secret numbers, and take turns guessing.
-- **Online multiplayer:** Two to four remote players enter display names, create or join a room with a six-character ID, and reconnect after refresh. Firebase keeps secrets private and enforces turns on the server.
+- **Online multiplayer:** Two to four remote players enter display names, create or join a room with a six-character ID or invite link, and reconnect after refresh. The host can start once at least two players are ready; anyone not ready is left out. Leaving mid-match forfeits, and if the player whose turn it is stays idle for two minutes, the others can remove them. Firebase keeps secrets private and enforces turns on the server.
 
-Secret-number and guess fields discard non-digits and stop at the configured digit count.
+Secret-number and guess fields read Thai numerals (๐–๙) as digits, discard other non-digits, and stop at the configured digit count. Every mode requires exactly that many digits; nothing is padded.
 
 `Enter` submits a guess. `Escape` closes the settings modal.
 
@@ -179,7 +179,7 @@ Firebase dependencies and backend deployment are explicitly approved for online 
 | Online end-to-end | `e2e/online-multiplayer.spec.ts` | Separate browser contexts for create/join, turns, reconnect, and errors |
 | Deployment | `src/tests/deploymentWorkflows.test.ts` | Secret injection, missing-config guard, and Java runtime requirements |
 | Localization | `src/lib/i18n/*.test.ts` | Locale resolution, persistence, and dictionary parity |
-| Setup | `src/tests/setup.ts` | DOM environment and matchers |
+| Setup | `src/tests/setup.ts`, `src/tests/appNavigation.ts` | DOM environment, matchers, pinned `Math.random`, and a `$app/navigation` stand-in aliased in `vitest.config.ts` |
 
 ### Test requirements
 
@@ -308,7 +308,7 @@ The main display heading ends with one bold italic word in `--glass-accent`. Use
 | Result banner | Final win/lose message with a Play again action; takes focus when the game ends and returns focus to the guess field on replay |
 | History row | Translucent white; newest row has a purple left border; single-player history lists newest first, shows an empty-state hint, and wraps the guess and score as whole phrases |
 | Player card | Landscape nav-card language; inset turn border; red-tinted eliminated state and visible badge; newest guess first; a finished game offers Play again, which keeps player names |
-| Online multiplayer | One cream-panel flow: name/create/join entry, room-ID lobby with paired Copy and Share actions, accessible confirmation tooltips, readiness, turn/guess state, reconnect status, and host restart |
+| Online multiplayer | One cream-panel flow: name/create/join entry, room-ID lobby with paired Copy and Share actions, accessible confirmation tooltips, readiness, turn/guess state, reconnect status, and host restart; a two-step Leave game that forfeits, a warning banner offering to remove a player idle for two minutes, and players who left labelled Left |
 | Settings modal | Active-mode title and fields with a note that changing them starts a new game, then a Language select whose options are written in their own language with a matching `lang`; cream surface, 480px maximum, blurred 40% black scrim, focus trap, and viewport-bounded scrolling |
 | Hero | Decorative CSS/SVG tile tunnel with `aria-hidden="true"` |
 | Utility row | Current mode plus visible `Enter` and `Escape` keyboard hints |
@@ -329,6 +329,9 @@ Icons are monochrome line icons, normally 18×18px with a 1.5px stroke. Icon-onl
 - Never remove an outline without a replacement.
 - Mark the hero and duplicated ticker content `aria-hidden`.
 - Trap modal focus, restore it on close, and support `Escape`.
+- Keep live regions mounted and change only their text; a region created together with its message is often not announced.
+- When an action removes the focused control, move focus to the new content: the guess field, the result, or the new screen's heading.
+- Enter submits only when no input method is composing, and a handled Enter calls `preventDefault` so it cannot also activate the control that receives focus.
 - Keep the GitHub repository link accessible while its star count is loading or unavailable.
 
 ### Responsive behavior
@@ -399,7 +402,7 @@ Add new surfaces to this table. The initial editorial design system was recorded
 
 ## Deployment
 
-`@sveltejs/adapter-static` builds to `build/`. GitHub Pages deploys the static client from `main` through `.github/workflows/deploy.yml`; `static/CNAME` sets `number-guesser.pepo.dev`. `.github/workflows/deploy-firebase.yml` deploys Cloud Functions and Firestore rules/indexes to `asia-southeast1`.
+`@sveltejs/adapter-static` builds to `build/`. GitHub Pages deploys the static client from `main` through `.github/workflows/deploy.yml`, which type-checks, runs the unit and end-to-end tests, and then builds; `static/CNAME` sets `number-guesser.pepo.dev`. `.github/workflows/deploy-firebase.yml` deploys Cloud Functions and Firestore rules/indexes to `asia-southeast1`.
 
 Before the first backend deploy, create the Firestore database and enable Anonymous Auth. Configure these GitHub repository secrets:
 

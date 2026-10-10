@@ -69,10 +69,12 @@
         const first = focusables[0];
         const last = focusables[focusables.length - 1];
         const active = document.activeElement;
-        if (e.shiftKey && (active === first || !scrimEl?.contains(active))) {
+        // The scrim itself takes focus when the panel background is clicked.
+        const outside = active === scrimEl || !scrimEl?.contains(active);
+        if (e.shiftKey && (active === first || outside)) {
             e.preventDefault();
             last.focus();
-        } else if (!e.shiftKey && (active === last || !scrimEl?.contains(active))) {
+        } else if (!e.shiftKey && (active === last || outside)) {
             e.preventDefault();
             first.focus();
         }
