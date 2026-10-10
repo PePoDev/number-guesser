@@ -124,7 +124,7 @@
 		</div>
 
 		<div class="stage-body grid gap-3 p-3 sm:gap-4 sm:p-4 md:grid-cols-[140px_minmax(320px,6fr)_minmax(0,4fr)]">
-			<nav class="nav-rail flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:pb-0 md:grid-cols-1" aria-label="Game navigation">
+			<nav class="nav-rail flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:gap-3 sm:overflow-visible sm:pb-0 md:grid-cols-1 md:grid-rows-[1fr_1fr_1fr_auto]" aria-label="Game navigation">
 				<button
 					type="button"
 					class="nav-card nav-blue"
@@ -431,8 +431,17 @@
 	}
 
 	@media (min-width: 600px) and (max-width: 899px) {
+		.nav-card {
+			min-height: 72px;
+		}
+
+		.nav-label {
+			font-size: 0.875rem;
+		}
+
 		.nav-primary {
-			grid-column: span 2;
+			flex-direction: column;
+			gap: 4px;
 		}
 	}
 

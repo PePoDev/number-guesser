@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import SinglePlayerGame from "./SinglePlayerGame.svelte";
@@ -456,3 +456,137 @@ describe("SinglePlayerGame Component", () => {
     });
   });
 });
+
+describe('SinglePlayerGame round lifecycle', () => {
+	beforeEach(() => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5)
+		gameStore.reset()
+		gameStore.setMode('single')
+		gameStore.startNewGame()
+	})
+
+	afterEach(() => {
+		vi.restoreAllMocks()
+	})
+
+	async function guess(user: ReturnType<typeof userEvent.setup>, value: string) {
+		await user.type(screen.getByLabelText('Guess'), value)
+		await user.click(screen.getByRole('button', { name: 'Submit Guess' }))
+	}
+
+	it('clears the previous result when a new game starts', async () => {
+		const user = userEvent.setup()
+		gameStore.updateSettings({ maxAttempts: 3 })
+		gameStore.startNewGame()
+		render(SinglePlayerGame)
+
+		for (const value of ['111', '222', '333']) {
+			await guess(user, value)
+		}
+		expect(screen.getByText(/Game Over!/)).toBeInTheDocument()
+
+		gameStore.startNewGame()
+
+		await waitFor(() => {
+			expect(screen.queryByText(/Game Over!/)).not.toBeInTheDocument()
+		})
+		expect(screen.queryByText(/Better luck next time!/)).not.toBeInTheDocument()
+		expect(screen.getByLabelText('Guess')).toBeEnabled()
+	})
+
+	it('clears a validation warning when a new game starts', async () => {
+		const user = userEvent.setup()
+		render(SinglePlayerGame)
+
+		await user.click(screen.getByRole('button', { name: 'Submit Guess' }))
+		expect(screen.getByRole('alert')).toHaveTextContent(
+			/Please enter a number before submitting/,
+		)
+
+		gameStore.startNewGame()
+
+		await waitFor(() => {
+			expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+		})
+	})
+
+	it('starts a fresh round from the result banner', async () => {
+		const user = userEvent.setup()
+		render(SinglePlayerGame)
+
+		await guess(user, '500')
+		await user.click(screen.getByRole('button', { name: 'Play again' }))
+
+		expect(screen.queryByText(/Congratulations!/)).not.toBeInTheDocument()
+		expect(screen.queryByText(/Guess 1:/)).not.toBeInTheDocument()
+		await waitFor(() => {
+			expect(screen.getByLabelText('Guess')).toHaveFocus()
+		})
+	})
+
+	it('only offers Play again once the game is over', async () => {
+		const user = userEvent.setup()
+		render(SinglePlayerGame)
+
+		await guess(user, '123')
+
+		expect(screen.queryByRole('button', { name: 'Play again' })).not.toBeInTheDocument()
+	})
+
+	it('lists the newest guess first', async () => {
+		const user = userEvent.setup()
+		render(SinglePlayerGame)
+
+		await guess(user, '123')
+		await guess(user, '456')
+
+		const rows = screen.getAllByText(/^Guess \d+:/)
+		expect(rows.map((row) => row.textContent)).toEqual([
+			'Guess 2: 456',
+			'Guess 1: 123',
+		])
+	})
+
+	it('explains the empty history before the first guess', async () => {
+		const user = userEvent.setup()
+		render(SinglePlayerGame)
+
+		expect(screen.getByText(/No guesses yet/)).toBeInTheDocument()
+
+		await guess(user, '123')
+
+		expect(screen.queryByText(/No guesses yet/)).not.toBeInTheDocument()
+	})
+
+	it('keeps focus in the guess field after a button submit', async () => {
+		const user = userEvent.setup()
+		render(SinglePlayerGame)
+
+		await guess(user, '123')
+
+		expect(screen.getByLabelText('Guess')).toHaveFocus()
+		expect(screen.getByLabelText('Guess')).toHaveValue('')
+	})
+
+	it('moves focus to the result when the game ends', async () => {
+		const user = userEvent.setup()
+		render(SinglePlayerGame)
+
+		await guess(user, '500')
+
+		await waitFor(() => {
+			expect(screen.getByText(/Congratulations!/).closest('.banner')).toHaveFocus()
+		})
+	})
+
+	it('styles an unfinished guess result as information', async () => {
+		const user = userEvent.setup()
+		render(SinglePlayerGame)
+
+		await guess(user, '503')
+
+		expect(
+			screen.getByText('Correct digits: 2, Correct positions: 2'),
+		).toHaveClass('banner-info')
+	})
+})

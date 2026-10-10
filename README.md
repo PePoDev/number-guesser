@@ -167,7 +167,7 @@ Firebase dependencies and backend deployment are explicitly approved for online 
 - A bug starts with the smallest failing regression test.
 - Test behavior, not implementation details.
 - Use semantic Testing Library queries and Playwright's built-in waiting.
-- Use fake timers and seeded randomness when needed.
+- Use fake timers and seeded randomness when needed. Stub `Math.random` with `vi.spyOn` in Vitest and with `page.addInitScript` before navigation in Playwright.
 - Keep tests independent; avoid arbitrary timeouts.
 - Run Firebase tests only with project `demo-number-guessing`, never production services.
 - Give every online player a separate Playwright browser context.
@@ -273,12 +273,14 @@ The main display heading ends with one bold italic word in `--glass-accent`. Use
 | Glass panel | Cream surface, dark 1.5px border, 20px radius, 32px/20px responsive padding |
 | Multiplayer switch | Segmented Local/Online control inside the play panel; active choice is dark-filled |
 | Instructions | Orange card swaps the center panel between the game and the how-to-play content |
-| Input | 56px high, white, centered text, 14px radius, visible blue focus ring; game-number fields filter to digits and enforce the configured length |
+| Input | 56px high, white, centered text, 14px radius, visible blue focus ring; game-number fields filter to digits and enforce the configured length; the single-player guess field grows beside Submit Guess and wraps above it on narrow screens |
 | Secondary button | 48px high, white, dark border, 14px radius |
-| GitHub stars | Top-right repository link in the game header; shows a validated live count when available and remains a labeled link on API failure |
+| Compact button | 40px high `.btn-compact` secondary variant for low-priority header links |
+| GitHub stars | Compact top-right repository link in the game header; shows a validated live count when available and remains a labeled link on API failure |
 | Setup/control strip | Translucent white, dark border, and wrapping controls on narrow screens |
-| Feedback banner | State-tinted low-opacity background and border |
-| History row | Translucent white; newest row has a purple left border |
+| Feedback banner | State-tinted low-opacity background and border; warning for validation, info for an unfinished guess, correct/incorrect only for the final result; clears when a new game starts |
+| Result banner | Final win/lose message with a Play again action; takes focus when the game ends and returns focus to the guess field on replay |
+| History row | Translucent white; newest row has a purple left border; single-player history lists newest first, shows an empty-state hint, and wraps the guess and score as whole phrases |
 | Player card | Landscape nav-card language; inset turn border; red-tinted eliminated state and visible badge |
 | Online multiplayer | One cream-panel flow: name/create/join entry, room-ID lobby with paired Copy and Share actions, accessible confirmation tooltips, readiness, turn/guess state, reconnect status, and host restart |
 | Settings modal | Active-mode title and fields, cream surface, 480px maximum, blurred 40% black scrim, focus trap, and viewport-bounded scrolling |
@@ -308,7 +310,7 @@ Icons are monochrome line icons, normally 18×18px with a 1.5px stroke.
 | Width | Layout |
 | --- | --- |
 | `< 600px` | Hide hero; horizontal nav; 20px panel padding; wrapping ticker |
-| `600–899px` | Hide hero; 2×2 nav; 24px panel padding |
+| `600–899px` | Hide hero; one row of four compact nav cards; 24px panel padding |
 | `≥ 900px` | Full three-column stage |
 
 Use Tailwind breakpoints `sm: 600px`, `md: 900px`, and `lg: 1200px`. Document any additional breakpoint here first.
@@ -318,12 +320,12 @@ Use Tailwind breakpoints `sm: 600px`, `md: 900px`, and `lg: 1200px`. Document an
 | Surface | File |
 | --- | --- |
 | Stage, ticker, nav, glass shell, hero, utilities | `src/routes/+page.svelte` |
-| Single-player panel | `src/lib/components/SinglePlayerGame.svelte` |
+| Single-player panel, result banner, and history | `src/lib/components/SinglePlayerGame.svelte` |
 | Multiplayer panels and player cards | `src/lib/components/MultiPlayerGame.svelte` |
 | Online entry, lobby, synchronized game, reconnect, and result states | `src/lib/components/OnlineMultiplayerGame.svelte` |
 | Active-mode settings modal | `src/lib/components/SettingsModal.svelte` |
 | GitHub repository link and live star count | `src/lib/components/GitHubStarLink.svelte` |
-| Tokens, Tailwind `@theme` mappings, and global motion/focus styles | `src/app.css` |
+| Tokens, Tailwind `@theme` mappings, shared control classes, and global motion/focus styles | `src/app.css` |
 | Display and body font loading | `src/app.html` |
 
 Add new surfaces to this table. The initial editorial design system was recorded on 2026-07-08.
@@ -335,6 +337,8 @@ Add new surfaces to this table. The initial editorial design system was recorded
 2026-07-28 — Added shareable online-room links that select Online Multiplayer and pre-fill the room ID.
 
 2026-07-28 — Moved settings into each game mode, added a best-effort live GitHub star link, and restricted game-number fields to digits.
+
+2026-10-10 — Fit the tablet game above the fold with a one-row nav, kept the desktop New Game card shorter, compacted the GitHub link, and gave single player a Play again action, newest-first history, and feedback scoped to the current round.
 
 ## Change guide
 

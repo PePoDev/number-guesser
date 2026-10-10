@@ -57,7 +57,7 @@
 	href={repoUrl}
 	target="_blank"
 	rel="noreferrer"
-	class="btn-secondary inline-flex items-center gap-2"
+	class="btn-secondary btn-compact inline-flex shrink-0 items-center gap-2"
 	aria-label={accessibleName}
 >
 	<svg

@@ -46,6 +46,15 @@ test.describe("Single Player Game", () => {
       "normal"
     );
 
+    await page.setViewportSize({ width: 840, height: 800 })
+    const navTops = await mobileNav
+      .getByRole('button')
+      .evaluateAll((buttons) =>
+        buttons.map((button) => button.getBoundingClientRect().top),
+      )
+    expect(new Set(navTops).size).toBe(1)
+    await expect(page.getByLabel('Guess', { exact: true })).toBeInViewport()
+
     await page.setViewportSize({ width: 640, height: 360 });
     await page.getByLabel("Open Single Player settings").click();
     await expect(page.getByRole("dialog")).toHaveCSS("overflow-y", "auto");
@@ -56,7 +65,36 @@ test.describe("Single Player Game", () => {
 
     await page.setViewportSize({ width: 1000, height: 800 });
     await expect(page.locator(".hero")).toBeVisible();
+    const singlePlayerCard = await mobileNav
+      .getByRole('button', { name: /Single Player/ })
+      .boundingBox()
+    const newGameCard = await mobileNav
+      .getByRole('button', { name: /New Game/ })
+      .boundingBox()
+    expect(newGameCard?.height).toBeLessThan(singlePlayerCard?.height ?? 0)
   });
+
+  test('offers Play again after the game ends', async ({ page }) => {
+    await page.addInitScript(() => {
+      Math.random = () => 0.5
+    })
+    await page.goto('/')
+    const input = page.getByLabel('Guess', { exact: true })
+
+    for (const guess of ['123', '456', '789', '012', '345', '678', '901']) {
+      await input.fill(guess)
+      await input.press('Enter')
+    }
+    await expect(page.getByText(/The correct number was:/)).toBeVisible()
+    await expect(page.getByText('500', { exact: true })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Play again' }).click()
+
+    await expect(page.getByText(/Game Over/)).toBeHidden()
+    await expect(page.getByText(/No guesses yet/)).toBeVisible()
+    await expect(input).toBeEnabled()
+    await expect(input).toBeFocused()
+  })
 
   test("should show digit count and attempts remaining", async ({ page }) => {
     await expect(page.locator("text=/\\d+-digit number/")).toBeVisible();
