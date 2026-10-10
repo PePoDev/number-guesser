@@ -52,6 +52,14 @@ describe('SettingsModal Component', () => {
 		)
 	})
 
+	it('warns that changing game options starts a new game', () => {
+		renderSettings('single')
+
+		expect(
+			screen.getByText('Changing these options starts a new game.'),
+		).toBeInTheDocument()
+	})
+
 	it('offers only the language once an online room starts', () => {
 		gameStore.setMode('online')
 		gameStore.applyOnlineSnapshot({
@@ -73,6 +81,9 @@ describe('SettingsModal Component', () => {
 		renderSettings('online')
 
 		expect(screen.getByLabelText('Language:')).toHaveValue('en')
+		expect(
+			screen.queryByText('Changing these options starts a new game.'),
+		).not.toBeInTheDocument()
 		expect(screen.queryByLabelText('Number of Digits:')).not.toBeInTheDocument()
 		expect(
 			screen.queryByLabelText('Number of Players:'),

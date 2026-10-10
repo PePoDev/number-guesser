@@ -109,6 +109,27 @@ describe('online game service', () => {
 		expect(mapOnlineGameError({ message: 'SOMETHING_NEW' })).toBe(
 			'ONLINE_GAME_INTERNAL',
 		)
+		expect(
+			mapOnlineGameError({ code: 'functions/internal', message: 'INTERNAL' }),
+		).toBe('ONLINE_GAME_INTERNAL')
+	})
+
+	it('reports a missing backend as unavailable rather than retryable', () => {
+		expect(
+			mapOnlineGameError({ code: 'functions/not-found', message: 'NOT_FOUND' }),
+		).toBe('ONLINE_UNAVAILABLE')
+		expect(mapOnlineGameError(new Error('FIREBASE_CONFIG_MISSING'))).toBe(
+			'ONLINE_UNAVAILABLE',
+		)
+		expect(
+			mapOnlineGameError({ code: 'auth/operation-not-allowed', message: '' }),
+		).toBe('ONLINE_UNAVAILABLE')
+		expect(
+			mapOnlineGameError({
+				code: 'functions/not-found',
+				message: 'ROOM_NOT_FOUND',
+			}),
+		).toBe('ROOM_NOT_FOUND')
 		expect(mapOnlineGameError('offline')).toBe('ONLINE_GAME_INTERNAL')
 	})
 

@@ -7,6 +7,8 @@ export type Locale = (typeof locales)[number]
 
 export type RichText = Array<string | { value: string | number }>
 
+export type NoteMark = 'none' | 'out' | 'in'
+
 interface InstructionStep {
 	term?: string
 	text: string
@@ -68,6 +70,13 @@ const en = {
 			},
 			{ text: 'Example: Target is 401, you guess 410 → 3 correct digits, 1 correct position' },
 		] as InstructionStep[],
+		friendsHeading: 'Playing with friends:',
+		friendsSteps: [
+			'Each player picks a secret number. On one device, pass it around and keep your number hidden.',
+			"Take turns guessing another player's number. Every guess gets the same digit and position hints.",
+			'Guess a number exactly to knock that player out. The last player standing wins.',
+			'Online: create a room, share its ID or link, and the host starts once everyone is ready.',
+		],
 	},
 	footer: {
 		submit: 'submits a guess',
@@ -93,6 +102,7 @@ const en = {
 		attempts: 'Max Attempts:',
 		attemptOption: (count: number) => `${count} attempts`,
 		language: 'Language:',
+		restartHint: 'Changing these options starts a new game.',
 	},
 	validation: {
 		invalid: () => 'Please enter a valid number.',
@@ -127,6 +137,17 @@ const en = {
 			`Digits: ${digits}, Positions: ${positions}`,
 		historyEmpty: 'No guesses yet. Your guesses will appear here.',
 	},
+	notepad: {
+		heading: 'Notepad',
+		hint: 'Tap a digit to rule it out, again to mark it in the answer, and again to clear it.',
+		clear: 'Clear notes',
+		digit: (digit: number, mark: NoteMark) =>
+			mark === 'out'
+				? `${digit}, ruled out`
+				: mark === 'in'
+					? `${digit}, in the answer`
+					: `${digit}, not marked`,
+	},
 	multi: {
 		playerName: (number: number) => `Player ${number}`,
 		setupHeading: 'Player Setup',
@@ -137,6 +158,9 @@ const en = {
 		namePlaceholder: 'Enter your name',
 		secretLabel: 'Secret Number:',
 		secretPlaceholder: 'Enter your secret number',
+		showSecret: 'Show secret number',
+		hideSecret: 'Hide secret number',
+		playAgain: 'Play again',
 		save: 'Save & Continue',
 		gameOver: 'Game Over!',
 		guessingPhase: 'Guessing Phase',
@@ -145,7 +169,8 @@ const en = {
 		eliminated: 'Eliminated',
 		eliminatedLabel: (name: string) => `${name} eliminated`,
 		correct: 'CORRECT!',
-		score: (digits: number, positions: number) => `D:${digits}, P:${positions}`,
+		score: (digits: number, positions: number) =>
+			`Digits ${digits} · Positions ${positions}`,
 		guessFor: 'Guess for:',
 		guessLabel: 'Guess',
 		guessPlaceholder: 'Enter guess',
@@ -218,6 +243,8 @@ const en = {
 			ROOM_CHANGED: 'The room changed. Please retry.',
 			RESTORE_FAILED: 'Could not restore the room.',
 			CLIPBOARD_FAILED: 'Could not copy. Please copy it manually.',
+			ONLINE_UNAVAILABLE:
+				"Online play isn't available right now. Try Single Player or Local Multiplayer.",
 		} satisfies Record<OnlineErrorCode, string>,
 	},
 }
@@ -276,6 +303,13 @@ const th: Messages = {
 			},
 			{ text: 'ตัวอย่าง: คำตอบคือ 401 ถ้าทาย 410 → เลขถูก 3 ตัว ตำแหน่งถูก 1 ตัว' },
 		],
+		friendsHeading: 'เล่นกับเพื่อน:',
+		friendsSteps: [
+			'ผู้เล่นแต่ละคนตั้งเลขลับของตัวเอง ถ้าเล่นในเครื่องเดียว ให้ส่งเครื่องต่อกันและอย่าให้คนอื่นเห็นเลข',
+			'ผลัดกันทายเลขของผู้เล่นคนอื่น ทุกครั้งที่ทายจะบอกเลขถูกและตำแหน่งถูกเหมือนกัน',
+			'ทายเลขของใครถูกทั้งหมด ผู้เล่นคนนั้นจะตกรอบ คนสุดท้ายที่เหลืออยู่คือผู้ชนะ',
+			'ออนไลน์: สร้างห้อง แชร์รหัสห้องหรือลิงก์ แล้วเจ้าของห้องกดเริ่มเมื่อทุกคนพร้อม',
+		],
 	},
 	footer: {
 		submit: 'ส่งคำทาย',
@@ -300,6 +334,7 @@ const th: Messages = {
 		attempts: 'จำนวนครั้งที่ทายได้:',
 		attemptOption: (count) => `${count} ครั้ง`,
 		language: 'ภาษา:',
+		restartHint: 'การเปลี่ยนตัวเลือกเหล่านี้จะเริ่มเกมใหม่',
 	},
 	validation: {
 		invalid: () => 'กรุณากรอกตัวเลขให้ถูกต้อง',
@@ -325,6 +360,17 @@ const th: Messages = {
 		historyScore: (digits, positions) => `เลขถูก: ${digits}, ตำแหน่งถูก: ${positions}`,
 		historyEmpty: 'ยังไม่มีการทาย คำทายของคุณจะแสดงที่นี่',
 	},
+	notepad: {
+		heading: 'กระดาษทด',
+		hint: 'แตะตัวเลขเพื่อตัดออก แตะอีกครั้งเพื่อระบุว่ามีในคำตอบ และแตะครั้งที่สามเพื่อล้าง',
+		clear: 'ล้างกระดาษทด',
+		digit: (digit, mark) =>
+			mark === 'out'
+				? `${digit} ตัดออกแล้ว`
+				: mark === 'in'
+					? `${digit} มีในคำตอบ`
+					: `${digit} ยังไม่ทำเครื่องหมาย`,
+	},
 	multi: {
 		playerName: (number) => `ผู้เล่น ${number}`,
 		setupHeading: 'ตั้งค่าผู้เล่น',
@@ -335,6 +381,9 @@ const th: Messages = {
 		namePlaceholder: 'ใส่ชื่อของคุณ',
 		secretLabel: 'เลขลับ:',
 		secretPlaceholder: 'ใส่เลขลับของคุณ',
+		showSecret: 'แสดงเลขลับ',
+		hideSecret: 'ซ่อนเลขลับ',
+		playAgain: 'เล่นอีกครั้ง',
 		save: 'บันทึกและไปต่อ',
 		gameOver: 'จบเกม!',
 		guessingPhase: 'ช่วงทายเลข',
@@ -416,6 +465,8 @@ const th: Messages = {
 			ROOM_CHANGED: 'ห้องมีการเปลี่ยนแปลง กรุณาลองใหม่',
 			RESTORE_FAILED: 'กู้คืนห้องไม่สำเร็จ',
 			CLIPBOARD_FAILED: 'คัดลอกไม่สำเร็จ กรุณาคัดลอกเอง',
+			ONLINE_UNAVAILABLE:
+				'ตอนนี้ยังเล่นออนไลน์ไม่ได้ ลองเล่นคนเดียวหรือเล่นหลายคนในเครื่องเดียวก่อนนะ',
 		},
 	},
 }

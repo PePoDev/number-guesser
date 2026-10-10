@@ -99,6 +99,7 @@ src/lib/firebase/client.ts      Firebase browser initialization
 src/lib/online/types.ts         Public online state types
 src/lib/services/
   onlineGameService.ts         Auth, callable, and subscription boundary
+  firebaseBackend.ts           Firebase SDK calls, loaded only when a player goes online
 functions/                     Server-authoritative room commands
 firebase.json                  Emulator and deployment configuration
 firestore.rules                Member-only reads and server-only writes
@@ -139,6 +140,7 @@ These rules are binding. Update this README when a project, testing, or design d
 - Add or update tests for every change.
 - Read the Design system before editing a `.svelte` file.
 - Keep online secrets out of public Firestore documents, client state, local storage, analytics, and logs.
+- Keep the Firebase SDK behind the dynamic import in `onlineGameService.ts`; it is most of the app's JavaScript, and players who never go online should not download it.
 - Run Firebase tests only against project `demo-number-guessing`; never connect automated tests to production Firebase.
 - Match existing style: tabs in `.svelte` and `.ts`, single quotes, no semicolons in TypeScript, and trailing commas in multiline structures.
 - Prefer the smallest change that solves the problem.
@@ -188,7 +190,7 @@ Firebase dependencies and backend deployment are explicitly approved for online 
 - Test behavior, not implementation details.
 - Use semantic Testing Library queries and Playwright's built-in waiting.
 - Cover Thai copy by calling `gameStore.setLocale('th')` before rendering, and browser detection in Playwright with `test.use({ locale: 'th-TH' })`. Clear `localStorage` before tests that render the page so a saved language cannot leak between tests.
-- Use fake timers and seeded randomness when needed. Stub `Math.random` with `vi.spyOn` in Vitest and with `page.addInitScript` before navigation in Playwright.
+- Use fake timers and seeded randomness when needed. `src/tests/setup.ts` pins `Math.random` to 0.5 before every Vitest test, so a three-digit target is `500`; Playwright specs that play single player stub it with `page.addInitScript` before navigation.
 - Keep tests independent; avoid arbitrary timeouts.
 - Run Firebase tests only with project `demo-number-guessing`, never production services.
 - Give every online player a separate Playwright browser context.
@@ -290,23 +292,24 @@ The main display heading ends with one bold italic word in `--glass-accent`. Use
 
 | Surface | Contract |
 | --- | --- |
-| Nav card | Number and arrow above label; solid accent; inset border when active |
+| Nav card | Number and arrow above label; solid accent; inset border when active; on phones a single-line card with number and label side by side |
 | Ticker | Short labels separated by `✦`; ~40s seamless scroll; static when motion is reduced |
 | Glass panel | Cream surface, dark 1.5px border, 20px radius, 32px/20px responsive padding |
 | Multiplayer switch | Segmented Local/Online control inside the play panel; active choice is dark-filled |
-| Instructions | Orange card swaps the center panel between the game and the how-to-play content |
+| Instructions | Orange card swaps the center panel between the game and the how-to-play content, including how to play with friends |
 | Input | 56px high, white, centered text, 14px radius, visible blue focus ring; game-number fields filter to digits and enforce the configured length; the single-player guess field grows beside Submit Guess and wraps above it on narrow screens |
 | Secondary button | 48px high, white, dark border, 14px radius |
 | Icon button | 44px square `.btn-icon` secondary variant with a 20px glyph, an `aria-label`, and a matching `title` tooltip |
 | Panel header | Display title with the Settings and GitHub icon group top-right; the group wraps above the title when the title needs the full width |
 | GitHub stars | Icon-only GitHub mark beside Settings in the panel header; puts a validated live count in its accessible name and tooltip when available and remains a labeled link on API failure |
-| Setup/control strip | Translucent white, dark border, and wrapping controls on narrow screens |
+| Setup/control strip | Translucent white, dark border, and wrapping controls on narrow screens; labels stack above fields on phones; the local secret number is masked with a 44px eye toggle and re-masks for each player |
+| Notepad | Single-player row of ten 44px digit buttons (5 × 2 on phones) cycling unmarked → ruled out (muted, struck through) → in the answer (correct tint and inset ring); a Clear notes action appears once a digit is marked, and every new game starts blank |
 | Feedback banner | State-tinted low-opacity background and border; warning for validation, info for an unfinished guess, correct/incorrect only for the final result; clears when a new game starts |
 | Result banner | Final win/lose message with a Play again action; takes focus when the game ends and returns focus to the guess field on replay |
 | History row | Translucent white; newest row has a purple left border; single-player history lists newest first, shows an empty-state hint, and wraps the guess and score as whole phrases |
-| Player card | Landscape nav-card language; inset turn border; red-tinted eliminated state and visible badge |
+| Player card | Landscape nav-card language; inset turn border; red-tinted eliminated state and visible badge; newest guess first; a finished game offers Play again, which keeps player names |
 | Online multiplayer | One cream-panel flow: name/create/join entry, room-ID lobby with paired Copy and Share actions, accessible confirmation tooltips, readiness, turn/guess state, reconnect status, and host restart |
-| Settings modal | Active-mode title and fields, then a Language select whose options are written in their own language with a matching `lang`; cream surface, 480px maximum, blurred 40% black scrim, focus trap, and viewport-bounded scrolling |
+| Settings modal | Active-mode title and fields with a note that changing them starts a new game, then a Language select whose options are written in their own language with a matching `lang`; cream surface, 480px maximum, blurred 40% black scrim, focus trap, and viewport-bounded scrolling |
 | Hero | Decorative CSS/SVG tile tunnel with `aria-hidden="true"` |
 | Utility row | Current mode plus visible `Enter` and `Escape` keyboard hints |
 
@@ -332,7 +335,7 @@ Icons are monochrome line icons, normally 18×18px with a 1.5px stroke. Icon-onl
 
 | Width | Layout |
 | --- | --- |
-| `< 600px` | Hide hero; horizontal nav; 20px panel padding; wrapping ticker |
+| `< 600px` | Hide hero; 2 × 2 compact nav; 20px panel padding; wrapping ticker |
 | `600–899px` | Hide hero; one row of four compact nav cards; 24px panel padding |
 | `≥ 900px` | Full three-column stage |
 
@@ -370,6 +373,8 @@ Add new surfaces to this table. The initial editorial design system was recorded
 
 2026-10-10 — Moved the language choice into the Settings modal and kept Settings available during Instructions and inside online rooms.
 
+2026-10-10 — Added the single-player notepad, masked local secrets, a multiplayer rematch, a 2 × 2 phone nav, and friend rules in Instructions; the Firebase SDK now loads only for online play.
+
 ## Change guide
 
 | Change | Required work |
@@ -406,6 +411,10 @@ Before the first backend deploy, create the Firestore database and enable Anonym
 - `PUBLIC_FIREBASE_APP_ID`
 
 Add the Firebase service account JSON as the `FIREBASE_SERVICE_ACCOUNT` repository secret. Never put that service account in a public variable or committed file.
+
+The service account needs permission for everything the backend deploy touches. Without it the deploy stops with `403 The caller does not have permission`, as every run before 2026-10-10 did at the Firestore rules step. In Google Cloud IAM, grant it Firebase Admin, Service Account User, and Cloud Scheduler Admin (for the hourly room cleanup), then re-run **Deploy Firebase Backend**. If a later step reports another 403, the error names the missing permission.
+
+Until the backend is deployed, online commands show "Online play isn't available right now" instead of a generic retry message, and single player and local multiplayer are unaffected.
 
 Do not change the workflow, target, CNAME, or DNS without owner approval.
 

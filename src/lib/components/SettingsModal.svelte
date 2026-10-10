@@ -160,6 +160,10 @@
                 </div>
             {/if}
 
+            {#if !gameSettingsLocked}
+                <p class="text-sm text-[var(--glass-muted)]">{t.settings.restartHint}</p>
+            {/if}
+
             <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <label for="language" class="font-semibold">{t.settings.language}</label>
                 <select

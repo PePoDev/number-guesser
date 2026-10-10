@@ -27,6 +27,28 @@ describe("Game Store", () => {
     });
   });
 
+  describe("Rounds", () => {
+    it("counts every new game", () => {
+      gameStore.startNewGame();
+      gameStore.startNewGame();
+      expect(get(gameStore).round).toBe(2);
+    });
+
+    it("keeps local player names for a rematch", () => {
+      gameStore.setMode("multi");
+      gameStore.startNewGame();
+      gameStore.savePlayerSetup("Alice", "123");
+      gameStore.savePlayerSetup("Bob", "456");
+
+      gameStore.startNewGame();
+
+      const state = get(gameStore);
+      expect(state.players.map((player) => player.name)).toEqual(["Alice", "Bob"]);
+      expect(state.players.every((player) => player.number === "")).toBe(true);
+      expect(state.gamePhase).toBe("setup");
+    });
+  });
+
   describe("Locale", () => {
     it("switches the interface language", () => {
       gameStore.setLocale("th");

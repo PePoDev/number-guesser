@@ -3,6 +3,9 @@ import { test, expect } from '@playwright/test'
 test.use({ locale: 'th-TH' })
 
 test.beforeEach(async ({ page }) => {
+	await page.addInitScript(() => {
+		Math.random = () => 0.5
+	})
 	await page.route(
 		'https://api.github.com/repos/PePoDev/number-guesser',
 		async (route) => {

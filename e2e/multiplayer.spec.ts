@@ -200,7 +200,7 @@ test.describe("Multiplayer Game - Guessing Phase", () => {
     await page.click('button:has-text("Submit Guess")');
 
     // Should show D: (digits) and P: (positions)
-    await expect(page.locator("text=/D:\\d+, P:\\d+/")).toBeVisible();
+    await expect(page.locator("text=/Digits \\d+ · Positions \\d+/")).toBeVisible();
   });
 
   test("should eliminate player when number is guessed correctly", async ({
@@ -223,6 +223,21 @@ test.describe("Multiplayer Game - Guessing Phase", () => {
     const bobCard = page.getByRole("group", { name: "Bob eliminated" });
     await expect(bobCard).toHaveClass(/player-card-eliminated/);
   });
+
+  test('hides secrets and offers a rematch with the same names', async ({
+    page,
+  }) => {
+    await page.fill('input[placeholder="Enter guess"]', '456')
+    await page.click('button:has-text("Submit Guess")')
+    await page.getByRole('button', { name: 'Play again' }).click()
+
+    await expect(page.getByText("Alice's turn to setup")).toBeVisible()
+    await expect(page.getByLabel('Name:')).toHaveValue('Alice')
+    const secret = page.getByLabel('Secret Number:')
+    await expect(secret).toHaveAttribute('type', 'password')
+    await page.getByRole('button', { name: 'Show secret number' }).click()
+    await expect(secret).toHaveAttribute('type', 'text')
+  })
 
   test("should end game when only one player remains", async ({ page }) => {
     await page.fill('input[placeholder="Enter guess"]', "456");
@@ -423,6 +438,7 @@ test.describe("Multiplayer Game - New Game", () => {
 
     // Should be back to setup phase
     await expect(page.locator("text=Player Setup")).toBeVisible();
-    await expect(page.locator("text=/Player 1's turn to setup/")).toBeVisible();
+    await expect(page.locator("text=/Alice's turn to setup/")).toBeVisible();
+    await expect(page.getByLabel("Name:")).toHaveValue("Alice");
   });
 });

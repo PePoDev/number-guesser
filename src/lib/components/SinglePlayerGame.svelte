@@ -7,7 +7,7 @@
 		sanitizeDigits,
 		type SinglePlayerGuess,
 	} from '$lib/stores/gameStore'
-	import { messages, type Messages } from '$lib/i18n/messages'
+	import { messages, type Messages, type NoteMark } from '$lib/i18n/messages'
 
 	let guessInput = $state('')
 	let guessField = $state<HTMLInputElement>()
@@ -49,6 +49,27 @@
 			tone: 'info',
 		}
 	})
+	const digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+	const nextMark: Record<NoteMark, NoteMark> = { none: 'out', out: 'in', in: 'none' }
+	// Notes belong to one round; a new game bumps the round and clears them.
+	let notepad = $state.raw<{ round: number; marks: Partial<Record<number, NoteMark>> }>({
+		round: $gameStore.round,
+		marks: {},
+	})
+	const marks = $derived(notepad.round === $gameStore.round ? notepad.marks : {})
+	const hasNotes = $derived(Object.values(marks).some((mark) => mark !== 'none'))
+
+	function cycleMark(digit: number) {
+		notepad = {
+			round: $gameStore.round,
+			marks: { ...marks, [digit]: nextMark[marks[digit] ?? 'none'] },
+		}
+	}
+
+	function clearNotes() {
+		notepad = { round: $gameStore.round, marks: {} }
+	}
+
 	const attemptsUsed = $derived($gameStore.guessHistory.length)
 	const newestFirst = $derived(
 		$gameStore.guessHistory
@@ -193,6 +214,30 @@
 		</div>
 	{/if}
 
+	<section class="mt-8" aria-labelledby="single-player-notepad">
+		<div class="mb-1 flex flex-wrap items-center justify-between gap-x-3">
+			<h3 id="single-player-notepad" class="font-display text-lg font-bold">{t.notepad.heading}</h3>
+			{#if hasNotes}
+				<button type="button" class="note-clear min-h-11 text-sm font-semibold underline" onclick={clearNotes}>
+					{t.notepad.clear}
+				</button>
+			{/if}
+		</div>
+		<p class="mb-3 text-sm text-[var(--glass-muted)]">{t.notepad.hint}</p>
+		<div class="grid grid-cols-5 gap-2 sm:grid-cols-10">
+			{#each digits as digit (digit)}
+				<button
+					type="button"
+					class="note-digit note-{marks[digit] ?? 'none'}"
+					aria-label={t.notepad.digit(digit, marks[digit] ?? 'none')}
+					onclick={() => cycleMark(digit)}
+				>
+					{digit}
+				</button>
+			{/each}
+		</div>
+	</section>
+
 	<section class="mt-8" aria-labelledby="single-player-history">
 		<h3 id="single-player-history" class="mb-3 font-display text-lg font-bold">{t.single.historyHeading}</h3>
 		<div class="surface-translucent-soft max-h-52 space-y-1 overflow-y-auto rounded-2xl border-[1.5px] border-[var(--glass-border)] p-2">
@@ -209,3 +254,34 @@
 		</div>
 	</section>
 </div>
+
+<style>
+	.note-digit {
+		min-height: 44px;
+		border: 1.5px solid var(--glass-border);
+		border-radius: 10px;
+		background: var(--surface-white);
+		color: var(--glass-fg);
+		font-family: var(--font-display);
+		font-size: 1.125rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.note-out {
+		background: color-mix(in srgb, var(--glass-muted) 16%, var(--surface-white));
+		color: var(--glass-muted);
+		text-decoration: line-through 2px;
+	}
+
+	.note-in {
+		background: color-mix(in srgb, var(--state-correct) 22%, var(--surface-white));
+		border-color: var(--state-correct);
+		box-shadow: inset 0 0 0 1.5px var(--state-correct);
+	}
+
+	.note-clear {
+		color: var(--glass-fg);
+		cursor: pointer;
+	}
+</style>

@@ -667,3 +667,82 @@ describe('SinglePlayerGame in Thai', () => {
 		expect(screen.getByText('ชนะด้วยการทาย 1 ครั้ง!')).toBeInTheDocument()
 	})
 })
+
+describe('SinglePlayerGame notepad', () => {
+	beforeEach(() => {
+		gameStore.reset()
+		gameStore.setMode('single')
+		gameStore.startNewGame()
+	})
+
+	it('cycles a digit through ruled out, in the answer, and clear', async () => {
+		const user = userEvent.setup()
+		render(SinglePlayerGame)
+
+		await user.click(screen.getByRole('button', { name: '3, not marked' }))
+		expect(
+			screen.getByRole('button', { name: '3, ruled out' }),
+		).toHaveClass('note-out')
+
+		await user.click(screen.getByRole('button', { name: '3, ruled out' }))
+		expect(
+			screen.getByRole('button', { name: '3, in the answer' }),
+		).toHaveClass('note-in')
+
+		await user.click(screen.getByRole('button', { name: '3, in the answer' }))
+		expect(
+			screen.getByRole('button', { name: '3, not marked' }),
+		).toBeInTheDocument()
+	})
+
+	it('clears every note at once', async () => {
+		const user = userEvent.setup()
+		render(SinglePlayerGame)
+		expect(
+			screen.queryByRole('button', { name: 'Clear notes' }),
+		).not.toBeInTheDocument()
+
+		await user.click(screen.getByRole('button', { name: '1, not marked' }))
+		await user.click(screen.getByRole('button', { name: '7, not marked' }))
+		await user.click(screen.getByRole('button', { name: 'Clear notes' }))
+
+		expect(screen.getAllByRole('button', { name: /not marked$/ })).toHaveLength(
+			10,
+		)
+	})
+
+	it('starts every new game with a blank notepad', async () => {
+		const user = userEvent.setup()
+		render(SinglePlayerGame)
+		await user.click(screen.getByRole('button', { name: '5, not marked' }))
+
+		gameStore.startNewGame()
+
+		await waitFor(() => {
+			expect(
+				screen.getByRole('button', { name: '5, not marked' }),
+			).toBeInTheDocument()
+		})
+	})
+
+	it('keeps notes while guessing', async () => {
+		const user = userEvent.setup()
+		render(SinglePlayerGame)
+		await user.click(screen.getByRole('button', { name: '9, not marked' }))
+
+		await user.type(screen.getByLabelText('Guess'), '123')
+		await user.click(screen.getByRole('button', { name: 'Submit Guess' }))
+
+		expect(screen.getByRole('button', { name: '9, ruled out' })).toBeInTheDocument()
+	})
+
+	it('labels the notepad in Thai', () => {
+		gameStore.setLocale('th')
+		render(SinglePlayerGame)
+
+		expect(screen.getByRole('heading', { name: 'กระดาษทด' })).toBeInTheDocument()
+		expect(
+			screen.getByRole('button', { name: '0 ยังไม่ทำเครื่องหมาย' }),
+		).toBeInTheDocument()
+	})
+})

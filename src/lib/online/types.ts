@@ -67,6 +67,7 @@ export const ONLINE_ERROR_CODES = [
 	'ROOM_CHANGED',
 	'RESTORE_FAILED',
 	'CLIPBOARD_FAILED',
+	'ONLINE_UNAVAILABLE',
 ] as const
 
 export type OnlineErrorCode = (typeof ONLINE_ERROR_CODES)[number]

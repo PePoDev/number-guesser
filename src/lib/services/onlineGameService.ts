@@ -1,7 +1,3 @@
-import { signInAnonymously } from 'firebase/auth'
-import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { getFirebaseClient } from '$lib/firebase/client'
 import type {
 	OnlineErrorCode,
 	OnlineGuess,
@@ -39,7 +35,7 @@ export interface OnlineGameService {
 	): () => void
 }
 
-interface RawSnapshot {
+export interface RawSnapshot {
 	roomId: string
 	room: Record<string, unknown>
 	players: Array<{ id: string; data: Record<string, unknown> }>
@@ -196,10 +192,22 @@ export function mapOnlineGameError(error: unknown): OnlineErrorCode {
 	if (message.includes('ROOM_MEMBERSHIP_REQUIRED')) {
 		return 'ROOM_NOT_FOUND'
 	}
-	return (
-		serverReasons.find((reason) => message.includes(reason)) ??
-		'ONLINE_GAME_INTERNAL'
-	)
+	const reason = serverReasons.find((candidate) => message.includes(candidate))
+	if (reason) {
+		return reason
+	}
+	// A missing callable, missing web config, or disabled anonymous sign-in all
+	// mean the backend is not set up, which retrying cannot fix.
+	if (
+		message.includes('FIREBASE_CONFIG_MISSING') ||
+		code.endsWith('/not-found') ||
+		code.endsWith('/unimplemented') ||
+		code === 'auth/operation-not-allowed' ||
+		code === 'auth/admin-restricted-operation'
+	) {
+		return 'ONLINE_UNAVAILABLE'
+	}
+	return 'ONLINE_GAME_INTERNAL'
 }
 
 function roomIdResult(value: unknown): string {
@@ -282,123 +290,39 @@ export function createOnlineGameService(
 	}
 }
 
-async function ensureFirebaseUser(): Promise<string> {
-	const { auth } = await getFirebaseClient()
-	await auth.authStateReady()
-	if (auth.currentUser) {
-		return auth.currentUser.uid
-	}
-	return (await signInAnonymously(auth)).user.uid
+// The Firebase SDK is most of the app's JavaScript, so it loads only once a
+// player actually goes online.
+function loadFirebaseBackend() {
+	return import('./firebaseBackend')
 }
 
-async function callFirebase(
-	name: string,
-	input: Record<string, unknown>,
-): Promise<unknown> {
-	const { functions } = await getFirebaseClient()
-	return (
-		await httpsCallable<Record<string, unknown>, unknown>(
-			functions,
-			name,
-		)(input)
-	).data
-}
-
-function subscriptionMessage(error: unknown): OnlineErrorCode {
-	if (
-		error &&
-		typeof error === 'object' &&
-		'code' in error &&
-		error.code === 'permission-denied'
-	) {
-		return 'ROOM_NOT_FOUND'
-	}
-	return mapOnlineGameError(error)
-}
-
-function subscribeFirebaseRoom(
-	roomId: string,
-	onValue: (snapshot: OnlineSnapshot) => void,
-	onError: (code: OnlineErrorCode) => void,
-): () => void {
-	let room: Record<string, unknown> | null = null
-	let players: RawSnapshot['players'] = []
-	let guesses: RawSnapshot['guesses'] = []
-	let cancelled = false
-	const unsubscribers: Array<() => void> = []
-
-	function emit(): void {
-		if (room) {
-			onValue(decodeOnlineSnapshot({ roomId, room, players, guesses }))
-		}
-	}
-
-	void getFirebaseClient()
-		.then(({ firestore }) => {
-			const subscriptions = [
-				onSnapshot(
-					doc(firestore, 'rooms', roomId),
-					(snapshot) => {
-						if (!snapshot.exists()) {
-							onError('ROOM_NOT_FOUND')
-							return
-						}
-						room = snapshot.data()
-						emit()
-					},
-					(error) => onError(subscriptionMessage(error)),
-				),
-				onSnapshot(
-					query(
-						collection(firestore, 'rooms', roomId, 'players'),
-						orderBy('seat'),
-					),
-					(snapshot) => {
-						players = snapshot.docs.map((item) => ({
-							id: item.id,
-							data: item.data(),
-						}))
-						emit()
-					},
-					(error) => onError(subscriptionMessage(error)),
-				),
-				onSnapshot(
-					query(
-						collection(firestore, 'rooms', roomId, 'guesses'),
-						orderBy('turnNumber'),
-					),
-					(snapshot) => {
-						guesses = snapshot.docs.map((item) => ({
-							id: item.id,
-							data: item.data(),
-						}))
-						emit()
-					},
-					(error) => onError(subscriptionMessage(error)),
-				),
-			]
-			if (cancelled) {
-				subscriptions.forEach((unsubscribe) => unsubscribe())
-				return
-			}
-			unsubscribers.push(...subscriptions)
-		})
-		.catch((error: unknown) => {
-			if (!cancelled) {
-				onError(mapOnlineGameError(error))
-			}
-		})
-
-	return () => {
-		cancelled = true
-		unsubscribers.forEach((unsubscribe) => unsubscribe())
-	}
+export function preloadOnlineBackend(): void {
+	void loadFirebaseBackend().catch(() => undefined)
 }
 
 const firebaseDependencies: OnlineGameDependencies = {
-	ensureUser: ensureFirebaseUser,
-	call: callFirebase,
-	subscribeRoom: subscribeFirebaseRoom,
+	ensureUser: async () => (await loadFirebaseBackend()).ensureFirebaseUser(),
+	call: async (name, input) =>
+		(await loadFirebaseBackend()).callFirebase(name, input),
+	subscribeRoom: (roomId, onValue, onError) => {
+		let cancelled = false
+		let unsubscribe: (() => void) | undefined
+		void loadFirebaseBackend()
+			.then((backend) => {
+				if (!cancelled) {
+					unsubscribe = backend.subscribeFirebaseRoom(roomId, onValue, onError)
+				}
+			})
+			.catch((error: unknown) => {
+				if (!cancelled) {
+					onError(mapOnlineGameError(error))
+				}
+			})
+		return () => {
+			cancelled = true
+			unsubscribe?.()
+		}
+	},
 	getStoredRoomId: () =>
 		typeof localStorage === 'undefined'
 			? ''

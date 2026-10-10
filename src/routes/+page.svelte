@@ -112,8 +112,8 @@
 			</div>
 		</div>
 
-		<div class="stage-body grid gap-3 p-3 sm:gap-4 sm:p-4 md:grid-cols-[140px_minmax(320px,6fr)_minmax(0,4fr)]">
-			<nav class="nav-rail flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:gap-3 sm:overflow-visible sm:pb-0 md:grid-cols-1 md:grid-rows-[1fr_1fr_1fr_auto]" aria-label={t.nav.label}>
+		<div class="stage-body grid grid-cols-1 gap-3 p-3 sm:gap-4 sm:p-4 md:grid-cols-[140px_minmax(320px,6fr)_minmax(0,4fr)]">
+			<nav class="nav-rail grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 md:grid-cols-1 md:grid-rows-[1fr_1fr_1fr_auto]" aria-label={t.nav.label}>
 				<button
 					type="button"
 					class="nav-card nav-blue"
@@ -233,6 +233,12 @@
 						<ul class="list-disc space-y-2 pl-5 text-sm">
 							{#each t.instructions.steps as step}
 								<li>{#if step.term}<strong>{step.term}</strong>{' '}{/if}{step.text}</li>
+							{/each}
+						</ul>
+						<h3 class="font-display text-lg font-bold">{t.instructions.friendsHeading}</h3>
+						<ul class="list-disc space-y-2 pl-5 text-sm">
+							{#each t.instructions.friendsSteps as step}
+								<li>{step}</li>
 							{/each}
 						</ul>
 					</section>
@@ -406,19 +412,20 @@
 		}
 
 		.nav-card {
-			flex: 0 0 104px;
-			min-height: 72px;
-			padding: 8px;
+			flex-direction: row;
+			align-items: center;
+			justify-content: flex-start;
+			gap: 8px;
+			min-height: 48px;
+			padding: 8px 12px;
 		}
 
 		.nav-label {
-			font-size: 0.75rem;
+			font-size: 0.8125rem;
 		}
 
 		.nav-primary {
-			min-height: 72px;
-			flex-direction: column;
-			gap: 4px;
+			min-height: 48px;
 		}
 	}
 

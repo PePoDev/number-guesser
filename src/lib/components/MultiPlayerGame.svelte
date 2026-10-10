@@ -1,4 +1,5 @@
 <script lang="ts">
+import { tick, untrack } from 'svelte';
 import {
 	gameStore,
 	validateGuess,
@@ -14,6 +15,14 @@ let playerNameInput = $state('');
 let playerNumberInput = $state('');
 let multiGuessInput = $state('');
 let targetPlayerIndex = $state(0);
+let secretVisible = $state(false);
+let nameField = $state<HTMLInputElement>();
+// Changes only when a new player starts setup, so typing is never overwritten.
+const setupSlot = $derived(
+	$gameStore.gamePhase === 'setup'
+		? `${$gameStore.round}:${$gameStore.currentSetupPlayer}`
+		: '',
+);
 // Feedback keeps a renderer rather than text so it follows language changes.
 let feedback = $state<((t: Messages) => string) | null>(null);
 const t = $derived(messages[$gameStore.locale]);
@@ -22,6 +31,14 @@ function playerName(index: number): string {
 	return $gameStore.players[index]?.name || t.multi.playerName(index + 1);
 }
 	
+$effect(() => {
+	if (!setupSlot) return;
+	playerNameInput = untrack(
+		() => $gameStore.players[$gameStore.currentSetupPlayer]?.name ?? '',
+	);
+	secretVisible = false;
+});
+
 $effect(() => {
 	if ($gameStore.gamePhase === 'guessing' && $gameStore.activePlayers.length > 0) {
 		// Set default target to first available player that's not current guesser
@@ -58,6 +75,14 @@ function savePlayerSetup() {
 	gameStore.savePlayerSetup(name, number);
 	playerNameInput = '';
 	playerNumberInput = '';
+	secretVisible = false;
+}
+
+async function playAgain() {
+	feedback = null;
+	gameStore.startNewGame();
+	await tick();
+	nameField?.focus();
 }
 
 function makeMultiPlayerGuess() {
@@ -153,30 +178,56 @@ function handleMultiGuessInput(event: Event) {
 {/if}
 	
 <div class="surface-translucent mx-auto max-w-md space-y-4 rounded-2xl border-[1.5px] border-[var(--glass-border)] p-5">
-	<div class="flex items-center gap-3">
-		<label for="player-name-input" class="w-24 shrink-0 text-right font-semibold">{t.multi.nameLabel}</label>
+	<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+		<label for="player-name-input" class="shrink-0 font-semibold sm:w-24 sm:text-right">{t.multi.nameLabel}</label>
 		<input
 			id="player-name-input"
 			type="text"
+			bind:this={nameField}
 			bind:value={playerNameInput}
 			placeholder={t.multi.namePlaceholder}
 			maxlength="20"
-			class="field-input min-w-0 flex-1"
+			class="field-input min-w-0 sm:flex-1"
 		/>
 	</div>
-	<div class="flex items-center gap-3">
-		<label for="player-number-input" class="w-24 shrink-0 text-right font-semibold">{t.multi.secretLabel}</label>
-		<input
-			id="player-number-input"
-			type="text"
-			value={playerNumberInput}
-			oninput={handleSecretInput}
-			onkeypress={handleSetupKeyPress}
-			placeholder={t.multi.secretPlaceholder}
-			inputmode="numeric"
-			pattern="[0-9]*"
-			class="field-input min-w-0 flex-1"
-		/>
+	<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+		<label for="player-number-input" class="shrink-0 font-semibold sm:w-24 sm:text-right">{t.multi.secretLabel}</label>
+		<div class="flex min-w-0 gap-2 sm:flex-1">
+			<!-- Masked because the device is passed between players. -->
+			<input
+				id="player-number-input"
+				type={secretVisible ? 'text' : 'password'}
+				value={playerNumberInput}
+				oninput={handleSecretInput}
+				onkeypress={handleSetupKeyPress}
+				placeholder={t.multi.secretPlaceholder}
+				inputmode="numeric"
+				pattern="[0-9]*"
+				autocomplete="off"
+				class="field-input min-w-0 flex-1"
+			/>
+			<button
+				type="button"
+				class="btn-secondary btn-icon !min-h-14 shrink-0"
+				aria-label={secretVisible ? t.multi.hideSecret : t.multi.showSecret}
+				aria-controls="player-number-input"
+				aria-pressed={secretVisible}
+				title={secretVisible ? t.multi.hideSecret : t.multi.showSecret}
+				onclick={() => (secretVisible = !secretVisible)}
+			>
+				{#if secretVisible}
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M10.7 5.1A9.8 9.8 0 0 1 12 5c6 0 9.5 7 9.5 7a17 17 0 0 1-2.2 3.2M6.6 6.6C3.9 8.4 2.5 12 2.5 12s3.5 7 9.5 7a9.6 9.6 0 0 0 5.4-1.6" />
+						<path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18" />
+					</svg>
+				{:else}
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z" />
+						<circle cx="12" cy="12" r="3" />
+					</svg>
+				{/if}
+			</button>
+		</div>
 	</div>
 	<div class="text-center">
 		<button onclick={savePlayerSetup} class="btn-primary">
@@ -188,6 +239,9 @@ function handleMultiGuessInput(event: Event) {
 <header class="mb-6 space-y-1 text-center {$gameStore.gamePhase === 'finished' ? 'banner banner-correct' : ''}">
 	<h2 class="font-display text-2xl font-bold">{$gameStore.gamePhase === 'finished' ? t.multi.gameOver : t.multi.guessingPhase}</h2>
 	<p aria-live="polite" class="text-[var(--glass-muted)]">{$gameStore.gamePhase === 'finished' ? t.multi.wins(playerName($gameStore.activePlayers[0])) : t.multi.turnToGuess(playerName($gameStore.currentGuesser))}</p>
+	{#if $gameStore.gamePhase === 'finished'}
+		<button type="button" class="btn-primary mt-3" onclick={playAgain}>{t.multi.playAgain}</button>
+	{/if}
 </header>
 
 {#if feedback}
@@ -209,11 +263,11 @@ function handleMultiGuessInput(event: Event) {
 				{/if}
 			</div>
 			<div class="mt-3 max-h-52 space-y-1 overflow-y-auto">
-				{#each player.guesses as guess, guessIndex}
-				<div class="history-row px-2 py-1.5 text-sm {guessIndex === player.guesses.length - 1 ? 'history-row-newest' : ''} {guess.correct ? 'history-row-correct font-bold' : ''}">
-					<div class="flex w-full justify-between gap-2">
-						<span>{playerName(guess.guesser)}: {guess.guess}</span>
-						<span>{guess.correct ? t.multi.correct : t.multi.score(guess.correctDigits, guess.correctPositions)}</span>
+				{#each [...player.guesses].reverse() as guess, guessIndex}
+				<div class="history-row px-2 py-1.5 text-sm {guessIndex === 0 ? 'history-row-newest' : ''} {guess.correct ? 'history-row-correct font-bold' : ''}">
+					<div class="flex w-full flex-wrap justify-between gap-x-2">
+						<span class="whitespace-nowrap">{playerName(guess.guesser)}: {guess.guess}</span>
+						<span class="whitespace-nowrap">{guess.correct ? t.multi.correct : t.multi.score(guess.correctDigits, guess.correctPositions)}</span>
 					</div>
 				</div>
 				{/each}

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { get } from "svelte/store";
 import MultiPlayerGame from "./MultiPlayerGame.svelte";
@@ -591,5 +591,106 @@ describe('MultiPlayerGame in Thai', () => {
 		expect(screen.getByText('ช่วงทายเลข')).toBeInTheDocument()
 		expect(screen.getByText('ถึงตา ผู้เล่น 1 ทาย')).toBeInTheDocument()
 		expect(screen.getByLabelText('ทายเลขของ:')).toHaveDisplayValue('ผู้เล่น 2')
+	})
+})
+
+describe('MultiPlayerGame pass-and-play', () => {
+	beforeEach(() => {
+		gameStore.reset()
+		gameStore.setMode('multi')
+		gameStore.updateSettings({ playerCount: 2 })
+		gameStore.startNewGame()
+	})
+
+	async function setUp(
+		user: ReturnType<typeof userEvent.setup>,
+		players: Array<[string, string]>,
+	) {
+		for (const [name, secret] of players) {
+			const nameField = screen.getByLabelText('Name:')
+			await user.clear(nameField)
+			await user.type(nameField, name)
+			await user.type(screen.getByLabelText('Secret Number:'), secret)
+			await user.click(screen.getByRole('button', { name: 'Save & Continue' }))
+		}
+	}
+
+	async function guess(user: ReturnType<typeof userEvent.setup>, value: string) {
+		await user.type(screen.getByLabelText('Guess'), value)
+		await user.click(screen.getByRole('button', { name: 'Submit Guess' }))
+	}
+
+	it('masks the secret number until the player reveals it', async () => {
+		const user = userEvent.setup()
+		render(MultiPlayerGame)
+		const secret = screen.getByLabelText('Secret Number:')
+		await user.type(secret, '123')
+
+		expect(secret).toHaveAttribute('type', 'password')
+
+		await user.click(screen.getByRole('button', { name: 'Show secret number' }))
+		expect(secret).toHaveAttribute('type', 'text')
+		expect(
+			screen.getByRole('button', { name: 'Hide secret number' }),
+		).toHaveAttribute('aria-pressed', 'true')
+
+		await user.click(screen.getByRole('button', { name: 'Save & Continue' }))
+
+		expect(screen.getByLabelText('Secret Number:')).toHaveAttribute(
+			'type',
+			'password',
+		)
+	})
+
+	it('lists the newest guess first with readable scores', async () => {
+		const user = userEvent.setup()
+		render(MultiPlayerGame)
+		await setUp(user, [
+			['Alice', '123'],
+			['Bob', '789'],
+		])
+
+		await guess(user, '456')
+		await guess(user, '120')
+		await guess(user, '781')
+
+		const rows = within(screen.getByRole('group', { name: 'Bob' })).getAllByText(
+			/^Alice: /,
+		)
+		expect(rows.map((row) => row.textContent)).toEqual([
+			'Alice: 781',
+			'Alice: 456',
+		])
+		expect(
+			within(screen.getByRole('group', { name: 'Bob' })).getByText(
+				'Digits 2 · Positions 2',
+			),
+		).toBeInTheDocument()
+	})
+
+	it('offers a rematch that keeps everyone’s names', async () => {
+		const user = userEvent.setup()
+		render(MultiPlayerGame)
+		await setUp(user, [
+			['Alice', '123'],
+			['Bob', '789'],
+		])
+
+		await guess(user, '789')
+		expect(screen.getByText('Alice wins!')).toBeInTheDocument()
+
+		await user.click(screen.getByRole('button', { name: 'Play again' }))
+
+		expect(screen.getByText("Alice's turn to setup")).toBeInTheDocument()
+		expect(screen.getByLabelText('Name:')).toHaveValue('Alice')
+		await waitFor(() => {
+			expect(screen.getByLabelText('Name:')).toHaveFocus()
+		})
+		expect(screen.getByLabelText('Secret Number:')).toHaveValue('')
+
+		await user.type(screen.getByLabelText('Secret Number:'), '321')
+		await user.click(screen.getByRole('button', { name: 'Save & Continue' }))
+
+		expect(screen.getByLabelText('Name:')).toHaveValue('Bob')
 	})
 })

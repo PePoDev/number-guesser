@@ -43,6 +43,7 @@ export interface GameSettings {
 export interface GameState {
   locale: Locale;
   mode: GameMode;
+  round: number;
   settings: GameSettings;
   targetNumber: string;
   attemptsLeft: number;
@@ -75,6 +76,7 @@ const initialOnlineState: OnlineGameState = {
 const initialState: GameState = {
   locale: "en",
   mode: "single",
+  round: 0,
   settings: initialSettings,
   targetNumber: "",
   attemptsLeft: 7,
@@ -142,6 +144,7 @@ function createGameStore() {
         if (state.mode === "single") {
           return {
             ...state,
+            round: state.round + 1,
             targetNumber: generateRandomNumber(state.settings.digitCount),
             attemptsLeft: state.settings.maxAttempts,
             gameOver: false,
@@ -153,7 +156,7 @@ function createGameStore() {
           for (let i = 0; i < state.settings.playerCount; i++) {
             players.push({
               id: i,
-              name: "",
+              name: state.players[i]?.name ?? "",
               number: "",
               guesses: [],
               eliminated: false,
@@ -161,6 +164,7 @@ function createGameStore() {
           }
           return {
             ...state,
+            round: state.round + 1,
             players,
             currentSetupPlayer: 0,
             currentGuesser: 0,

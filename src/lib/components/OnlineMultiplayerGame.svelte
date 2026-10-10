@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte'
+	import { onDestroy, onMount } from 'svelte'
 	import { gameStore, sanitizeDigits } from '$lib/stores/gameStore'
 	import {
 		onlineGameService,
+		preloadOnlineBackend,
 		type OnlineGameService,
 	} from '$lib/services/onlineGameService'
 	import { isOnlineErrorCode, type OnlineErrorCode } from '$lib/online/types'
@@ -276,6 +277,12 @@
 			reportError(error, 'CLIPBOARD_FAILED')
 		}
 	}
+
+	onMount(() => {
+		if (service === onlineGameService) {
+			preloadOnlineBackend()
+		}
+	})
 
 	onDestroy(() => {
 		clearTimeout(copyStatusTimer)

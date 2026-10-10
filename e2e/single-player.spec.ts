@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    Math.random = () => 0.5
+  })
   await page.route("https://api.github.com/repos/PePoDev/number-guesser", async (route) => {
     await route.fulfill({
       contentType: "application/json",
@@ -38,9 +41,14 @@ test.describe("Single Player Game", () => {
     });
     expect(
       await mobileNav.evaluate(
-        (element) => element.scrollWidth > element.clientWidth
+        (element) => element.scrollWidth <= element.clientWidth
       )
     ).toBe(true);
+    for (const name of [/Single Player/, /Multiplayer/, /Instructions/, /New Game/]) {
+      await expect(mobileNav.getByRole('button', { name })).toBeInViewport({
+        ratio: 1,
+      })
+    }
     await expect(page.locator(".ticker-seq").first()).toHaveCSS(
       "white-space",
       "normal"
@@ -84,6 +92,24 @@ test.describe("Single Player Game", () => {
       .boundingBox()
     expect(newGameCard?.height).toBeLessThan(singlePlayerCard?.height ?? 0)
   });
+
+  test('keeps notepad marks while guessing and clears them on New Game', async ({
+    page,
+  }) => {
+    await page.getByRole('button', { name: '4, not marked' }).click()
+    await page.getByRole('button', { name: '4, ruled out' }).click()
+    const input = page.getByLabel('Guess', { exact: true })
+    await input.fill('123')
+    await input.press('Enter')
+
+    await expect(
+      page.getByRole('button', { name: '4, in the answer' }),
+    ).toBeVisible()
+
+    await page.getByRole('button', { name: /New Game/ }).click()
+
+    await expect(page.getByRole('button', { name: '4, not marked' })).toBeVisible()
+  })
 
   test('offers Play again after the game ends', async ({ page }) => {
     await page.addInitScript(() => {

@@ -70,6 +70,18 @@ describe("+page.svelte Component", () => {
     expect(settings).toHaveAttribute('title', 'Open Single Player settings')
   })
 
+  it('explains how to play with friends in Instructions', async () => {
+    const user = userEvent.setup()
+    render(Page)
+
+    await user.click(screen.getByRole('button', { name: /Instructions/ }))
+
+    expect(
+      screen.getByRole('heading', { name: 'Playing with friends:' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/The last player standing wins/)).toBeInTheDocument()
+  })
+
   it('keeps Settings available while Instructions are open', async () => {
     const user = userEvent.setup()
     render(Page)
