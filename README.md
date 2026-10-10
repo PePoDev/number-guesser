@@ -39,6 +39,7 @@ Secret-number and guess fields discard non-digits and stop at the configured dig
 | Online backend | Firebase Anonymous Auth, Firestore, callable Functions, Admin SDK |
 | Firebase tests | Firebase Emulator Suite |
 | Hosting | GitHub Pages at `number-guesser.pepo.dev` |
+| Localization | English and Thai, typed in-house dictionaries; no i18n dependency |
 
 GitHub Pages serves the static SvelteKit client. Callable Cloud Functions own authoritative online commands; Firestore publishes member-only room projections.
 
@@ -81,6 +82,7 @@ For online development, install Java 21, then run `pnpm firebase:emulators` and 
 
 ```text
 src/routes/
+  +layout.svelte               Global styles, locale detection, and <html lang>
   +page.svelte                 Stage and component composition
 src/lib/components/
   SinglePlayerGame.svelte      Single-player UI
@@ -90,6 +92,9 @@ src/lib/components/
   GitHubStarLink.svelte        Repository link and best-effort live star count
 src/lib/stores/
   gameStore.ts                 All shared game state and logic
+src/lib/i18n/
+  messages.ts                  English and Thai dictionaries
+  locale.ts                    Locale detection and persistence
 src/lib/firebase/client.ts      Firebase browser initialization
 src/lib/online/types.ts         Public online state types
 src/lib/services/
@@ -103,11 +108,23 @@ e2e/                           Playwright flows
 static/                        CNAME, favicon, robots.txt
 ```
 
-`gameStore.ts` owns the complete `GameState`: mode, settings, single-player target and history, multiplayer players and turns, phase, active players, and game-over state.
+`gameStore.ts` owns the complete `GameState`: locale, mode, settings, single-player target and history, multiplayer players and turns, phase, active players, and game-over state.
 
 Components keep only local UI state. They call intent-based store actions such as `startNewGame`, `addGuess`, `savePlayerSetup`, `addMultiPlayerGuess`, and `nextGuesser`.
 
 Pure helpers such as `validateGuess`, `calculateFeedback`, `generateRandomNumber`, and `sanitizeDigits` are exported from the store for direct unit testing.
+
+## Localization
+
+The interface ships in English (`en`) and Thai (`th`).
+
+- All user-visible copy lives in `src/lib/i18n/messages.ts`. `en` is the source dictionary and `th` is typed against it, so a missing or mistyped Thai entry fails `pnpm check`.
+- Copy that depends on a count or embeds a value is a function. Copy that wraps a highlighted value returns `RichText` parts, and each component renders the value with its own markup.
+- `gameStore` owns `locale` and the `setLocale` action. Components read `messages[$gameStore.locale]`.
+- On load the root layout uses the saved choice in local storage key `number-guessing-locale`, then the first browser language that starts with `th` or `en`, then English. Choosing a language saves it.
+- The layout keeps `<html lang>` and the page keeps the document title in the active language.
+- Stores and services return codes, not copy: `validateGuess` reports a `GuessProblem`, online commands report an `OnlineErrorCode`, and unnamed local players stay blank until a component renders their localized default name.
+- Player-entered names, room IDs, numbers, and the `Enter` and `Escape` key names are not translated.
 
 ## Rules
 
@@ -125,12 +142,14 @@ These rules are binding. Update this README when a project, testing, or design d
 - Run Firebase tests only against project `demo-number-guessing`; never connect automated tests to production Firebase.
 - Match existing style: tabs in `.svelte` and `.ts`, single quotes, no semicolons in TypeScript, and trailing commas in multiline structures.
 - Prefer the smallest change that solves the problem.
+- Put every user-visible string in both dictionaries in `src/lib/i18n/messages.ts`.
 - Run `pnpm check` and `pnpm test:run` before claiming completion.
 
 ### Never
 
 - Add a dependency without explicit owner approval.
 - Hardcode colors, spacing, or font sizes in components.
+- Hardcode user-facing copy in components, stores, or services.
 - Add shared state outside `gameStore.ts`.
 - Add comments that explain what code does; comments may explain why.
 - Add `console.log`, secrets, tokens, or `.env` files.
@@ -153,10 +172,11 @@ Firebase dependencies and backend deployment are explicitly approved for online 
 | --- | --- | --- |
 | Unit | `src/lib/stores/gameStore.test.ts` | Pure helpers, state transitions, edge cases |
 | Component | Colocated `*.test.ts` files | Rendering, interaction, ARIA, component branches |
-| End-to-end | `e2e/*.spec.ts` | Complete single-player and multiplayer flows |
+| End-to-end | `e2e/*.spec.ts` | Complete single-player and multiplayer flows; `localization.spec.ts` covers Thai browser detection and the saved language |
 | Firebase integration | `functions/src/*.test.ts`, `src/lib/firebase/firestore.rules.test.ts` | Emulator-only transactions, cleanup, and security rules |
 | Online end-to-end | `e2e/online-multiplayer.spec.ts` | Separate browser contexts for create/join, turns, reconnect, and errors |
 | Deployment | `src/tests/deploymentWorkflows.test.ts` | Secret injection, missing-config guard, and Java runtime requirements |
+| Localization | `src/lib/i18n/*.test.ts` | Locale resolution, persistence, and dictionary parity |
 | Setup | `src/tests/setup.ts` | DOM environment and matchers |
 
 ### Test requirements
@@ -167,6 +187,7 @@ Firebase dependencies and backend deployment are explicitly approved for online 
 - A bug starts with the smallest failing regression test.
 - Test behavior, not implementation details.
 - Use semantic Testing Library queries and Playwright's built-in waiting.
+- Cover Thai copy by calling `gameStore.setLocale('th')` before rendering, and browser detection in Playwright with `test.use({ locale: 'th-TH' })`. Clear `localStorage` before tests that render the page so a saved language cannot leak between tests.
 - Use fake timers and seeded randomness when needed. Stub `Math.random` with `vi.spyOn` in Vitest and with `page.addInitScript` before navigation in Playwright.
 - Keep tests independent; avoid arbitrary timeouts.
 - Run Firebase tests only with project `demo-number-guessing`, never production services.
@@ -261,6 +282,7 @@ State colors are overlays for borders, low-opacity backgrounds, and small icons�
 - `--font-body`: Inter 400/500/600, used everywhere else.
 - Display: `clamp(2rem, 4vw, 3rem)`; H2: `1.5rem`; H3: `1.125rem`; body: `1rem`; meta: `0.8125rem`.
 - Space Grotesk and Inter load from Google Fonts in `src/app.html` with `display=swap` and system fallbacks.
+- Thai falls back to Noto Sans Thai 400–700, listed after Space Grotesk and Inter in both stacks and loaded from the same Google Fonts request. Its Thai subset downloads only when Thai text is shown.
 
 The main display heading ends with one bold italic word in `--glass-accent`. Use this signature treatment once per page.
 
@@ -276,7 +298,8 @@ The main display heading ends with one bold italic word in `--glass-accent`. Use
 | Input | 56px high, white, centered text, 14px radius, visible blue focus ring; game-number fields filter to digits and enforce the configured length; the single-player guess field grows beside Submit Guess and wraps above it on narrow screens |
 | Secondary button | 48px high, white, dark border, 14px radius |
 | Icon button | 44px square `.btn-icon` secondary variant with a 20px glyph, an `aria-label`, and a matching `title` tooltip |
-| Panel header | Display title with the Settings and GitHub icon group top-right; the group wraps above the title when the title needs the full width |
+| Panel header | Display title with the language switch, Settings, and GitHub group top-right; the group wraps above the title when the title needs the full width |
+| Language switch | 44px high segmented `EN`/`ไทย` control at the start of the header group; each option is written in its own language with a matching `lang`, and the active one is dark-filled |
 | GitHub stars | Icon-only GitHub mark beside Settings in the panel header; puts a validated live count in its accessible name and tooltip when available and remains a labeled link on API failure |
 | Setup/control strip | Translucent white, dark border, and wrapping controls on narrow screens |
 | Feedback banner | State-tinted low-opacity background and border; warning for validation, info for an unfinished guess, correct/incorrect only for the final result; clears when a new game starts |
@@ -327,7 +350,8 @@ Use Tailwind breakpoints `sm: 600px`, `md: 900px`, and `lg: 1200px`. Document an
 | Active-mode settings modal | `src/lib/components/SettingsModal.svelte` |
 | GitHub repository link and live star count | `src/lib/components/GitHubStarLink.svelte` |
 | Tokens, Tailwind `@theme` mappings, shared control classes, and global motion/focus styles | `src/app.css` |
-| Display and body font loading | `src/app.html` |
+| Display, body, and Thai font loading | `src/app.html` |
+| English and Thai copy | `src/lib/i18n/messages.ts` |
 
 Add new surfaces to this table. The initial editorial design system was recorded on 2026-07-08.
 
@@ -343,6 +367,8 @@ Add new surfaces to this table. The initial editorial design system was recorded
 
 2026-10-10 — Replaced the text Settings and GitHub buttons with a gear and GitHub icon pair in the panel header.
 
+2026-10-10 — Localized the interface for English and Thai with an `EN`/`ไทย` switch in the panel header.
+
 ## Change guide
 
 | Change | Required work |
@@ -353,6 +379,7 @@ Add new surfaces to this table. The initial editorial design system was recorded
 | Game mode | Extend types/state, add component/settings/nav, update design, add unit/component/e2e tests |
 | Visual token | Add it to `src/app.css`, document it here, map it in Tailwind only if needed |
 | Feedback rules | Update `calculateFeedback`, unit tests, affected components, and visible-flow tests |
+| Copy | Add the entry to `en` and `th` in `src/lib/i18n/messages.ts`; cover new Thai copy in a component test |
 | Bug | Reproduce with a failing test, fix the source, retain the regression test |
 
 ## Definition of done

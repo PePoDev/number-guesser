@@ -1,12 +1,15 @@
 import { writable, derived } from "svelte/store";
 import type {
   OnlineConnectionStatus,
+  OnlineErrorCode,
   OnlineGameState,
   OnlineSnapshot,
 } from "../online/types";
+import type { Locale } from "../i18n/messages";
 
 export type GameMode = "single" | "multi" | "online";
 export type GamePhase = "setup" | "guessing" | "finished";
+export type GuessProblem = "invalid" | "range" | "length";
 
 export interface Player {
   id: number;
@@ -38,6 +41,7 @@ export interface GameSettings {
 }
 
 export interface GameState {
+  locale: Locale;
   mode: GameMode;
   settings: GameSettings;
   targetNumber: string;
@@ -69,6 +73,7 @@ const initialOnlineState: OnlineGameState = {
 };
 
 const initialState: GameState = {
+  locale: "en",
   mode: "single",
   settings: initialSettings,
   targetNumber: "",
@@ -88,13 +93,17 @@ function createGameStore() {
 
   return {
     subscribe,
+    setLocale: (locale: Locale) => update((state) => ({ ...state, locale })),
     setMode: (mode: GameMode) => update((state) => ({ ...state, mode })),
     updateSettings: (settings: Partial<GameSettings>) =>
       update((state) => ({
         ...state,
         settings: { ...state.settings, ...settings },
       })),
-    setOnlineStatus: (status: OnlineConnectionStatus, error = "") =>
+    setOnlineStatus: (
+      status: OnlineConnectionStatus,
+      error: OnlineErrorCode | "" = ""
+    ) =>
       update((state) => ({
         ...state,
         online: { ...state.online, status, error },
@@ -144,7 +153,7 @@ function createGameStore() {
           for (let i = 0; i < state.settings.playerCount; i++) {
             players.push({
               id: i,
-              name: `Player ${i + 1}`,
+              name: "",
               number: "",
               guesses: [],
               eliminated: false,
@@ -251,41 +260,24 @@ function generateRandomNumber(digitCount: number): string {
   return randomNum.toString().padStart(digitCount, "0");
 }
 
-// Helper functions for game logic
 export function validateGuess(
   guess: string,
   digitCount: number
-): { valid: boolean; message: string } {
-  // Check for negative numbers first
-  if (guess.includes("-")) {
-    return { valid: false, message: "Please enter a valid number." };
+): { valid: true; problem: null } | { valid: false; problem: GuessProblem } {
+  if (guess.includes("-") || isNaN(Number(guess))) {
+    return { valid: false, problem: "invalid" };
   }
 
-  if (isNaN(Number(guess))) {
-    return { valid: false, message: "Please enter a valid number." };
-  }
-
-  // Check range before length to provide better error messages
   const num = parseInt(guess);
-  const max = Math.pow(10, digitCount) - 1;
-
-  if (num < 0 || num > max) {
-    const minDisplay = "0".repeat(digitCount);
-    const maxDisplay = max.toString();
-    return {
-      valid: false,
-      message: `Please enter a number between ${minDisplay} and ${maxDisplay}.`,
-    };
+  if (num < 0 || num > Math.pow(10, digitCount) - 1) {
+    return { valid: false, problem: "range" };
   }
 
   if (guess.length !== digitCount) {
-    return {
-      valid: false,
-      message: `Please enter exactly ${digitCount} digits.`,
-    };
+    return { valid: false, problem: "length" };
   }
 
-  return { valid: true, message: "" };
+  return { valid: true, problem: null };
 }
 
 export function calculateFeedback(

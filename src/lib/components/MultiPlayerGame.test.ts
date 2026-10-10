@@ -543,3 +543,53 @@ describe("MultiPlayerGame Component", () => {
     });
   });
 });
+
+describe('MultiPlayerGame in Thai', () => {
+	beforeEach(() => {
+		gameStore.reset()
+		gameStore.setLocale('th')
+		gameStore.setMode('multi')
+		gameStore.updateSettings({ playerCount: 2 })
+		gameStore.startNewGame()
+	})
+
+	it('names unnamed players in the active language', async () => {
+		render(MultiPlayerGame)
+
+		expect(screen.getByText('ถึงตา ผู้เล่น 1 ตั้งค่า')).toBeInTheDocument()
+
+		gameStore.setLocale('en')
+
+		await waitFor(() => {
+			expect(screen.getByText("Player 1's turn to setup")).toBeInTheDocument()
+		})
+	})
+
+	it('keeps a blank name so the default follows the language', async () => {
+		const user = userEvent.setup()
+		render(MultiPlayerGame)
+
+		await user.type(screen.getByLabelText('เลขลับ:'), '123')
+		await user.click(screen.getByRole('button', { name: 'บันทึกและไปต่อ' }))
+
+		expect(screen.getByText('ถึงตา ผู้เล่น 2 ตั้งค่า')).toBeInTheDocument()
+		expect(get(gameStore).players[0].name).toBe('')
+	})
+
+	it('shows Thai validation and guessing copy', async () => {
+		const user = userEvent.setup()
+		render(MultiPlayerGame)
+
+		await user.click(screen.getByRole('button', { name: 'บันทึกและไปต่อ' }))
+		expect(screen.getByRole('alert')).toHaveTextContent('กรุณาใส่เลขลับ')
+
+		for (const secret of ['123', '456']) {
+			await user.type(screen.getByLabelText('เลขลับ:'), secret)
+			await user.click(screen.getByRole('button', { name: 'บันทึกและไปต่อ' }))
+		}
+
+		expect(screen.getByText('ช่วงทายเลข')).toBeInTheDocument()
+		expect(screen.getByText('ถึงตา ผู้เล่น 1 ทาย')).toBeInTheDocument()
+		expect(screen.getByLabelText('ทายเลขของ:')).toHaveDisplayValue('ผู้เล่น 2')
+	})
+})

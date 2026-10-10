@@ -267,7 +267,7 @@ it('shows an error when the room ID cannot be copied', async () => {
 	await user.click(screen.getByRole('button', { name: 'Copy Room ID' }))
 
 	expect(await screen.findByRole('alert')).toHaveTextContent(
-		'Clipboard unavailable.',
+		'Could not copy. Please copy it manually.',
 	)
 })
 
@@ -453,12 +453,12 @@ it('restores a saved room and clears an expired saved session', async () => {
 	})
 
 	const onError = vi.mocked(service.subscribeToRoom).mock.calls[0][2]
-	onError('Connection interrupted.')
+	onError('CONNECTION_INTERRUPTED')
 	await waitFor(() => {
 		expect(screen.getByText('Reconnecting…')).toBeInTheDocument()
 	})
 
-	onError('Room not found or expired.')
+	onError('ROOM_NOT_FOUND')
 
 	expect(service.clearSession).toHaveBeenCalled()
 	await waitFor(() => {
@@ -466,4 +466,33 @@ it('restores a saved room and clears an expired saved session', async () => {
 			'Room not found or expired.',
 		)
 	})
+})
+
+it('shows the online entry and errors in Thai', () => {
+	gameStore.setLocale('th')
+	gameStore.setOnlineStatus('error', 'ROOM_FULL')
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService() },
+	})
+
+	expect(screen.getByRole('alert')).toHaveTextContent('ห้องนี้เต็มแล้ว')
+	expect(screen.getByLabelText('ชื่อที่แสดง')).toBeInTheDocument()
+	expect(screen.getByLabelText('รหัสห้อง')).toBeInTheDocument()
+	expect(screen.getByRole('button', { name: 'สร้างห้อง' })).toBeDisabled()
+})
+
+it('shows the lobby in Thai', () => {
+	gameStore.setLocale('th')
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(readyLobbySnapshot(false))
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService() },
+	})
+
+	expect(screen.getByText('ผู้เล่น 2 / 2 คน')).toBeInTheDocument()
+	expect(screen.getByText('(เจ้าของห้อง)')).toBeInTheDocument()
+	expect(
+		screen.getByRole('button', { name: 'คัดลอกรหัสห้อง' }),
+	).toBeInTheDocument()
+	expect(screen.getByRole('button', { name: 'ออกจากห้อง' })).toBeInTheDocument()
 })

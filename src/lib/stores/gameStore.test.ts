@@ -16,6 +16,7 @@ describe("Game Store", () => {
   describe("Initial State", () => {
     it("should have correct initial state", () => {
       const state = get(gameStore);
+      expect(state.locale).toBe("en");
       expect(state.mode).toBe("single");
       expect(state.settings.digitCount).toBe(3);
       expect(state.settings.maxAttempts).toBe(7);
@@ -23,6 +24,20 @@ describe("Game Store", () => {
       expect(state.gameOver).toBe(false);
       expect(state.guessHistory).toEqual([]);
       expect(state.players).toEqual([]);
+    });
+  });
+
+  describe("Locale", () => {
+    it("switches the interface language", () => {
+      gameStore.setLocale("th");
+      expect(get(gameStore).locale).toBe("th");
+    });
+
+    it("keeps the language when a new game starts", () => {
+      gameStore.setLocale("th");
+      gameStore.setMode("multi");
+      gameStore.startNewGame();
+      expect(get(gameStore).locale).toBe("th");
     });
   });
 
@@ -193,7 +208,7 @@ describe("Game Store", () => {
     it("should initialize players correctly", () => {
       const state = get(gameStore);
       expect(state.players).toHaveLength(3);
-      expect(state.players[0].name).toBe("Player 1");
+      expect(state.players[0].name).toBe("");
       expect(state.players[0].eliminated).toBe(false);
       expect(state.gamePhase).toBe("setup");
     });
@@ -344,25 +359,25 @@ describe("validateGuess", () => {
   it("should validate correct guess", () => {
     const result = validateGuess("123", 3);
     expect(result.valid).toBe(true);
-    expect(result.message).toBe("");
+    expect(result.problem).toBeNull();
   });
 
   it("should reject non-numeric input", () => {
     const result = validateGuess("abc", 3);
     expect(result.valid).toBe(false);
-    expect(result.message).toBe("Please enter a valid number.");
+    expect(result.problem).toBe("invalid");
   });
 
   it("should reject incorrect length", () => {
     const result = validateGuess("12", 3);
     expect(result.valid).toBe(false);
-    expect(result.message).toBe("Please enter exactly 3 digits.");
+    expect(result.problem).toBe("length");
   });
 
   it("should reject negative numbers", () => {
     const result = validateGuess("-123", 3);
     expect(result.valid).toBe(false);
-    expect(result.message).toBe("Please enter a valid number.");
+    expect(result.problem).toBe("invalid");
   });
 
   it("should accept numbers with leading zeros", () => {
@@ -379,25 +394,25 @@ describe("validateGuess", () => {
   it("should reject numbers exceeding max value", () => {
     const result = validateGuess("1000", 3);
     expect(result.valid).toBe(false);
-    expect(result.message).toBe("Please enter a number between 000 and 999.");
+    expect(result.problem).toBe("range");
   });
 
   it("should reject negative numbers with proper range message", () => {
     const result = validateGuess("-1", 2);
     expect(result.valid).toBe(false);
-    expect(result.message).toBe("Please enter a valid number.");
+    expect(result.problem).toBe("invalid");
   });
 
   it("should show proper range for 2 digits", () => {
     const result = validateGuess("100", 2);
     expect(result.valid).toBe(false);
-    expect(result.message).toBe("Please enter a number between 00 and 99.");
+    expect(result.problem).toBe("range");
   });
 
   it("should show proper range for 4 digits", () => {
     const result = validateGuess("10000", 4);
     expect(result.valid).toBe(false);
-    expect(result.message).toBe("Please enter a number between 0000 and 9999.");
+    expect(result.problem).toBe("range");
   });
 });
 

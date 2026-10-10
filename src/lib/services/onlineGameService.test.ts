@@ -80,19 +80,36 @@ function validRawSnapshot(): {
 }
 
 describe('online game service', () => {
-	it('maps stable callable reasons to friendly messages', () => {
+	it('maps stable callable reasons to error codes', () => {
 		expect(
 			mapOnlineGameError({
 				code: 'functions/not-found',
 				message: 'ROOM_NOT_FOUND',
 			}),
-		).toBe('Room not found or expired.')
+		).toBe('ROOM_NOT_FOUND')
 		expect(
 			mapOnlineGameError({
 				code: 'functions/resource-exhausted',
 				message: 'ROOM_FULL',
 			}),
-		).toBe('This room is full.')
+		).toBe('ROOM_FULL')
+	})
+
+	it('maps transport failures and unknown reasons to client codes', () => {
+		expect(mapOnlineGameError({ code: 'functions/unavailable' })).toBe(
+			'CONNECTION_INTERRUPTED',
+		)
+		expect(mapOnlineGameError({ code: 'aborted' })).toBe('ROOM_CHANGED')
+		expect(
+			mapOnlineGameError({
+				code: 'functions/permission-denied',
+				message: 'ROOM_MEMBERSHIP_REQUIRED',
+			}),
+		).toBe('ROOM_NOT_FOUND')
+		expect(mapOnlineGameError({ message: 'SOMETHING_NEW' })).toBe(
+			'ONLINE_GAME_INTERNAL',
+		)
+		expect(mapOnlineGameError('offline')).toBe('ONLINE_GAME_INTERNAL')
 	})
 
 	it('authenticates before creating a room and stores the room id', async () => {

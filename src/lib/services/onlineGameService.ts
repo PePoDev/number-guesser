@@ -3,6 +3,7 @@ import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { getFirebaseClient } from '$lib/firebase/client'
 import type {
+	OnlineErrorCode,
 	OnlineGuess,
 	OnlinePlayer,
 	OnlineRoom,
@@ -34,7 +35,7 @@ export interface OnlineGameService {
 	subscribeToRoom(
 		roomId: string,
 		onValue: (snapshot: OnlineSnapshot) => void,
-		onError: (message: string) => void,
+		onError: (code: OnlineErrorCode) => void,
 	): () => void
 }
 
@@ -51,35 +52,34 @@ export interface OnlineGameDependencies {
 	subscribeRoom(
 		roomId: string,
 		onValue: (snapshot: OnlineSnapshot) => void,
-		onError: (message: string) => void,
+		onError: (code: OnlineErrorCode) => void,
 	): () => void
 	getStoredRoomId(): string
 	setStoredRoomId(roomId: string): void
 	clearStoredRoomId(): void
 }
 
-const messages: Record<string, string> = {
-	AUTH_REQUIRED: 'Could not sign in. Please retry.',
-	NAME_INVALID: 'Enter a name between 1 and 20 characters.',
-	DIGIT_COUNT_INVALID: 'Choose between two and five digits.',
-	PLAYER_COUNT_INVALID: 'Choose between two and four players.',
-	ROOM_ID_INVALID: 'Enter a valid six-character room ID.',
-	ROOM_NOT_FOUND: 'Room not found or expired.',
-	ROOM_FULL: 'This room is full.',
-	ROOM_ALREADY_STARTED: 'This room has already started.',
-	ROOM_MEMBERSHIP_REQUIRED: 'Room not found or expired.',
-	HOST_REQUIRED: 'Only the host can do that.',
-	ROOM_NOT_READY: 'The room is not ready to start.',
-	ROOM_NOT_GUESSING: 'This game is not accepting guesses.',
-	ROOM_NOT_FINISHED: 'The game must finish before restarting.',
-	ACTIVE_MATCH_LEAVE_DENIED: 'You cannot leave during an active match.',
-	GUESS_INVALID: 'Enter a number with the configured digit count.',
-	GUESS_INPUT_INVALID: 'Enter a valid guess and target.',
-	TURN_STALE: 'The turn changed. Try again.',
-	TARGET_INVALID: 'Choose an active opponent.',
-	TARGET_ELIMINATED: 'That player has already been eliminated.',
-	ONLINE_GAME_INTERNAL: 'Something went wrong. Please retry.',
-}
+const serverReasons: OnlineErrorCode[] = [
+	'AUTH_REQUIRED',
+	'NAME_INVALID',
+	'DIGIT_COUNT_INVALID',
+	'PLAYER_COUNT_INVALID',
+	'ROOM_ID_INVALID',
+	'ROOM_NOT_FOUND',
+	'ROOM_FULL',
+	'ROOM_ALREADY_STARTED',
+	'HOST_REQUIRED',
+	'ROOM_NOT_READY',
+	'ROOM_NOT_GUESSING',
+	'ROOM_NOT_FINISHED',
+	'ACTIVE_MATCH_LEAVE_DENIED',
+	'GUESS_INVALID',
+	'GUESS_INPUT_INVALID',
+	'TURN_STALE',
+	'TARGET_INVALID',
+	'TARGET_ELIMINATED',
+	'ONLINE_GAME_INTERNAL',
+]
 
 function record(value: unknown): Record<string, unknown> {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -179,21 +179,27 @@ export function decodeOnlineSnapshot(raw: RawSnapshot): OnlineSnapshot {
 	}
 }
 
-export function mapOnlineGameError(error: unknown): string {
+export function mapOnlineGameError(error: unknown): OnlineErrorCode {
 	if (!error || typeof error !== 'object' || Array.isArray(error)) {
-		return messages.ONLINE_GAME_INTERNAL
+		return 'ONLINE_GAME_INTERNAL'
 	}
 	const data = error as Record<string, unknown>
 	const code = typeof data.code === 'string' ? data.code : ''
 	if (code.endsWith('/unavailable') || code === 'unavailable') {
-		return 'Connection interrupted. Reconnecting…'
+		return 'CONNECTION_INTERRUPTED'
 	}
 	if (code.endsWith('/aborted') || code === 'aborted') {
-		return 'The room changed. Please retry.'
+		return 'ROOM_CHANGED'
 	}
 	const message = typeof data.message === 'string' ? data.message : ''
-	const reason = Object.keys(messages).find((key) => message.includes(key))
-	return reason ? messages[reason] : messages.ONLINE_GAME_INTERNAL
+	// Losing membership ends the saved session the same way a deleted room does.
+	if (message.includes('ROOM_MEMBERSHIP_REQUIRED')) {
+		return 'ROOM_NOT_FOUND'
+	}
+	return (
+		serverReasons.find((reason) => message.includes(reason)) ??
+		'ONLINE_GAME_INTERNAL'
+	)
 }
 
 function roomIdResult(value: unknown): string {
@@ -298,14 +304,14 @@ async function callFirebase(
 	).data
 }
 
-function subscriptionMessage(error: unknown): string {
+function subscriptionMessage(error: unknown): OnlineErrorCode {
 	if (
 		error &&
 		typeof error === 'object' &&
 		'code' in error &&
 		error.code === 'permission-denied'
 	) {
-		return 'Room not found or expired.'
+		return 'ROOM_NOT_FOUND'
 	}
 	return mapOnlineGameError(error)
 }
@@ -313,7 +319,7 @@ function subscriptionMessage(error: unknown): string {
 function subscribeFirebaseRoom(
 	roomId: string,
 	onValue: (snapshot: OnlineSnapshot) => void,
-	onError: (message: string) => void,
+	onError: (code: OnlineErrorCode) => void,
 ): () => void {
 	let room: Record<string, unknown> | null = null
 	let players: RawSnapshot['players'] = []
@@ -334,7 +340,7 @@ function subscribeFirebaseRoom(
 					doc(firestore, 'rooms', roomId),
 					(snapshot) => {
 						if (!snapshot.exists()) {
-							onError('Room not found or expired.')
+							onError('ROOM_NOT_FOUND')
 							return
 						}
 						room = snapshot.data()

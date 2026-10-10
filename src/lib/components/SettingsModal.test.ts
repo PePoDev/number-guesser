@@ -20,6 +20,23 @@ describe('SettingsModal Component', () => {
 		gameStore.reset()
 	})
 
+	it('shows Thai titles, labels, and options', () => {
+		gameStore.setLocale('th')
+
+		renderSettings('single')
+
+		expect(
+			screen.getByRole('heading', { name: 'ตั้งค่าโหมดเล่นคนเดียว' }),
+		).toBeInTheDocument()
+		expect(screen.getByLabelText('จำนวนหลัก:')).toHaveDisplayValue('3 หลัก')
+		expect(screen.getByLabelText('จำนวนครั้งที่ทายได้:')).toHaveDisplayValue(
+			'7 ครั้ง',
+		)
+		expect(
+			screen.getByRole('button', { name: 'ปิดการตั้งค่า' }),
+		).toBeInTheDocument()
+	})
+
 	it.each([
 		['single', 'Single Player Settings'],
 		['multi', 'Local Multiplayer Settings'],

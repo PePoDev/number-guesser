@@ -590,3 +590,80 @@ describe('SinglePlayerGame round lifecycle', () => {
 		).toHaveClass('banner-info')
 	})
 })
+
+describe('SinglePlayerGame in Thai', () => {
+	beforeEach(() => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5)
+		gameStore.reset()
+		gameStore.setLocale('th')
+		gameStore.setMode('single')
+		gameStore.startNewGame()
+	})
+
+	afterEach(() => {
+		vi.restoreAllMocks()
+	})
+
+	it('shows the guess controls, feedback, and history in Thai', async () => {
+		const user = userEvent.setup()
+		render(SinglePlayerGame)
+
+		expect(screen.getByText(/ยังไม่มีการทาย/)).toBeInTheDocument()
+		await user.type(screen.getByLabelText('คำทาย'), '503')
+		await user.click(screen.getByRole('button', { name: 'ส่งคำทาย' }))
+
+		expect(screen.getByRole('status')).toHaveTextContent(
+			'เลขถูก: 2, ตำแหน่งถูก: 2',
+		)
+		expect(screen.getByText('ครั้งที่ 1: 503')).toBeInTheDocument()
+	})
+
+	it('translates a visible warning when the language changes', async () => {
+		const user = userEvent.setup()
+		render(SinglePlayerGame)
+
+		await user.click(screen.getByRole('button', { name: 'ส่งคำทาย' }))
+		expect(screen.getByRole('alert')).toHaveTextContent(
+			'กรุณากรอกตัวเลขก่อนส่ง',
+		)
+
+		gameStore.setLocale('en')
+
+		await waitFor(() => {
+			expect(screen.getByRole('alert')).toHaveTextContent(
+				'Please enter a number before submitting.',
+			)
+		})
+	})
+
+	it('announces a Thai loss with the answer and a replay action', async () => {
+		const user = userEvent.setup()
+		gameStore.updateSettings({ maxAttempts: 3 })
+		gameStore.startNewGame()
+		render(SinglePlayerGame)
+
+		for (const value of ['111', '222', '333']) {
+			await user.type(screen.getByLabelText('คำทาย'), value)
+			await user.click(screen.getByRole('button', { name: 'ส่งคำทาย' }))
+		}
+
+		expect(screen.getByText(/จบเกม!/)).toBeInTheDocument()
+		expect(screen.getByText('500', { selector: 'strong' })).toBeInTheDocument()
+		expect(
+			screen.getByRole('button', { name: 'เล่นอีกครั้ง' }),
+		).toBeInTheDocument()
+	})
+
+	it('congratulates a Thai win', async () => {
+		const user = userEvent.setup()
+		render(SinglePlayerGame)
+
+		await user.type(screen.getByLabelText('คำทาย'), '500')
+		await user.click(screen.getByRole('button', { name: 'ส่งคำทาย' }))
+
+		expect(
+			screen.getByText('ยินดีด้วย! คุณทายเลข 500 ถูกแล้ว!'),
+		).toBeInTheDocument()
+		expect(screen.getByText('ชนะด้วยการทาย 1 ครั้ง!')).toBeInTheDocument()
+	})
+})

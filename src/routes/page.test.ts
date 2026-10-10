@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/svelte";
+import { render, screen, waitFor, within } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { get } from "svelte/store";
 import Page from "./+page.svelte";
@@ -8,6 +8,7 @@ import { gameStore } from "$lib/stores/gameStore";
 describe("+page.svelte Component", () => {
   beforeEach(() => {
     gameStore.reset();
+    localStorage.clear();
     window.history.replaceState({}, "", "/");
     vi.stubGlobal(
       "fetch",
@@ -478,3 +479,109 @@ describe("+page.svelte Component", () => {
     expect(newGameButton).toHaveClass("nav-primary");
   });
 });
+
+describe('+page.svelte in Thai', () => {
+	beforeEach(() => {
+		gameStore.reset()
+		localStorage.clear()
+		window.history.replaceState({}, '', '/')
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({
+				ok: true,
+				json: async () => ({ stargazers_count: 128 }),
+			})),
+		)
+	})
+
+	afterEach(() => {
+		vi.unstubAllGlobals()
+		localStorage.clear()
+	})
+
+	it('switches to Thai and remembers the choice', async () => {
+		const user = userEvent.setup()
+		render(Page)
+		expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute(
+			'aria-pressed',
+			'true',
+		)
+
+		await user.click(screen.getByRole('button', { name: 'ภาษาไทย' }))
+
+		expect(screen.getByRole('button', { name: 'ภาษาไทย' })).toHaveAttribute(
+			'aria-pressed',
+			'true',
+		)
+		expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+			'เกมทาย ตัวเลข',
+		)
+		expect(
+			screen.getByRole('navigation', { name: 'เมนูเกม' }),
+		).toBeInTheDocument()
+		expect(
+			screen.getByRole('button', { name: 'เปิดการตั้งค่าโหมดเล่นคนเดียว' }),
+		).toBeInTheDocument()
+		expect(localStorage.getItem('number-guessing-locale')).toBe('th')
+		await waitFor(() => {
+			expect(document.title).toBe('เกมทายตัวเลข')
+		})
+	})
+
+	it('writes each language option in its own language', () => {
+		render(Page)
+
+		expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute(
+			'lang',
+			'en',
+		)
+		expect(screen.getByRole('button', { name: 'ภาษาไทย' })).toHaveAttribute(
+			'lang',
+			'th',
+		)
+		expect(screen.getByRole('button', { name: 'ภาษาไทย' })).toHaveTextContent(
+			'ไทย',
+		)
+	})
+
+	it('renders the header, footer, and instructions in Thai', async () => {
+		const user = userEvent.setup()
+		gameStore.setLocale('th')
+		render(Page)
+
+		expect(screen.getByText(/ฉันคิดตัวเลข/)).toHaveTextContent(
+			'ฉันคิดตัวเลข 3 หลักไว้แล้ว ลองทายดูสิ!',
+		)
+		expect(screen.getByText(/เหลือโอกาสทายอีก/)).toHaveTextContent(
+			'เหลือโอกาสทายอีก 7 ครั้ง',
+		)
+		expect(screen.getByRole('contentinfo')).toHaveTextContent(
+			'Enter ส่งคำทาย · Escape ปิดการตั้งค่า',
+		)
+
+		await user.click(screen.getByRole('button', { name: /วิธีเล่น/ }))
+
+		expect(
+			screen.getByRole('heading', { name: 'วิธีเล่น:' }),
+		).toBeInTheDocument()
+		expect(screen.getByText('เลขถูก:')).toBeInTheDocument()
+	})
+
+	it('labels the multiplayer switch in Thai', () => {
+		gameStore.setLocale('th')
+		gameStore.setMode('multi')
+		gameStore.startNewGame()
+		render(Page)
+
+		const variants = within(
+			screen.getByRole('group', { name: 'รูปแบบการเล่นหลายคน' }),
+		)
+		expect(
+			variants.getByRole('button', { name: 'เครื่องเดียว' }),
+		).toHaveAttribute('aria-pressed', 'true')
+		expect(variants.getByRole('button', { name: 'ออนไลน์' })).toHaveAttribute(
+			'aria-pressed',
+			'false',
+		)
+	})
+})

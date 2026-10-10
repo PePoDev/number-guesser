@@ -6,6 +6,9 @@
 	import OnlineMultiplayerGame from '$lib/components/OnlineMultiplayerGame.svelte';
 	import GitHubStarLink from '$lib/components/GitHubStarLink.svelte';
 	import { onlineGameService } from '$lib/services/onlineGameService';
+	import { isOnlineErrorCode } from '$lib/online/types';
+	import { locales, messages, type Locale } from '$lib/i18n/messages';
+	import { storeLocale } from '$lib/i18n/locale';
 
 	type NavMode = 'single' | 'multi' | 'online';
 
@@ -23,22 +26,14 @@
 		$gameStore.mode !== 'online' || $gameStore.online.room === null,
 	);
 
-	const modeLabels: Record<NavMode, string> = {
-		single: 'Single Player',
-		multi: 'Local Multiplayer',
-		online: 'Online Multiplayer',
-	};
-	const settingsLabel = $derived(`Open ${modeLabels[$gameStore.mode]} settings`);
+	const t = $derived(messages[$gameStore.locale]);
+	const settingsLabel = $derived(t.header.openSettings(t.modes[$gameStore.mode]));
+	const tickerText = $derived(`${t.ticker.join(' ✦ ')} ✦ `);
 
-	const tickerItems = [
-		'Guess the number',
-		'2–5 digits',
-		'3–20 attempts',
-		'Single player',
-		'Local multiplayer',
-		'Online rooms',
-	];
-	const tickerText = `${tickerItems.join(' ✦ ')} ✦ `;
+	function selectLocale(locale: Locale) {
+		gameStore.setLocale(locale);
+		storeLocale(locale);
+	}
 
 	function openSettings() {
 		showSettings = true;
@@ -105,14 +100,16 @@
 			gameStore.setMode('online');
 			gameStore.setOnlineStatus(
 				'error',
-				error instanceof Error ? error.message : 'Could not restore the room.',
+				error instanceof Error && isOnlineErrorCode(error.message)
+					? error.message
+					: 'RESTORE_FAILED',
 			);
 		});
 	});
 </script>
 
 <svelte:head>
-	<title>Number Guessing Game</title>
+	<title>{t.title}</title>
 </svelte:head>
 
 <div class="stage flex min-h-screen items-center justify-center p-3 sm:p-5">
@@ -125,7 +122,7 @@
 		</div>
 
 		<div class="stage-body grid gap-3 p-3 sm:gap-4 sm:p-4 md:grid-cols-[140px_minmax(320px,6fr)_minmax(0,4fr)]">
-			<nav class="nav-rail flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:gap-3 sm:overflow-visible sm:pb-0 md:grid-cols-1 md:grid-rows-[1fr_1fr_1fr_auto]" aria-label="Game navigation">
+			<nav class="nav-rail flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:gap-3 sm:overflow-visible sm:pb-0 md:grid-cols-1 md:grid-rows-[1fr_1fr_1fr_auto]" aria-label={t.nav.label}>
 				<button
 					type="button"
 					class="nav-card nav-blue"
@@ -138,7 +135,7 @@
 							<path d="M5 12h14M13 6l6 6-6 6" />
 						</svg>
 					</span>
-					<span class="nav-label">Single Player</span>
+					<span class="nav-label">{t.nav.single}</span>
 				</button>
 				<button
 					type="button"
@@ -152,7 +149,7 @@
 							<path d="M5 12h14M13 6l6 6-6 6" />
 						</svg>
 					</span>
-					<span class="nav-label">Multiplayer</span>
+					<span class="nav-label">{t.nav.multi}</span>
 				</button>
 				<button
 					type="button"
@@ -166,7 +163,7 @@
 							<path d="M5 12h14M13 6l6 6-6 6" />
 						</svg>
 					</span>
-					<span class="nav-label">Instructions</span>
+					<span class="nav-label">{t.nav.instructions}</span>
 				</button>
 				<button
 					type="button"
@@ -178,7 +175,7 @@
 						<path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
 						<path d="M3 3v5h5" />
 					</svg>
-					<span class="nav-label">New Game</span>
+					<span class="nav-label">{t.nav.newGame}</span>
 				</button>
 			</nav>
 
@@ -187,9 +184,22 @@
 					<!-- wrap-reverse lifts the icons above the title, not below it, when the title needs the full width. -->
 					<div class="flex flex-wrap-reverse items-center justify-between gap-3">
 						<h1 class="font-display text-[clamp(2rem,4vw,3rem)] font-bold leading-tight">
-							Number Guessing <em class="sig">Game.</em>
+							{t.header.title} <em class="sig">{t.header.titleSignature}</em>
 						</h1>
 						<div class="ml-auto flex shrink-0 items-center gap-2">
+							<div class="variant-switch lang-switch" role="group" aria-label={t.header.language}>
+								{#each locales as locale (locale)}
+									<button
+										type="button"
+										lang={locale}
+										aria-label={messages[locale].languageName}
+										aria-pressed={$gameStore.locale === locale}
+										onclick={() => selectLocale(locale)}
+									>
+										{messages[locale].languageShort}
+									</button>
+								{/each}
+							</div>
 							{#if canOpenSettings && !showInstructions}
 								<button
 									type="button"
@@ -211,29 +221,29 @@
 					</div>
 					{#if !showInstructions}
 						<p>
-							I'm thinking of a <span class="accent-value">{displayedDigitCount}</span>-digit number. Can you guess it?
+							{#each t.header.thinking(displayedDigitCount) as part}{#if typeof part === 'string'}{part}{:else}<span class="accent-value">{part.value}</span>{/if}{/each}
 						</p>
 						{#if $gameStore.mode === 'single'}
 							<p>
-								You have <span class="accent-value">{$gameStore.attemptsLeft}</span> attempts remaining.
+								{#each t.header.attemptsLeft($gameStore.attemptsLeft) as part}{#if typeof part === 'string'}{part}{:else}<span class="accent-value">{part.value}</span>{/if}{/each}
 							</p>
 						{/if}
 						{#if $gameStore.mode === 'multi' || $gameStore.mode === 'online'}
 							<div class="mt-4">
-								<div class="variant-switch" role="group" aria-label="Multiplayer type">
+								<div class="variant-switch" role="group" aria-label={t.header.multiplayerType}>
 									<button
 										type="button"
 										aria-pressed={$gameStore.mode === 'multi'}
 										onclick={() => selectMode('multi')}
 									>
-										Local
+										{t.header.local}
 									</button>
 									<button
 										type="button"
 										aria-pressed={$gameStore.mode === 'online'}
 										onclick={() => selectMode('online')}
 									>
-										Online
+										{t.header.online}
 									</button>
 								</div>
 							</div>
@@ -243,13 +253,11 @@
 
 				{#if showInstructions}
 					<section aria-labelledby="instructions-heading" class="space-y-4">
-						<h2 id="instructions-heading" class="font-display text-2xl font-bold">How to Play:</h2>
+						<h2 id="instructions-heading" class="font-display text-2xl font-bold">{t.instructions.heading}</h2>
 						<ul class="list-disc space-y-2 pl-5 text-sm">
-							<li>Choose your preferred number of digits (2-5) and max attempts (3-20)</li>
-							<li>Guess the number within your attempt limit</li>
-							<li><strong>Correct Digits:</strong> How many digits are in the target number (regardless of position)</li>
-							<li><strong>Correct Positions:</strong> How many digits are in the correct position</li>
-							<li>Example: Target is 401, you guess 410 → 3 correct digits, 1 correct position</li>
+							{#each t.instructions.steps as step}
+								<li>{#if step.term}<strong>{step.term}</strong>{' '}{/if}{step.text}</li>
+							{/each}
 						</ul>
 					</section>
 				{/if}
@@ -278,8 +286,8 @@
 		</div>
 
 		<footer class="utility-row">
-			<span><kbd>Enter</kbd> submits a guess · <kbd>Escape</kbd> closes settings</span>
-			<span>{modeLabels[$gameStore.mode]}</span>
+			<span><kbd>Enter</kbd> {t.footer.submit} · <kbd>Escape</kbd> {t.footer.close}</span>
+			<span>{t.modes[$gameStore.mode]}</span>
 		</footer>
 	</div>
 </div>
@@ -480,6 +488,12 @@
 	.variant-switch button[aria-pressed='true'] {
 		background: var(--stage-border);
 		color: var(--glass-bg);
+	}
+
+	.lang-switch button {
+		min-height: 41px;
+		padding: 0 12px;
+		font-size: 0.875rem;
 	}
 
 	.hero {

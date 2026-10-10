@@ -1,13 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
+	import { gameStore } from '$lib/stores/gameStore'
+	import { messages } from '$lib/i18n/messages'
 
 	const repoUrl = 'https://github.com/PePoDev/number-guesser'
 	const apiUrl = 'https://api.github.com/repos/PePoDev/number-guesser'
 	let starCount = $state<number | undefined>()
+	const t = $derived(messages[$gameStore.locale])
 	const accessibleName = $derived(
 		starCount === undefined
-			? 'Open number-guesser on GitHub'
-			: `Open number-guesser on GitHub, ${starCount} stars`,
+			? t.github.open
+			: t.github.openWithStars(starCount),
 	)
 
 	function readStarCount(value: unknown): number | undefined {

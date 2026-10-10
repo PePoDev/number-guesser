@@ -1,5 +1,6 @@
 <script lang="ts">
     import { gameStore, type GameMode } from '$lib/stores/gameStore';
+    import { messages } from '$lib/i18n/messages';
     
     interface Props {
         mode: GameMode;
@@ -14,11 +15,7 @@
     let scrimEl: HTMLDivElement | undefined = $state(undefined);
     let previouslyFocused: HTMLElement | null = null;
     
-    const titles: Record<GameMode, string> = {
-        single: 'Single Player Settings',
-        multi: 'Local Multiplayer Settings',
-        online: 'Online Multiplayer Settings'
-    };
+    const t = $derived(messages[$gameStore.locale]);
     
     function updateSettings() {
         gameStore.updateSettings({
@@ -89,11 +86,11 @@
 >
     <div class="panel animate-modal-slide-in my-auto w-full max-w-[480px]">
         <div class="flex items-center justify-between border-b-[1.5px] border-[var(--glass-border)] p-5">
-            <h2 id="settings-title" class="font-display text-2xl font-bold">{titles[mode]}</h2>
+            <h2 id="settings-title" class="font-display text-2xl font-bold">{t.settings.titles[mode]}</h2>
             <button
                 onclick={handleClose}
                 class="btn-secondary flex h-12 w-12 items-center justify-center rounded-full !p-0"
-                aria-label="Close settings"
+                aria-label={t.settings.closeLabel}
             >
 				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
 					<path d="M6 6l12 12M18 6 6 18" />
@@ -104,50 +101,46 @@
         <div class="space-y-5 p-5">
             {#if mode === 'multi' || mode === 'online'}
                 <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                    <label for="player-count" class="font-semibold">Number of Players:</label>
+                    <label for="player-count" class="font-semibold">{t.settings.players}</label>
                     <select
                         id="player-count"
                         bind:value={playerCount}
                         onchange={updateSettings}
                         class="field-select w-full sm:w-auto"
                     >
-                        <option value={2}>2 players</option>
-                        <option value={3}>3 players</option>
-                        <option value={4}>4 players</option>
+                        {#each [2, 3, 4] as count}
+                            <option value={count}>{t.settings.playerOption(count)}</option>
+                        {/each}
                     </select>
                 </div>
             {/if}
             
             <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                <label for="digit-count" class="font-semibold">Number of Digits:</label>
+                <label for="digit-count" class="font-semibold">{t.settings.digits}</label>
                 <select
                     id="digit-count"
                     bind:value={digitCount}
                     onchange={updateSettings}
                     class="field-select w-full sm:w-auto"
                 >
-                    <option value={2}>2 digits</option>
-                    <option value={3}>3 digits</option>
-                    <option value={4}>4 digits</option>
-                    <option value={5}>5 digits</option>
+                    {#each [2, 3, 4, 5] as count}
+                        <option value={count}>{t.settings.digitOption(count)}</option>
+                    {/each}
                 </select>
             </div>
             
             {#if mode === 'single'}
                 <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                    <label for="max-attempts" class="font-semibold">Max Attempts:</label>
+                    <label for="max-attempts" class="font-semibold">{t.settings.attempts}</label>
                     <select
                         id="max-attempts"
                         bind:value={maxAttempts}
                         onchange={updateSettings}
                         class="field-select w-full sm:w-auto"
                     >
-                        <option value={3}>3 attempts</option>
-                        <option value={5}>5 attempts</option>
-                        <option value={7}>7 attempts</option>
-                        <option value={10}>10 attempts</option>
-                        <option value={15}>15 attempts</option>
-                        <option value={20}>20 attempts</option>
+                        {#each [3, 5, 7, 10, 15, 20] as count}
+                            <option value={count}>{t.settings.attemptOption(count)}</option>
+                        {/each}
                     </select>
                 </div>
             {/if}
@@ -155,7 +148,7 @@
         
         <div class="border-t-[1.5px] border-[var(--glass-border)] p-5 text-center">
             <button onclick={handleClose} class="btn-primary px-8">
-                Close
+                {t.settings.close}
             </button>
         </div>
     </div>

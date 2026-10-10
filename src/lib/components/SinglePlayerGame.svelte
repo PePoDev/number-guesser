@@ -7,16 +7,24 @@
 		sanitizeDigits,
 		type SinglePlayerGuess,
 	} from '$lib/stores/gameStore'
+	import { messages, type Messages } from '$lib/i18n/messages'
 
 	let guessInput = $state('')
 	let guessField = $state<HTMLInputElement>()
 	let resultPanel = $state<HTMLDivElement>()
 	// Every guess and new game replaces the history array, so a warning tagged
 	// with the array it was raised against disappears on its own afterwards.
-	let warning = $state.raw({ message: '', round: $gameStore.guessHistory })
+	// Warnings keep a renderer rather than text so they follow language changes.
+	let warning = $state.raw<{
+		render: ((t: Messages) => string) | null
+		round: SinglePlayerGuess[]
+	}>({ render: null, round: $gameStore.guessHistory })
 
+	const t = $derived(messages[$gameStore.locale])
 	const warningMessage = $derived(
-		warning.round === $gameStore.guessHistory ? warning.message : '',
+		warning.round === $gameStore.guessHistory && warning.render
+			? warning.render(t)
+			: '',
 	)
 	const latestGuess = $derived<SinglePlayerGuess | undefined>(
 		$gameStore.guessHistory[$gameStore.guessHistory.length - 1],
@@ -28,13 +36,16 @@
 	const result = $derived.by(() => {
 		if (!latestGuess) return undefined
 		if (won) {
-			return { message: 'Perfect! All digits in correct positions!', tone: 'correct' }
+			return { message: t.single.perfect, tone: 'correct' }
 		}
 		if ($gameStore.gameOver) {
-			return { message: 'Better luck next time!', tone: 'incorrect' }
+			return { message: t.single.betterLuck, tone: 'incorrect' }
 		}
 		return {
-			message: `Correct digits: ${latestGuess.correctDigits}, Correct positions: ${latestGuess.correctPositions}`,
+			message: t.single.feedback(
+				latestGuess.correctDigits,
+				latestGuess.correctPositions,
+			),
 			tone: 'info',
 		}
 	})
@@ -45,8 +56,8 @@
 			.reverse(),
 	)
 
-	function warn(message: string) {
-		warning = { message, round: $gameStore.guessHistory }
+	function warn(render: (t: Messages) => string) {
+		warning = { render, round: $gameStore.guessHistory }
 	}
 
 	function makeGuess() {
@@ -56,23 +67,24 @@
 		const { digitCount } = $gameStore.settings
 
 		if (guess === '') {
-			warn('Please enter a number before submitting.')
+			warn((t) => t.single.empty)
 			return
 		}
 
 		if (guess.length !== digitCount) {
-			warn(`Please enter exactly ${digitCount} digits.`)
+			warn((t) => t.validation.length(digitCount))
 			return
 		}
 
 		const validation = validateGuess(guess, digitCount)
 		if (!validation.valid) {
-			warn(validation.message)
+			const { problem } = validation
+			warn((t) => t.validation[problem](digitCount))
 			return
 		}
 
 		if ($gameStore.guessHistory.some((entry) => entry.guess === guess)) {
-			warn(`You've already guessed ${guess}. Try a different number!`)
+			warn((t) => t.single.duplicate(guess))
 			return
 		}
 
@@ -124,7 +136,7 @@
 
 <div class="game-area">
 	<div class="mb-5 flex flex-wrap gap-3">
-		<label for="single-player-guess" class="sr-only">Guess</label>
+		<label for="single-player-guess" class="sr-only">{t.single.guessLabel}</label>
 		<input
 			id="single-player-guess"
 			type="text"
@@ -132,7 +144,7 @@
 			value={guessInput}
 			oninput={handleGuessInput}
 			onkeypress={handleKeyPress}
-			placeholder="Enter number"
+			placeholder={t.single.placeholder}
 			inputmode="numeric"
 			pattern="[0-9]*"
 			autocomplete="off"
@@ -146,7 +158,7 @@
 			disabled={$gameStore.gameOver}
 			class="btn-primary grow text-lg sm:grow-0"
 		>
-			Submit Guess
+			{t.single.submit}
 		</button>
 	</div>
 
@@ -169,29 +181,29 @@
 		>
 			{#if won}
 				<div class="text-xl font-bold">
-					<p>Congratulations! You guessed the number {$gameStore.targetNumber} correctly!</p>
-					<p>You won with {attemptsUsed} attempt{attemptsUsed === 1 ? '' : 's'}!</p>
+					<p>{t.single.won($gameStore.targetNumber)}</p>
+					<p>{t.single.wonWith(attemptsUsed)}</p>
 				</div>
 			{:else}
 				<p class="text-xl font-bold">
-					Game Over! You've used all your attempts. The correct number was: <strong>{$gameStore.targetNumber}</strong>
+					{#each t.single.lost($gameStore.targetNumber) as part}{#if typeof part === 'string'}{part}{:else}<strong>{part.value}</strong>{/if}{/each}
 				</p>
 			{/if}
-			<button type="button" class="btn-primary" onclick={playAgain}>Play again</button>
+			<button type="button" class="btn-primary" onclick={playAgain}>{t.single.playAgain}</button>
 		</div>
 	{/if}
 
 	<section class="mt-8" aria-labelledby="single-player-history">
-		<h3 id="single-player-history" class="mb-3 font-display text-lg font-bold">Guess History:</h3>
+		<h3 id="single-player-history" class="mb-3 font-display text-lg font-bold">{t.single.historyHeading}</h3>
 		<div class="surface-translucent-soft max-h-52 space-y-1 overflow-y-auto rounded-2xl border-[1.5px] border-[var(--glass-border)] p-2">
 			{#each newestFirst as entry (entry.number)}
 				<div class="history-row flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 px-3 py-2 {entry.number === attemptsUsed ? 'history-row-newest' : ''}">
-					<span class="whitespace-nowrap font-bold tabular-nums">Guess {entry.number}: {entry.guess}</span>
-					<span class="whitespace-nowrap text-sm text-[var(--glass-muted)]">Digits: {entry.correctDigits}, Positions: {entry.correctPositions}</span>
+					<span class="whitespace-nowrap font-bold tabular-nums">{t.single.historyGuess(entry.number, entry.guess)}</span>
+					<span class="whitespace-nowrap text-sm text-[var(--glass-muted)]">{t.single.historyScore(entry.correctDigits, entry.correctPositions)}</span>
 				</div>
 			{:else}
 				<p class="px-3 py-2 text-sm text-[var(--glass-muted)]">
-					No guesses yet. Your guesses will appear here.
+					{t.single.historyEmpty}
 				</p>
 			{/each}
 		</div>

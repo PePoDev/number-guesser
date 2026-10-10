@@ -1,12 +1,14 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/svelte'
 import GitHubStarLink from './GitHubStarLink.svelte'
+import { gameStore } from '$lib/stores/gameStore'
 
 const repoUrl = 'https://github.com/PePoDev/number-guesser'
 const apiUrl = 'https://api.github.com/repos/PePoDev/number-guesser'
 
 afterEach(() => {
 	vi.unstubAllGlobals()
+	gameStore.reset()
 })
 
 it('shows an accessible repository link while stars are loading', () => {
@@ -78,4 +80,23 @@ it.each([
 		screen.getByRole('link', { name: 'Open number-guesser on GitHub' }),
 	).toHaveAttribute('href', repoUrl)
 	expect(screen.queryByText(/^\d+$/)).not.toBeInTheDocument()
+})
+
+it('labels the link in Thai', async () => {
+	gameStore.setLocale('th')
+	vi.stubGlobal(
+		'fetch',
+		vi.fn(async () => ({
+			ok: true,
+			json: async () => ({ stargazers_count: 128 }),
+		})),
+	)
+
+	render(GitHubStarLink)
+
+	expect(
+		await screen.findByRole('link', {
+			name: 'เปิด number-guesser บน GitHub, 128 ดาว',
+		}),
+	).toHaveAttribute('title', 'เปิด number-guesser บน GitHub, 128 ดาว')
 })

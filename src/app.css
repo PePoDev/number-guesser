@@ -4,8 +4,8 @@
 	--breakpoint-sm: 600px;
 	--breakpoint-md: 900px;
 	--breakpoint-lg: 1200px;
-	--font-display: "Space Grotesk", "Avenir Next", "Segoe UI", system-ui, sans-serif;
-	--font-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+	--font-display: "Space Grotesk", "Noto Sans Thai", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+	--font-body: "Inter", "Noto Sans Thai", "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
 :root {
