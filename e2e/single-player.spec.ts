@@ -54,6 +54,17 @@ test.describe("Single Player Game", () => {
       )
     expect(new Set(navTops).size).toBe(1)
     await expect(page.getByLabel('Guess', { exact: true })).toBeInViewport()
+    const settingsIcon = await page
+      .getByRole('button', { name: 'Open Single Player settings' })
+      .boundingBox()
+    const githubIcon = await page
+      .getByRole('link', { name: /Open number-guesser on GitHub/ })
+      .boundingBox()
+    expect(settingsIcon?.y).toBe(githubIcon?.y)
+    expect(settingsIcon?.width).toBe(settingsIcon?.height)
+    expect(
+      (githubIcon?.x ?? 0) - (settingsIcon?.x ?? 0) - (settingsIcon?.width ?? 0),
+    ).toBeLessThanOrEqual(12)
 
     await page.setViewportSize({ width: 640, height: 360 });
     await page.getByLabel("Open Single Player settings").click();

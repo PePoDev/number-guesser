@@ -209,7 +209,7 @@ The interface should feel like one well-built editorial object, not a dashboard.
 - The right contains a decorative perspective tunnel of numbered tiles.
 - The ticker is the only looping animation.
 
-The Multiplayer card opens the last selected multiplayer variant; a segmented control inside the play panel switches between Local and Online. Instructions replaces the center-panel game content. Each active mode exposes its own Settings button; online settings disappear after room entry. The purple New Game action is disabled online because the host-owned restart remains inside the online flow.
+The Multiplayer card opens the last selected multiplayer variant; a segmented control inside the play panel switches between Local and Online. Instructions replaces the center-panel game content. Each active mode exposes its own icon-only Settings (gear) button beside the GitHub link in the panel header; it hides while Instructions are open and, online, after room entry. The purple New Game action is disabled online because the host-owned restart remains inside the online flow.
 
 Desktop columns are a ~140px nav rail, a flexible play area with a 320px minimum, and a hero using about 40% of the remaining width.
 
@@ -275,8 +275,9 @@ The main display heading ends with one bold italic word in `--glass-accent`. Use
 | Instructions | Orange card swaps the center panel between the game and the how-to-play content |
 | Input | 56px high, white, centered text, 14px radius, visible blue focus ring; game-number fields filter to digits and enforce the configured length; the single-player guess field grows beside Submit Guess and wraps above it on narrow screens |
 | Secondary button | 48px high, white, dark border, 14px radius |
-| Compact button | 40px high `.btn-compact` secondary variant for low-priority header links |
-| GitHub stars | Compact top-right repository link in the game header; shows a validated live count when available and remains a labeled link on API failure |
+| Icon button | 44px square `.btn-icon` secondary variant with a 20px glyph, an `aria-label`, and a matching `title` tooltip |
+| Panel header | Display title with the Settings and GitHub icon group top-right; the group wraps above the title when the title needs the full width |
+| GitHub stars | Icon-only GitHub mark beside Settings in the panel header; puts a validated live count in its accessible name and tooltip when available and remains a labeled link on API failure |
 | Setup/control strip | Translucent white, dark border, and wrapping controls on narrow screens |
 | Feedback banner | State-tinted low-opacity background and border; warning for validation, info for an unfinished guess, correct/incorrect only for the final result; clears when a new game starts |
 | Result banner | Final win/lose message with a Play again action; takes focus when the game ends and returns focus to the guess field on replay |
@@ -287,7 +288,7 @@ The main display heading ends with one bold italic word in `--glass-accent`. Use
 | Hero | Decorative CSS/SVG tile tunnel with `aria-hidden="true"` |
 | Utility row | Current mode plus visible `Enter` and `Escape` keyboard hints |
 
-Icons are monochrome line icons, normally 18×18px with a 1.5px stroke.
+Icons are monochrome line icons, normally 18×18px with a 1.5px stroke. Icon-only buttons use 20×20px glyphs; the GitHub mark is the one filled brand icon.
 
 ### Motion
 
@@ -339,6 +340,8 @@ Add new surfaces to this table. The initial editorial design system was recorded
 2026-07-28 — Moved settings into each game mode, added a best-effort live GitHub star link, and restricted game-number fields to digits.
 
 2026-10-10 — Fit the tablet game above the fold with a one-row nav, kept the desktop New Game card shorter, compacted the GitHub link, and gave single player a Play again action, newest-first history, and feedback scoped to the current round.
+
+2026-10-10 — Replaced the text Settings and GitHub buttons with a gear and GitHub icon pair in the panel header.
 
 ## Change guide
 

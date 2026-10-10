@@ -51,8 +51,37 @@ describe("+page.svelte Component", () => {
       "https://github.com/PePoDev/number-guesser"
     );
     expect(link.closest("header")).toHaveClass("game-info");
-    expect(screen.getByText("128")).toBeInTheDocument();
   });
+
+  it('shows icon-only Settings beside the GitHub link', async () => {
+    render(Page)
+
+    const settings = screen.getByRole('button', {
+      name: 'Open Single Player settings',
+    })
+    const github = await screen.findByRole('link', {
+      name: 'Open number-guesser on GitHub, 128 stars',
+    })
+
+    expect(settings.parentElement).toBe(github.parentElement)
+    expect(settings.textContent?.trim()).toBe('')
+    expect(github.textContent?.trim()).toBe('')
+    expect(settings).toHaveAttribute('title', 'Open Single Player settings')
+  })
+
+  it('hides Settings while Instructions are open', async () => {
+    const user = userEvent.setup()
+    render(Page)
+
+    await user.click(screen.getByRole('button', { name: /Instructions/ }))
+
+    expect(
+      screen.queryByRole('button', { name: 'Open Single Player settings' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /Open number-guesser on GitHub/ }),
+    ).toBeInTheDocument()
+  })
 
   it("opens settings for the active single-player mode", async () => {
     const user = userEvent.setup();

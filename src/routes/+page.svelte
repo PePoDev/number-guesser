@@ -28,6 +28,7 @@
 		multi: 'Local Multiplayer',
 		online: 'Online Multiplayer',
 	};
+	const settingsLabel = $derived(`Open ${modeLabels[$gameStore.mode]} settings`);
 
 	const tickerItems = [
 		'Guess the number',
@@ -183,11 +184,30 @@
 
 			<main class="panel p-5 sm:p-6 md:p-8">
 				<header class="game-info mb-6 space-y-2">
-					<div class="flex flex-wrap items-start justify-between gap-3">
+					<!-- wrap-reverse lifts the icons above the title, not below it, when the title needs the full width. -->
+					<div class="flex flex-wrap-reverse items-center justify-between gap-3">
 						<h1 class="font-display text-[clamp(2rem,4vw,3rem)] font-bold leading-tight">
 							Number Guessing <em class="sig">Game.</em>
 						</h1>
-						<GitHubStarLink />
+						<div class="ml-auto flex shrink-0 items-center gap-2">
+							{#if canOpenSettings && !showInstructions}
+								<button
+									type="button"
+									class="btn-secondary btn-icon"
+									aria-label={settingsLabel}
+									title={settingsLabel}
+									aria-haspopup="dialog"
+									aria-expanded={showSettings}
+									onclick={openSettings}
+								>
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+										<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+										<circle cx="12" cy="12" r="3" />
+									</svg>
+								</button>
+							{/if}
+							<GitHubStarLink />
+						</div>
 					</div>
 					{#if !showInstructions}
 						<p>
@@ -198,8 +218,8 @@
 								You have <span class="accent-value">{$gameStore.attemptsLeft}</span> attempts remaining.
 							</p>
 						{/if}
-						<div class="mt-4 flex flex-wrap items-center gap-3">
-							{#if $gameStore.mode === 'multi' || $gameStore.mode === 'online'}
+						{#if $gameStore.mode === 'multi' || $gameStore.mode === 'online'}
+							<div class="mt-4">
 								<div class="variant-switch" role="group" aria-label="Multiplayer type">
 									<button
 										type="button"
@@ -216,20 +236,8 @@
 										Online
 									</button>
 								</div>
-							{/if}
-							{#if canOpenSettings}
-								<button
-									type="button"
-									class="btn-secondary"
-									aria-label={`Open ${modeLabels[$gameStore.mode]} settings`}
-									aria-haspopup="dialog"
-									aria-expanded={showSettings}
-									onclick={openSettings}
-								>
-									Settings
-								</button>
-							{/if}
-						</div>
+							</div>
+						{/if}
 					{/if}
 				</header>
 

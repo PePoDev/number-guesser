@@ -14,12 +14,14 @@ it('shows an accessible repository link while stars are loading', () => {
 
 	render(GitHubStarLink)
 
-	expect(
-		screen.getByRole('link', { name: 'Open number-guesser on GitHub' }),
-	).toHaveAttribute('href', repoUrl)
+	const link = screen.getByRole('link', {
+		name: 'Open number-guesser on GitHub',
+	})
+	expect(link).toHaveAttribute('href', repoUrl)
+	expect(link.textContent?.trim()).toBe('')
 })
 
-it('shows the live GitHub star count', async () => {
+it('exposes the live GitHub star count in the name and tooltip', async () => {
 	const fetchMock = vi.fn(async () => ({
 		ok: true,
 		json: async () => ({ stargazers_count: 128 }),
@@ -28,12 +30,15 @@ it('shows the live GitHub star count', async () => {
 
 	render(GitHubStarLink)
 
-	expect(
-		await screen.findByRole('link', {
-			name: 'Open number-guesser on GitHub, 128 stars',
-		}),
-	).toHaveAttribute('href', repoUrl)
-	expect(screen.getByText('128')).toBeInTheDocument()
+	const link = await screen.findByRole('link', {
+		name: 'Open number-guesser on GitHub, 128 stars',
+	})
+	expect(link).toHaveAttribute('href', repoUrl)
+	expect(link).toHaveAttribute(
+		'title',
+		'Open number-guesser on GitHub, 128 stars',
+	)
+	expect(link.textContent?.trim()).toBe('')
 	expect(fetchMock).toHaveBeenCalledWith(apiUrl, {
 		headers: {
 			Accept: 'application/vnd.github+json',
