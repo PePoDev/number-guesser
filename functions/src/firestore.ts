@@ -3,8 +3,10 @@ import {
 	FieldValue,
 	Timestamp,
 	getFirestore,
+	type DocumentSnapshot,
 	type Firestore,
 } from 'firebase-admin/firestore'
+import { CommandError } from './errors.js'
 
 if (getApps().length === 0) {
 	initializeApp()
@@ -24,6 +26,8 @@ export interface RoomDocument {
 	currentGuesserUid: string | null
 	winnerUid: string | null
 	turnNumber: number
+	turnStartedAt: Timestamp | null
+	match: number
 	createdAt: Timestamp
 	updatedAt: Timestamp
 	expiresAt: Timestamp
@@ -34,6 +38,7 @@ export interface PlayerDocument {
 	seat: number
 	ready: boolean
 	eliminated: boolean
+	left: boolean
 	joinedAt: Timestamp
 }
 
@@ -45,12 +50,17 @@ export interface GuessDocument {
 	correct: boolean
 	correctDigits: number
 	correctPositions: number
+	match: number
 	createdAt: Timestamp
 }
 
 export interface SecretDocument {
 	number: string
 	updatedAt: Timestamp
+}
+
+export interface RateLimitDocument {
+	roomCreatedAt: Timestamp[]
 }
 
 export function roomRef(firestore: Firestore, roomId: string) {
@@ -63,4 +73,16 @@ export function playerRef(firestore: Firestore, roomId: string, uid: string) {
 
 export function secretRef(firestore: Firestore, roomId: string, uid: string) {
 	return firestore.collection('roomSecrets').doc(roomId).collection('players').doc(uid)
+}
+
+export function rateLimitRef(firestore: Firestore, uid: string) {
+	return firestore.collection('rateLimits').doc(uid)
+}
+
+export function liveRoom(snapshot: DocumentSnapshot, now: Timestamp): RoomDocument {
+	const room = snapshot.data() as RoomDocument | undefined
+	if (!room || room.expiresAt.toMillis() <= now.toMillis()) {
+		throw new CommandError('not-found', 'ROOM_NOT_FOUND')
+	}
+	return room
 }

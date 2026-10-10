@@ -1,23 +1,59 @@
-import { Timestamp, type Firestore } from 'firebase-admin/firestore'
+import {
+	Timestamp,
+	type DocumentReference,
+	type Firestore,
+	type QueryDocumentSnapshot,
+} from 'firebase-admin/firestore'
 import { db } from './firestore.js'
+
+async function deleteExpiredRoom(
+	firestore: Firestore,
+	room: DocumentReference,
+	now: Timestamp,
+): Promise<boolean> {
+	const expired = await firestore.runTransaction(async (transaction) => {
+		const expiresAt = (await transaction.get(room)).get('expiresAt')
+		return expiresAt instanceof Timestamp && expiresAt.toMillis() <= now.toMillis()
+	})
+	if (!expired) {
+		return false
+	}
+	// Secrets go first: a run interrupted after this still leaves the expired
+	// room for the next run to find, whereas orphaned secrets would never be found.
+	await firestore.recursiveDelete(firestore.collection('roomSecrets').doc(room.id))
+	await firestore.recursiveDelete(room)
+	return true
+}
 
 export async function cleanupExpiredRooms(
 	firestore: Firestore = db,
 	now: Timestamp = Timestamp.now(),
+	pageSize = 200,
 ): Promise<string[]> {
-	const expired = await firestore
-		.collection('rooms')
-		.where('expiresAt', '<=', now)
-		.get()
+	const deleted: string[] = []
+	let cursor: QueryDocumentSnapshot | undefined
 
-	await Promise.all(
-		expired.docs.map(async (room) => {
-			await firestore.recursiveDelete(room.ref)
-			await firestore.recursiveDelete(
-				firestore.collection('roomSecrets').doc(room.id),
-			)
-		}),
-	)
-
-	return expired.docs.map((room) => room.id)
+	for (;;) {
+		let expiredQuery = firestore
+			.collection('rooms')
+			.where('expiresAt', '<=', now)
+			.orderBy('expiresAt')
+			.limit(pageSize)
+		if (cursor) {
+			expiredQuery = expiredQuery.startAfter(cursor)
+		}
+		const page = await expiredQuery.get()
+		const results = await Promise.all(
+			page.docs.map((room) => deleteExpiredRoom(firestore, room.ref, now)),
+		)
+		page.docs.forEach((room, index) => {
+			if (results[index]) {
+				deleted.push(room.id)
+			}
+		})
+		if (page.size < pageSize) {
+			return deleted
+		}
+		cursor = page.docs[page.docs.length - 1]
+	}
 }

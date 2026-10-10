@@ -731,3 +731,13 @@ it('reports a failed reconnect instead of waiting forever', async () => {
 	})
 	expect(screen.getByRole('status')).not.toHaveTextContent('Reconnecting…')
 })
+
+it('waits for the host to be ready before starting', () => {
+	gameStore.setOnlineIdentity('host', 'AB2C3D')
+	gameStore.applyOnlineSnapshot(readyLobbySnapshot(false))
+	render(OnlineMultiplayerGame, {
+		props: { service: createFakeOnlineGameService() },
+	})
+
+	expect(screen.getByRole('button', { name: 'Start Game' })).toBeDisabled()
+})

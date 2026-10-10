@@ -48,8 +48,13 @@
 	const readyCount = $derived(
 		$gameStore.online.players.filter((player) => player.ready).length,
 	)
+	// The server also requires the host to be ready, so the host is never
+	// dropped from their own room at start.
 	const canStart = $derived(
-		room !== null && room.hostUid === $gameStore.online.uid && readyCount >= 2,
+		room !== null &&
+			room.hostUid === $gameStore.online.uid &&
+			currentPlayer?.ready === true &&
+			readyCount >= 2,
 	)
 	const connecting = $derived(busy || $gameStore.online.status === 'connecting')
 	const currentGuesser = $derived(

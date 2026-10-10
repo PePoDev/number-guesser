@@ -8,6 +8,7 @@ import {
 	createRoom as createRoomCommand,
 	joinRoom as joinRoomCommand,
 	leaveRoom as leaveRoomCommand,
+	removeIdlePlayer as removeIdlePlayerCommand,
 	restartRoom as restartRoomCommand,
 	setSecret as setSecretCommand,
 	startRoom as startRoomCommand,
@@ -34,6 +35,7 @@ export const startRoom = callable(startRoomCommand)
 export const submitGuess = callable(submitGuessCommand)
 export const leaveRoom = callable(leaveRoomCommand)
 export const restartRoom = callable(restartRoomCommand)
+export const removeIdlePlayer = callable(removeIdlePlayerCommand)
 
 export const cleanupRooms = onSchedule('every 1 hours', async () => {
 	await cleanupExpiredRooms()

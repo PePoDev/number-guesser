@@ -3,6 +3,7 @@ import { normalizeRoomId, resolveGuess, validateGuess } from './domain.js'
 import { CommandError } from './errors.js'
 import {
 	db,
+	liveRoom,
 	playerRef,
 	roomRef,
 	secretRef,
@@ -46,20 +47,10 @@ export async function submitGuess(
 	const targetUid = input.targetUid
 	const turnNumber = input.turnNumber
 	const room = roomRef(firestore, roomId)
-	const target = playerRef(firestore, roomId, targetUid)
-	const targetSecret = secretRef(firestore, roomId, targetUid)
 	const guessDocument = room.collection('guesses').doc()
 
 	const result = await firestore.runTransaction(async (transaction) => {
-		const [roomSnapshot, targetSnapshot, secretSnapshot] = await Promise.all([
-			transaction.get(room),
-			transaction.get(target),
-			transaction.get(targetSecret),
-		])
-		if (!roomSnapshot.exists) {
-			throw new CommandError('not-found', 'ROOM_NOT_FOUND')
-		}
-		const roomData = roomSnapshot.data() as RoomDocument
+		const roomData = liveRoom(await transaction.get(room), now)
 		if (roomData.phase !== 'guessing') {
 			throw new CommandError('failed-precondition', 'ROOM_NOT_GUESSING')
 		}
@@ -72,20 +63,31 @@ export async function submitGuess(
 		) {
 			throw new CommandError('failed-precondition', 'TURN_STALE')
 		}
-		if (targetUid === uid || !targetSnapshot.exists || !secretSnapshot.exists) {
+		if (targetUid === uid || !roomData.playerOrder.includes(targetUid)) {
 			throw new CommandError('failed-precondition', 'TARGET_INVALID')
 		}
-		const targetData = targetSnapshot.data() as PlayerDocument
+		const [playerSnapshots, secretSnapshot] = await Promise.all([
+			Promise.all(
+				roomData.playerOrder.map((playerUid) =>
+					transaction.get(playerRef(firestore, roomId, playerUid)),
+				),
+			),
+			transaction.get(secretRef(firestore, roomId, targetUid)),
+		])
+		if (playerSnapshots.some((snapshot) => !snapshot.exists)) {
+			throw new CommandError('not-found', 'ROOM_NOT_FOUND')
+		}
+		const targetData = playerSnapshots[
+			roomData.playerOrder.indexOf(targetUid)
+		].data() as PlayerDocument
 		if (targetData.eliminated) {
 			throw new CommandError('failed-precondition', 'TARGET_ELIMINATED')
 		}
+		if (!secretSnapshot.exists) {
+			throw new CommandError('failed-precondition', 'TARGET_INVALID')
+		}
 		const guess = validateGuess(input.guess, roomData.digitCount)
 		const secret = secretSnapshot.data() as SecretDocument
-		const playerSnapshots = await Promise.all(
-			roomData.playerOrder.map((playerUid) =>
-				transaction.get(playerRef(firestore, roomId, playerUid)),
-			),
-		)
 		const eliminatedUids = playerSnapshots
 			.filter((snapshot) => (snapshot.data() as PlayerDocument).eliminated)
 			.map((snapshot) => snapshot.id)
@@ -106,17 +108,22 @@ export async function submitGuess(
 			correct: resolution.correct,
 			correctDigits: resolution.correctDigits,
 			correctPositions: resolution.correctPositions,
+			// Rooms created before matches were numbered have no match field.
+			match: roomData.match ?? 1,
 			createdAt: now,
 		}
 		transaction.create(guessDocument, guessData)
 		if (resolution.eliminatedUid) {
-			transaction.update(target, { eliminated: true })
+			transaction.update(playerRef(firestore, roomId, targetUid), {
+				eliminated: true,
+			})
 		}
 		transaction.update(room, {
 			phase: resolution.winnerUid ? 'finished' : 'guessing',
 			winnerUid: resolution.winnerUid,
 			currentGuesserUid: resolution.nextGuesserUid,
 			turnNumber: nextTurnNumber,
+			turnStartedAt: now,
 			updatedAt: now,
 			expiresAt: Timestamp.fromMillis(now.toMillis() + 24 * 60 * 60 * 1000),
 		})

@@ -164,3 +164,104 @@ test('shows a friendly error for a missing room', async ({ page }) => {
 		'Room not found or expired.',
 	)
 })
+
+test('an invited player reconnects after a refresh', async ({ browser }) => {
+	const hostContext = await browser.newContext()
+	const guestContext = await browser.newContext()
+	const host = await hostContext.newPage()
+	const guest = await guestContext.newPage()
+	await Promise.all([mockGitHubStars(host), mockGitHubStars(guest)])
+
+	await host.goto('/')
+	await selectOnlineMode(host)
+	await host.getByLabel('Display name').fill('Ada')
+	await host.getByRole('button', { name: 'Create Room' }).click()
+	const roomId = await readRoomId(host)
+
+	await guest.goto(`/?room=${roomId}`)
+	await guest.getByLabel('Display name').fill('Lin')
+	await guest.getByRole('button', { name: 'Join Room' }).click()
+	await expect(guest.getByText(`Room ${roomId}`)).toBeVisible()
+	await expect(guest).toHaveURL(/\/$/)
+
+	await guest.reload()
+
+	await expect(guest.getByText(`Room ${roomId}`)).toBeVisible()
+	await expect(guest.getByLabel('Display name')).toHaveCount(0)
+	await Promise.all([hostContext.close(), guestContext.close()])
+})
+
+test('leaving mid-match forfeits to the remaining player', async ({
+	browser,
+}) => {
+	const hostContext = await browser.newContext()
+	const guestContext = await browser.newContext()
+	const host = await hostContext.newPage()
+	const guest = await guestContext.newPage()
+	await Promise.all([mockGitHubStars(host), mockGitHubStars(guest)])
+
+	await host.goto('/')
+	await selectOnlineMode(host)
+	await host.getByLabel('Display name').fill('Ada')
+	await host.getByRole('button', { name: 'Create Room' }).click()
+	const roomId = await readRoomId(host)
+	await guest.goto(`/?room=${roomId}`)
+	await guest.getByLabel('Display name').fill('Lin')
+	await guest.getByRole('button', { name: 'Join Room' }).click()
+	await host.getByLabel('Secret number').fill('123')
+	await host.getByRole('button', { name: 'Ready' }).click()
+	await guest.getByLabel('Secret number').fill('456')
+	await guest.getByRole('button', { name: 'Ready' }).click()
+	await host.getByRole('button', { name: 'Start Game' }).click()
+	await expect(guest.getByText("Ada's turn")).toBeVisible()
+
+	await guest.getByRole('button', { name: 'Leave game' }).click()
+	await guest.getByRole('button', { name: 'Forfeit and leave' }).click()
+
+	await expect(host.getByText('Ada wins!')).toBeVisible()
+	await expect(guest.getByLabel('Display name')).toBeVisible()
+	await Promise.all([hostContext.close(), guestContext.close()])
+})
+
+test('the host can start without a player who is not ready', async ({
+	browser,
+}) => {
+	const contexts = await Promise.all([
+		browser.newContext(),
+		browser.newContext(),
+		browser.newContext(),
+	])
+	const [host, second, third] = await Promise.all(
+		contexts.map((context) => context.newPage()),
+	)
+	await Promise.all([host, second, third].map(mockGitHubStars))
+
+	await host.goto('/')
+	await selectOnlineMode(host, '3')
+	await host.getByLabel('Display name').fill('Ada')
+	await host.getByRole('button', { name: 'Create Room' }).click()
+	const roomId = await readRoomId(host)
+	for (const [page, name] of [
+		[second, 'Lin'],
+		[third, 'Grace'],
+	] as const) {
+		await page.goto(`/?room=${roomId}`)
+		await page.getByLabel('Display name').fill(name)
+		await page.getByRole('button', { name: 'Join Room' }).click()
+		await expect(page.getByText(`Room ${roomId}`)).toBeVisible()
+	}
+	await host.getByLabel('Secret number').fill('123')
+	await host.getByRole('button', { name: 'Ready' }).click()
+	await second.getByLabel('Secret number').fill('456')
+	await second.getByRole('button', { name: 'Ready' }).click()
+
+	await expect(
+		host.getByText("Players who aren't ready yet will be left out."),
+	).toBeVisible()
+	await host.getByRole('button', { name: 'Start Game' }).click()
+
+	await expect(host.getByText("Ada's turn")).toBeVisible()
+	await expect(host.getByLabel('Target player')).toHaveValue(/.+/)
+	await expect(third.getByRole('alert')).toHaveText('Room not found or expired.')
+	await Promise.all(contexts.map((context) => context.close()))
+})

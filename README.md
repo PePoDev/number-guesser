@@ -115,6 +115,15 @@ Components keep only local UI state. They call intent-based store actions such a
 
 Pure helpers such as `validateGuess`, `calculateFeedback`, `generateRandomNumber`, and `sanitizeDigits` are exported from the store for direct unit testing.
 
+Online rooms are server-authoritative:
+
+- Every command runs in a Firestore transaction and treats a room whose `expiresAt` has passed as missing.
+- A room's `match` number increases on each restart, and every guess records its `match`, so a late duplicate restart can only clear guesses from earlier matches. The client shows only the current match's guesses.
+- `turnStartedAt` marks when the current turn began. `removeIdlePlayer` forfeits the current guesser after `IDLE_TURN_SECONDS` (120).
+- Leaving mid-match forfeits: the player stays in the room with `eliminated` and `left` set, so names and history survive. Restart removes players who left.
+- `createRoom` allows 10 rooms per user per rolling hour, tracked in server-only `rateLimits/{uid}`.
+- The hourly cleanup deletes expired rooms in pages of 200. It re-checks each room in a transaction and deletes its secrets before the room, so an interrupted run never orphans secrets.
+
 ## Localization
 
 The interface ships in English (`en`) and Thai (`th`).
@@ -176,7 +185,7 @@ Firebase dependencies and backend deployment are explicitly approved for online 
 | Component | Colocated `*.test.ts` files | Rendering, interaction, ARIA, component branches |
 | End-to-end | `e2e/*.spec.ts` | Complete single-player and multiplayer flows; `localization.spec.ts` covers Thai browser detection and the saved language |
 | Firebase integration | `functions/src/*.test.ts`, `src/lib/firebase/firestore.rules.test.ts` | Emulator-only transactions, cleanup, and security rules |
-| Online end-to-end | `e2e/online-multiplayer.spec.ts` | Separate browser contexts for create/join, turns, reconnect, and errors |
+| Online end-to-end | `e2e/online-multiplayer.spec.ts` | Separate browser contexts for create/join, turns, host and invited-player reconnect, forfeit, starting without unready players, and errors |
 | Deployment | `src/tests/deploymentWorkflows.test.ts` | Secret injection, missing-config guard, and Java runtime requirements |
 | Localization | `src/lib/i18n/*.test.ts` | Locale resolution, persistence, and dictionary parity |
 | Setup | `src/tests/setup.ts`, `src/tests/appNavigation.ts` | DOM environment, matchers, pinned `Math.random`, and a `$app/navigation` stand-in aliased in `vitest.config.ts` |
@@ -418,6 +427,8 @@ Add the Firebase service account JSON as the `FIREBASE_SERVICE_ACCOUNT` reposito
 The service account needs permission for everything the backend deploy touches. Without it the deploy stops with `403 The caller does not have permission`, as every run before 2026-10-10 did at the Firestore rules step. In Google Cloud IAM, grant it Firebase Admin, Service Account User, and Cloud Scheduler Admin (for the hourly room cleanup), then re-run **Deploy Firebase Backend**. If a later step reports another 403, the error names the missing permission.
 
 Until the backend is deployed, online commands show "Online play isn't available right now" instead of a generic retry message, and single player and local multiplayer are unaffected.
+
+Firebase App Check is not enforced yet. Turning it on needs a reCAPTCHA Enterprise site key created in the Firebase console, App Check initialized in the client with that key, and `enforceAppCheck` on the callables. Until then, the per-user room limit and `maxInstances: 20` are the abuse guards.
 
 Do not change the workflow, target, CNAME, or DNS without owner approval.
 

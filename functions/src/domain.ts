@@ -134,17 +134,71 @@ export function resolveGuess(input: ResolveGuessInput): GuessResolution {
 		}
 	}
 
-	const currentIndex = input.playerOrder.indexOf(input.currentGuesserUid)
-	let nextIndex = (currentIndex + 1) % input.playerOrder.length
-	while (eliminated.has(input.playerOrder[nextIndex])) {
-		nextIndex = (nextIndex + 1) % input.playerOrder.length
-	}
-
 	return {
 		correct,
 		...feedback,
 		eliminatedUid: null,
-		nextGuesserUid: input.playerOrder[nextIndex],
+		nextGuesserUid: nextActiveUid(
+			input.playerOrder,
+			eliminated,
+			input.currentGuesserUid,
+		),
 		winnerUid: null,
 	}
+}
+
+function nextActiveUid(
+	playerOrder: string[],
+	eliminated: Set<string>,
+	fromUid: string,
+): string {
+	const currentIndex = playerOrder.indexOf(fromUid)
+	let nextIndex = (currentIndex + 1) % playerOrder.length
+	while (eliminated.has(playerOrder[nextIndex])) {
+		nextIndex = (nextIndex + 1) % playerOrder.length
+	}
+	return playerOrder[nextIndex]
+}
+
+interface ResolveForfeitInput {
+	playerOrder: string[]
+	eliminatedUids: string[]
+	currentGuesserUid: string | null
+	hostUid: string
+	forfeitUid: string
+}
+
+interface ForfeitResolution {
+	hostUid: string
+	currentGuesserUid: string | null
+	winnerUid: string | null
+}
+
+export function resolveForfeit(input: ResolveForfeitInput): ForfeitResolution {
+	const eliminated = new Set([...input.eliminatedUids, input.forfeitUid])
+	const active = input.playerOrder.filter((uid) => !eliminated.has(uid))
+	const hostUid =
+		input.hostUid === input.forfeitUid && active.length > 0
+			? active[0]
+			: input.hostUid
+
+	if (active.length <= 1) {
+		return { hostUid, currentGuesserUid: null, winnerUid: active[0] ?? null }
+	}
+
+	if (input.currentGuesserUid !== input.forfeitUid) {
+		return { hostUid, currentGuesserUid: input.currentGuesserUid, winnerUid: null }
+	}
+
+	return {
+		hostUid,
+		currentGuesserUid: nextActiveUid(input.playerOrder, eliminated, input.forfeitUid),
+		winnerUid: null,
+	}
+}
+
+export const IDLE_TURN_SECONDS = 120
+
+export function isTurnIdle(turnStartedAtMillis: number, nowMillis: number): boolean {
+	return nowMillis - turnStartedAtMillis >= IDLE_TURN_SECONDS * 1000
 }

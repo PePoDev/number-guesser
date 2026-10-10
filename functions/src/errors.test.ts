@@ -1,6 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { logger } from 'firebase-functions/logger'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DomainError } from './domain.js'
 import { CommandError, requireUid, toHttpsError } from './errors.js'
+
+afterEach(() => {
+	vi.restoreAllMocks()
+})
 
 describe('callable errors', () => {
 	it('requires an authenticated uid', () => {
@@ -24,10 +29,39 @@ describe('callable errors', () => {
 		})
 	})
 
-	it('hides unexpected server errors', () => {
-		expect(toHttpsError(new Error('private detail'))).toMatchObject({
+	it('hides unexpected server errors and logs only their name and code', () => {
+		const logError = vi.spyOn(logger, 'error').mockImplementation(() => undefined)
+		const failure = Object.assign(new TypeError('private detail 4821'), {
+			code: 'boom',
+		})
+
+		expect(toHttpsError(failure)).toMatchObject({
 			code: 'internal',
 			message: 'ONLINE_GAME_INTERNAL',
 		})
+		expect(logError).toHaveBeenCalledTimes(1)
+		expect(logError).toHaveBeenCalledWith('Unexpected online command error', {
+			name: 'TypeError',
+			code: 'boom',
+		})
+		expect(JSON.stringify(logError.mock.calls)).not.toContain('4821')
+	})
+
+	it('maps Firestore contention to a retryable room change without logging', () => {
+		const logError = vi.spyOn(logger, 'error').mockImplementation(() => undefined)
+		const contention = Object.assign(
+			new Error('10 ABORTED: Too much contention on these documents.'),
+			{ code: 10 },
+		)
+
+		expect(toHttpsError(contention)).toMatchObject({
+			code: 'aborted',
+			message: 'ROOM_CHANGED',
+		})
+		expect(toHttpsError({ code: 'aborted' })).toMatchObject({
+			code: 'aborted',
+			message: 'ROOM_CHANGED',
+		})
+		expect(logError).not.toHaveBeenCalled()
 	})
 })
