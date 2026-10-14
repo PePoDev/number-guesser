@@ -6,6 +6,17 @@ import {
   calculateFeedback,
   sanitizeDigits,
   keepDigits,
+  dailyNumber,
+  dailyTarget,
+  msUntilDaily,
+  formatCountdown,
+  scoreTiles,
+  digitStates,
+  dailyStatus,
+  recordDailyResult,
+  liveStreak,
+  shareGrid,
+  EMPTY_DAILY_STATS,
 } from "./gameStore";
 
 describe("Game Store", () => {
@@ -17,7 +28,7 @@ describe("Game Store", () => {
     it("should have correct initial state", () => {
       const state = get(gameStore);
       expect(state.locale).toBe("en");
-      expect(state.mode).toBe("single");
+      expect(state.mode).toBe("daily");
       expect(state.settings.digitCount).toBe(3);
       expect(state.settings.maxAttempts).toBe(7);
       expect(state.settings.playerCount).toBe(2);
@@ -29,6 +40,7 @@ describe("Game Store", () => {
 
   describe("Rounds", () => {
     it("counts every new game", () => {
+      gameStore.setMode("single");
       gameStore.startNewGame();
       gameStore.startNewGame();
       expect(get(gameStore).round).toBe(2);
@@ -532,5 +544,196 @@ describe('keepDigits', () => {
 
     expect(kept).toBe('123')
     expect(input.value).toBe('123')
+  })
+})
+
+describe('dailyNumber', () => {
+  it('starts at puzzle 1 on 2026-10-14 and counts local calendar days', () => {
+    expect(dailyNumber(new Date(2026, 9, 14, 0, 0))).toBe(1)
+    expect(dailyNumber(new Date(2026, 9, 14, 23, 59))).toBe(1)
+    expect(dailyNumber(new Date(2026, 9, 15, 0, 0))).toBe(2)
+    expect(dailyNumber(new Date(2027, 9, 14, 12))).toBe(366)
+  })
+
+  it('keeps one step per day across daylight-saving changes', () => {
+    expect(dailyNumber(new Date(2027, 2, 29)) - dailyNumber(new Date(2027, 2, 27))).toBe(2)
+    expect(dailyNumber(new Date(2027, 10, 8)) - dailyNumber(new Date(2027, 10, 6))).toBe(2)
+  })
+
+  it('never goes below puzzle 1 for a clock set before launch', () => {
+    expect(dailyNumber(new Date(2026, 0, 1))).toBe(1)
+  })
+})
+
+describe('msUntilDaily and formatCountdown', () => {
+  it('counts down to the local midnight that starts a puzzle', () => {
+    const now = new Date(2026, 9, 14, 21, 30, 15)
+    expect(formatCountdown(msUntilDaily(2, now))).toBe('02:29:45')
+    expect(msUntilDaily(1, now)).toBeLessThan(0)
+  })
+
+  it('rounds partial seconds up and stops at zero', () => {
+    expect(formatCountdown(1)).toBe('00:00:01')
+    expect(formatCountdown(-5000)).toBe('00:00:00')
+  })
+})
+
+describe('dailyTarget', () => {
+  it('never changes a published answer', () => {
+    expect([1, 2, 3, 4, 5, 6, 7].map(dailyTarget)).toEqual([
+      '42273',
+      '18866',
+      '03054',
+      '30937',
+      '99185',
+      '39542',
+      '46885',
+    ])
+  })
+
+  it('always returns five digits', () => {
+    for (let day = 1; day <= 1000; day++) {
+      expect(dailyTarget(day)).toMatch(/^\d{5}$/)
+    }
+  })
+})
+
+describe('scoreTiles', () => {
+  it('marks right spots, wrong spots, and missing digits', () => {
+    expect(scoreTiles('31415', '63705')).toEqual([
+      'present',
+      'absent',
+      'absent',
+      'absent',
+      'correct',
+    ])
+    expect(scoreTiles('54321', '12345')).toEqual([
+      'present',
+      'present',
+      'correct',
+      'present',
+      'present',
+    ])
+  })
+
+  it('gives each copy of a digit in the target to one guessed digit, right spots first', () => {
+    expect(scoreTiles('11111', '10001')).toEqual([
+      'correct',
+      'absent',
+      'absent',
+      'absent',
+      'correct',
+    ])
+    expect(scoreTiles('11223', '21111')).toEqual([
+      'present',
+      'correct',
+      'present',
+      'absent',
+      'absent',
+    ])
+  })
+})
+
+describe('digitStates', () => {
+  it('keeps the best state each digit has earned', () => {
+    expect(digitStates(['12345', '21345'], '21000')).toEqual({
+      1: 'correct',
+      2: 'correct',
+      3: 'absent',
+      4: 'absent',
+      5: 'absent',
+    })
+    expect(digitStates([], '21000')).toEqual({})
+  })
+})
+
+describe('dailyStatus', () => {
+  it('is won by the answer and lost after six misses', () => {
+    expect(dailyStatus([], '12345')).toBe('playing')
+    expect(dailyStatus(['00000', '12345'], '12345')).toBe('won')
+    expect(dailyStatus(Array.from({ length: 5 }, (_, i) => `0000${i}`), '12345')).toBe('playing')
+    expect(dailyStatus(Array.from({ length: 6 }, (_, i) => `0000${i}`), '12345')).toBe('lost')
+  })
+})
+
+describe('recordDailyResult', () => {
+  it('counts a win, its tries, and starts a streak', () => {
+    const stats = recordDailyResult(EMPTY_DAILY_STATS, 4, true, 3)
+    expect(stats).toEqual({
+      played: 1,
+      wins: 1,
+      currentStreak: 1,
+      maxStreak: 1,
+      distribution: [0, 0, 1, 0, 0, 0],
+      lastPlayedDay: 4,
+      lastWonDay: 4,
+    })
+  })
+
+  it('extends a streak only on consecutive days and keeps the best', () => {
+    let stats = recordDailyResult(EMPTY_DAILY_STATS, 1, true, 2)
+    stats = recordDailyResult(stats, 2, true, 4)
+    expect(stats.currentStreak).toBe(2)
+    stats = recordDailyResult(stats, 4, true, 1)
+    expect(stats.currentStreak).toBe(1)
+    expect(stats.maxStreak).toBe(2)
+    expect(stats.distribution).toEqual([1, 1, 0, 1, 0, 0])
+  })
+
+  it('ends the streak on a loss without counting a win', () => {
+    let stats = recordDailyResult(EMPTY_DAILY_STATS, 1, true, 2)
+    stats = recordDailyResult(stats, 2, false, 6)
+    expect(stats).toMatchObject({ played: 2, wins: 1, currentStreak: 0, maxStreak: 1, lastWonDay: 1 })
+  })
+
+  it('records each puzzle once', () => {
+    const stats = recordDailyResult(EMPTY_DAILY_STATS, 3, true, 2)
+    expect(recordDailyResult(stats, 3, false, 6)).toBe(stats)
+  })
+})
+
+describe('liveStreak', () => {
+  it('shows the streak until a day is missed', () => {
+    const stats = recordDailyResult(EMPTY_DAILY_STATS, 5, true, 2)
+    expect(liveStreak(stats, 5)).toBe(1)
+    expect(liveStreak(stats, 6)).toBe(1)
+    expect(liveStreak(stats, 7)).toBe(0)
+  })
+})
+
+describe('shareGrid', () => {
+  it('shows colors only, one row per guess', () => {
+    expect(shareGrid(['31415', '63705'], '63705')).toBe('🟨⬜⬜⬜🟩\n🟩🟩🟩🟩🟩')
+  })
+})
+
+describe('Guessle store actions', () => {
+  beforeEach(() => {
+    gameStore.reset()
+  })
+
+  it('loads progress and records the result when the puzzle ends', () => {
+    gameStore.loadDaily({ day: 1, guesses: [], stats: EMPTY_DAILY_STATS })
+    gameStore.addDailyGuess('12345')
+    expect(get(gameStore).daily.stats.played).toBe(0)
+
+    gameStore.addDailyGuess(dailyTarget(1))
+    const { daily } = get(gameStore)
+    expect(daily.guesses).toEqual(['12345', dailyTarget(1)])
+    expect(daily.stats).toMatchObject({ played: 1, wins: 1, distribution: [0, 1, 0, 0, 0, 0] })
+  })
+
+  it('ignores guesses after the puzzle ends', () => {
+    gameStore.loadDaily({ day: 1, guesses: [dailyTarget(1)], stats: EMPTY_DAILY_STATS })
+    gameStore.addDailyGuess('12345')
+    expect(get(gameStore).daily.guesses).toEqual([dailyTarget(1)])
+  })
+
+  it('records a loss after the sixth miss', () => {
+    gameStore.loadDaily({ day: 2, guesses: [], stats: EMPTY_DAILY_STATS })
+    for (const guess of ['00000', '11111', '22222', '33333', '44444', '55555']) {
+      gameStore.addDailyGuess(guess)
+    }
+    expect(get(gameStore).daily.stats).toMatchObject({ played: 1, wins: 0, currentStreak: 0 })
   })
 })

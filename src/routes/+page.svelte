@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { gameStore, type GameMode } from '$lib/stores/gameStore';
+	import { gameStore, DAILY_DIGITS, DAILY_TRIES, type GameMode } from '$lib/stores/gameStore';
 	import SettingsModal from '$lib/components/SettingsModal.svelte';
+	import DailyGame from '$lib/components/DailyGame.svelte';
 	import SinglePlayerGame from '$lib/components/SinglePlayerGame.svelte';
 	import MultiPlayerGame from '$lib/components/MultiPlayerGame.svelte';
 	import OnlineMultiplayerGame from '$lib/components/OnlineMultiplayerGame.svelte';
@@ -11,6 +12,7 @@
 
 	let showSettings = $state(false);
 	let showInstructions = $state(false);
+	let chosenSingleMode = $state<'daily' | 'single'>('daily');
 	let chosenMultiMode = $state<'multi' | 'online'>('multi');
 	let invitedRoomId = $state('');
 	const displayedDigitCount = $derived(
@@ -22,6 +24,7 @@
 	const t = $derived(messages[$gameStore.locale]);
 	const settingsLabel = $derived(t.header.openSettings(t.modes[$gameStore.mode]));
 	const tickerText = $derived(`${t.ticker.join(' ✦ ')} ✦ `);
+	const singleMode = $derived($gameStore.mode === 'daily' || $gameStore.mode === 'single');
 
 	function startNewGame() {
 		showInstructions = false;
@@ -42,14 +45,14 @@
 			number: '01',
 			accent: 'nav-blue',
 			label: t.nav.single,
-			pressed: $gameStore.mode === 'single' && !showInstructions,
-			onclick: () => selectMode('single'),
+			pressed: singleMode && !showInstructions,
+			onclick: () => selectMode(chosenSingleMode),
 		},
 		{
 			number: '02',
 			accent: 'nav-yellow',
 			label: t.nav.multi,
-			pressed: $gameStore.mode !== 'single' && !showInstructions,
+			pressed: !singleMode && !showInstructions,
 			onclick: () => selectMode(chosenMultiMode),
 		},
 		{
@@ -62,15 +65,15 @@
 	]);
 
 	$effect(() => {
-		if ($gameStore.mode === 'multi' || $gameStore.mode === 'online') {
+		if ($gameStore.mode === 'daily' || $gameStore.mode === 'single') {
+			chosenSingleMode = $gameStore.mode;
+		} else {
 			chosenMultiMode = $gameStore.mode;
 		}
 	});
 
+	// The online component reconnects a saved room or pre-fills an invite on its own.
 	onMount(() => {
-		// Single player is always ready to play; the online component reconnects
-		// a saved room or pre-fills an invite on its own.
-		gameStore.startNewGame();
 		const roomId =
 			new URL(window.location.href).searchParams
 				.get('room')
@@ -86,6 +89,32 @@
 		}
 	});
 </script>
+
+{#snippet rich(parts: Array<string | { value: string | number }>)}{#each parts as part}{#if typeof part === 'string'}{part}{:else}<span class="accent-value">{part.value}</span>{/if}{/each}{/snippet}
+
+{#snippet steps(list: { term?: string; text: string }[])}
+	<ul class="list-disc space-y-2 pl-5 text-sm">
+		{#each list as step}
+			<li>{#if step.term}<strong>{step.term}</strong>{' '}{/if}{step.text}</li>
+		{/each}
+	</ul>
+{/snippet}
+
+{#snippet variantSwitch(label: string, options: { mode: GameMode; label: string }[])}
+	<div class="mt-4">
+		<div class="variant-switch" role="group" aria-label={label}>
+			{#each options as option (option.mode)}
+				<button
+					type="button"
+					aria-pressed={$gameStore.mode === option.mode}
+					onclick={() => selectMode(option.mode)}
+				>
+					{option.label}
+				</button>
+			{/each}
+		</div>
+	</div>
+{/snippet}
 
 <svelte:head>
 	<title>{t.title}</title>
@@ -121,7 +150,7 @@
 				<button
 					type="button"
 					class="nav-card nav-primary"
-					disabled={$gameStore.mode === 'online'}
+					disabled={$gameStore.mode === 'online' || $gameStore.mode === 'daily'}
 					onclick={startNewGame}
 				>
 					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -159,32 +188,25 @@
 					</div>
 					{#if !showInstructions}
 						<p>
-							{#each t.header.thinking(displayedDigitCount) as part}{#if typeof part === 'string'}{part}{:else}<span class="accent-value">{part.value}</span>{/if}{/each}
+							{#if $gameStore.mode === 'daily'}
+								{@render rich(t.header.daily(DAILY_DIGITS, DAILY_TRIES))}
+							{:else}
+								{@render rich(t.header.thinking(displayedDigitCount))}
+							{/if}
 						</p>
 						{#if $gameStore.mode === 'single'}
-							<p>
-								{#each t.header.attemptsLeft($gameStore.attemptsLeft) as part}{#if typeof part === 'string'}{part}{:else}<span class="accent-value">{part.value}</span>{/if}{/each}
-							</p>
+							<p>{@render rich(t.header.attemptsLeft($gameStore.attemptsLeft))}</p>
 						{/if}
-						{#if $gameStore.mode === 'multi' || $gameStore.mode === 'online'}
-							<div class="mt-4">
-								<div class="variant-switch" role="group" aria-label={t.header.multiplayerType}>
-									<button
-										type="button"
-										aria-pressed={$gameStore.mode === 'multi'}
-										onclick={() => selectMode('multi')}
-									>
-										{t.header.local}
-									</button>
-									<button
-										type="button"
-										aria-pressed={$gameStore.mode === 'online'}
-										onclick={() => selectMode('online')}
-									>
-										{t.header.online}
-									</button>
-								</div>
-							</div>
+						{#if singleMode}
+							{@render variantSwitch(t.header.singleType, [
+								{ mode: 'daily', label: t.header.guessle },
+								{ mode: 'single', label: t.header.classic },
+							])}
+						{:else}
+							{@render variantSwitch(t.header.multiplayerType, [
+								{ mode: 'multi', label: t.header.local },
+								{ mode: 'online', label: t.header.online },
+							])}
 						{/if}
 					{/if}
 				</header>
@@ -192,11 +214,10 @@
 				{#if showInstructions}
 					<section aria-labelledby="instructions-heading" class="space-y-4">
 						<h2 id="instructions-heading" class="font-display text-2xl font-bold">{t.instructions.heading}</h2>
-						<ul class="list-disc space-y-2 pl-5 text-sm">
-							{#each t.instructions.steps as step}
-								<li>{#if step.term}<strong>{step.term}</strong>{' '}{/if}{step.text}</li>
-							{/each}
-						</ul>
+						<h3 class="font-display text-lg font-bold">{t.instructions.dailyHeading}</h3>
+						{@render steps(t.instructions.dailySteps)}
+						<h3 class="font-display text-lg font-bold">{t.instructions.classicHeading}</h3>
+						{@render steps(t.instructions.steps)}
 						<h3 class="font-display text-lg font-bold">{t.instructions.friendsHeading}</h3>
 						<ul class="list-disc space-y-2 pl-5 text-sm">
 							{#each t.instructions.friendsSteps as step}
@@ -206,7 +227,9 @@
 					</section>
 				{/if}
 				<div hidden={showInstructions}>
-					{#if $gameStore.mode === 'single'}
+					{#if $gameStore.mode === 'daily'}
+						<DailyGame />
+					{:else if $gameStore.mode === 'single'}
 						<SinglePlayerGame />
 					{:else if $gameStore.mode === 'multi'}
 						<MultiPlayerGame />

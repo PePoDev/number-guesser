@@ -21,6 +21,10 @@ test('opens in Thai for a Thai browser and remembers English', async ({
 	page,
 }) => {
 	await page.goto('/')
+	await page
+		.getByRole('group', { name: 'รูปแบบการเล่นคนเดียว' })
+		.getByRole('button', { name: 'คลาสสิก' })
+		.click()
 
 	await expect(page.locator('html')).toHaveAttribute('lang', 'th')
 	await expect(page).toHaveTitle('เกมทายตัวเลข')
@@ -58,4 +62,17 @@ test('plays local multiplayer setup in Thai', async ({ page }) => {
 	await page.getByRole('button', { name: 'บันทึกและไปต่อ' }).click()
 
 	await expect(page.getByText('ถึงตา ผู้เล่น 2 ตั้งค่า')).toBeVisible()
+})
+
+test('plays Guessle in Thai', async ({ page }) => {
+	await page.clock.setFixedTime(new Date(2026, 9, 14, 9))
+	await page.goto('/')
+
+	await expect(page.getByRole('heading', { name: 'Guessle #1' })).toBeVisible()
+	await expect(page.getByText(/ของวันนี้/)).toHaveText(
+		'ทายเลข 5 หลักของวันนี้ให้ถูกภายใน 6 ครั้ง ทุกคนได้เลขเดียวกัน',
+	)
+	await page.keyboard.type('12')
+	await page.getByRole('button', { name: 'ส่ง' }).click()
+	await expect(page.getByRole('alert')).toHaveText('กรอกให้ครบ 5 หลัก')
 })

@@ -1,4 +1,13 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+// Guessle opens by default, so these Classic flows pick Classic first.
+async function openClassic(page: Page) {
+  await page.goto("/");
+  await page
+    .getByRole("group", { name: "Single-player type" })
+    .getByRole("button", { name: "Classic" })
+    .click();
+}
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -14,7 +23,7 @@ test.beforeEach(async ({ page }) => {
 
 test.describe("Single Player Game", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await openClassic(page);
   });
 
   test("should display game title and instructions", async ({ page }) => {
@@ -115,7 +124,7 @@ test.describe("Single Player Game", () => {
     await page.addInitScript(() => {
       Math.random = () => 0.5
     })
-    await page.goto('/')
+    await openClassic(page)
     const input = page.getByLabel('Guess', { exact: true })
 
     for (const guess of ['123', '456', '789', '012', '345', '678', '901']) {
@@ -379,7 +388,7 @@ test.describe("Single Player Game", () => {
 
 test.describe("Single Player Game - Different Configurations", () => {
   test("should work with 2-digit numbers", async ({ page }) => {
-    await page.goto("/");
+    await openClassic(page);
     await page.getByLabel("Open Single Player settings").click();
     await page.selectOption("select#digit-count", "2");
     await page.click('button:has-text("Close")');
@@ -391,7 +400,7 @@ test.describe("Single Player Game - Different Configurations", () => {
   });
 
   test("should work with 5-digit numbers", async ({ page }) => {
-    await page.goto("/");
+    await openClassic(page);
     await page.getByLabel("Open Single Player settings").click();
     await page.selectOption("select#digit-count", "5");
     await page.click('button:has-text("Close")');
@@ -403,7 +412,7 @@ test.describe("Single Player Game - Different Configurations", () => {
   });
 
   test("should work with 3 attempts limit", async ({ page }) => {
-    await page.goto("/");
+    await openClassic(page);
     await page.getByLabel("Open Single Player settings").click();
     await page.selectOption("select#max-attempts", "3");
     await page.click('button:has-text("Close")');
@@ -412,7 +421,7 @@ test.describe("Single Player Game - Different Configurations", () => {
   });
 
   test("should work with 20 attempts limit", async ({ page }) => {
-    await page.goto("/");
+    await openClassic(page);
     await page.getByLabel("Open Single Player settings").click();
     await page.selectOption("select#max-attempts", "20");
     await page.click('button:has-text("Close")');
@@ -422,7 +431,7 @@ test.describe("Single Player Game - Different Configurations", () => {
 
   test.describe("Single Player Game - Duplicate Guess Detection", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/");
+      await openClassic(page);
       await page.getByLabel("Open Single Player settings").click();
       await page.waitForSelector("text=Single Player Settings", { state: "visible" });
       // Wait for any animations to complete
@@ -541,7 +550,7 @@ test.describe("Single Player Game - Different Configurations", () => {
 
     test.describe("Single Player Game - Input Validation", () => {
       test.beforeEach(async ({ page }) => {
-        await page.goto("/");
+        await openClassic(page);
       });
 
       test("should prevent submission with empty input", async ({ page }) => {

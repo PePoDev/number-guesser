@@ -35,6 +35,11 @@
 	--state-incorrect: #ef4444;
 	--state-warning: #f59e0b;
 	--state-info: #3b82f6;
+	--tile-correct: var(--accent-green);
+	--tile-present: var(--accent-yellow);
+	--tile-absent: var(--glass-muted);
+	--tile-fg: var(--stage-border);
+	--tile-absent-fg: var(--surface-white);
 	--motion-duration: 180ms;
 	--motion-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
 }

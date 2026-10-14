@@ -1,4 +1,4 @@
-import type { GameMode, GuessProblem } from '$lib/stores/gameStore'
+import type { GameMode, GuessProblem, TileState } from '$lib/stores/gameStore'
 import type { OnlineErrorCode } from '$lib/online/types'
 
 export const locales = ['en', 'th'] as const
@@ -19,6 +19,7 @@ const en = {
 	title: 'Number Guessing Game',
 	ticker: [
 		'Guess the number',
+		'Daily Guessle',
 		'2–5 digits',
 		'3–20 attempts',
 		'Single player',
@@ -26,6 +27,7 @@ const en = {
 		'Online rooms',
 	],
 	modes: {
+		daily: 'Daily Guessle',
 		single: 'Single Player',
 		multi: 'Local Multiplayer',
 		online: 'Online Multiplayer',
@@ -50,6 +52,16 @@ const en = {
 			{ value: count },
 			` ${count === 1 ? 'attempt' : 'attempts'} remaining.`,
 		],
+		daily: (digits: number, tries: number): RichText => [
+			"Guess today's ",
+			{ value: digits },
+			'-digit number in ',
+			{ value: tries },
+			' tries. Everyone gets the same one.',
+		],
+		singleType: 'Single-player type',
+		guessle: 'Guessle',
+		classic: 'Classic',
 		multiplayerType: 'Multiplayer type',
 		local: 'Local',
 		online: 'Online',
@@ -70,6 +82,20 @@ const en = {
 			},
 			{ text: 'Example: Target is 401, you guess 410 → 3 correct digits, 1 correct position' },
 		] as InstructionStep[],
+		dailyHeading: 'Daily Guessle:',
+		classicHeading: 'Classic and multiplayer:',
+		dailySteps: [
+			{ text: 'Everyone gets the same 5-digit number each day and has 6 tries.' },
+			{ term: 'Green:', text: 'the digit is in the right spot.' },
+			{ term: 'Yellow with a dot:', text: 'the digit is in the number, in another spot.' },
+			{
+				term: 'Gray:',
+				text: 'the digit is not in the number, or the number has no more copies of it.',
+			},
+			{
+				text: 'Share your result and play every day to grow your streak. A new number arrives at midnight.',
+			},
+		] as InstructionStep[],
 		friendsHeading: 'Playing with friends:',
 		friendsSteps: [
 			'Each player picks a secret number. On one device, pass it around and keep your number hidden.',
@@ -89,6 +115,7 @@ const en = {
 	},
 	settings: {
 		titles: {
+			daily: 'Daily Guessle Settings',
 			single: 'Single Player Settings',
 			multi: 'Local Multiplayer Settings',
 			online: 'Online Multiplayer Settings',
@@ -136,6 +163,40 @@ const en = {
 		historyScore: (digits: number, positions: number) =>
 			`Digits: ${digits}, Positions: ${positions}`,
 		historyEmpty: 'No guesses yet. Your guesses will appear here.',
+	},
+	daily: {
+		heading: (puzzle: number) => `Guessle #${puzzle}`,
+		board: 'Guesses',
+		row: (number: number, tiles: string) => `Guess ${number}: ${tiles}`,
+		tile: (digit: string, state: TileState) =>
+			state === 'correct'
+				? `${digit} in the right spot`
+				: state === 'present'
+					? `${digit} in another spot`
+					: `${digit} not in the number`,
+		entry: (digits: string) => (digits ? `Current guess: ${digits}` : 'Current guess is empty'),
+		keypad: 'Number keypad',
+		delete: 'Delete',
+		enter: 'Enter',
+		short: (digits: number) => `Enter all ${digits} digits.`,
+		duplicate: (guess: string) => `You've already tried ${guess}.`,
+		won: (tries: number) => (tries === 1 ? 'Got it in one!' : `Solved in ${tries} tries!`),
+		lost: (target: string): RichText => ['So close! The number was ', { value: target }],
+		statsHeading: 'Statistics',
+		played: 'Played',
+		winRate: 'Win %',
+		currentStreak: 'Current streak',
+		maxStreak: 'Max streak',
+		distributionHeading: 'Guess distribution',
+		distributionRow: (tries: number, wins: number) =>
+			`${tries} ${tries === 1 ? 'try' : 'tries'}: ${wins} ${wins === 1 ? 'win' : 'wins'}`,
+		share: 'Share',
+		copied: 'Copied!',
+		shareFailed: "Couldn't share your result. Please try again.",
+		shareTitle: (puzzle: number, score: string) => `Guessle #${puzzle} ${score}`,
+		next: 'Next Guessle in',
+		nextReady: "Play today's Guessle",
+		practice: 'Play Classic',
 	},
 	notepad: {
 		heading: 'Notepad',
@@ -275,6 +336,7 @@ const th: Messages = {
 	title: 'เกมทายตัวเลข',
 	ticker: [
 		'ทายตัวเลข',
+		'Guessle รายวัน',
 		'2–5 หลัก',
 		'ทายได้ 3–20 ครั้ง',
 		'เล่นคนเดียว',
@@ -282,6 +344,7 @@ const th: Messages = {
 		'ห้องออนไลน์',
 	],
 	modes: {
+		daily: 'เกม Guessle รายวัน',
 		single: 'เล่นคนเดียว',
 		multi: 'หลายคนในเครื่องเดียว',
 		online: 'หลายคนออนไลน์',
@@ -302,6 +365,16 @@ const th: Messages = {
 			' หลักไว้แล้ว ลองทายดูสิ!',
 		],
 		attemptsLeft: (count) => ['เหลือโอกาสทายอีก ', { value: count }, ' ครั้ง'],
+		daily: (digits, tries) => [
+			'ทายเลข ',
+			{ value: digits },
+			' หลักของวันนี้ให้ถูกภายใน ',
+			{ value: tries },
+			' ครั้ง ทุกคนได้เลขเดียวกัน',
+		],
+		singleType: 'รูปแบบการเล่นคนเดียว',
+		guessle: 'Guessle',
+		classic: 'คลาสสิก',
 		multiplayerType: 'รูปแบบการเล่นหลายคน',
 		local: 'เครื่องเดียว',
 		online: 'ออนไลน์',
@@ -322,6 +395,15 @@ const th: Messages = {
 			},
 			{ text: 'ตัวอย่าง: คำตอบคือ 401 ถ้าทาย 410 → เลขถูก 3 ตัว ตำแหน่งถูก 1 ตัว' },
 		],
+		dailyHeading: 'Guessle รายวัน:',
+		classicHeading: 'คลาสสิกและเล่นหลายคน:',
+		dailySteps: [
+			{ text: 'ทุกคนได้เลข 5 หลักชุดเดียวกันในแต่ละวัน และทายได้ 6 ครั้ง' },
+			{ term: 'สีเขียว:', text: 'เลขนี้อยู่ถูกตำแหน่ง' },
+			{ term: 'สีเหลืองมีจุด:', text: 'มีเลขนี้ในคำตอบ แต่อยู่ตำแหน่งอื่น' },
+			{ term: 'สีเทา:', text: 'ไม่มีเลขนี้ในคำตอบ หรือคำตอบไม่มีเลขนี้เหลือแล้ว' },
+			{ text: 'แชร์ผลลัพธ์และเล่นทุกวันเพื่อชนะติดต่อกัน เลขใหม่มาตอนเที่ยงคืน' },
+		],
 		friendsHeading: 'เล่นกับเพื่อน:',
 		friendsSteps: [
 			'ผู้เล่นแต่ละคนตั้งเลขลับของตัวเอง ถ้าเล่นในเครื่องเดียว ให้ส่งเครื่องต่อกันและอย่าให้คนอื่นเห็นเลข',
@@ -340,6 +422,7 @@ const th: Messages = {
 	},
 	settings: {
 		titles: {
+			daily: 'ตั้งค่า Guessle รายวัน',
 			single: 'ตั้งค่าโหมดเล่นคนเดียว',
 			multi: 'ตั้งค่าโหมดหลายคนในเครื่องเดียว',
 			online: 'ตั้งค่าโหมดหลายคนออนไลน์',
@@ -378,6 +461,39 @@ const th: Messages = {
 		historyGuess: (number, guess) => `ครั้งที่ ${number}: ${guess}`,
 		historyScore: (digits, positions) => `เลขถูก: ${digits}, ตำแหน่งถูก: ${positions}`,
 		historyEmpty: 'ยังไม่มีการทาย คำทายของคุณจะแสดงที่นี่',
+	},
+	daily: {
+		heading: (puzzle) => `Guessle #${puzzle}`,
+		board: 'คำทาย',
+		row: (number, tiles) => `ครั้งที่ ${number}: ${tiles}`,
+		tile: (digit, state) =>
+			state === 'correct'
+				? `${digit} ถูกตำแหน่ง`
+				: state === 'present'
+					? `${digit} มีในคำตอบแต่อยู่ตำแหน่งอื่น`
+					: `${digit} ไม่มีในคำตอบ`,
+		entry: (digits) => (digits ? `กำลังทาย: ${digits}` : 'ยังไม่ได้กรอกเลข'),
+		keypad: 'แป้นตัวเลข',
+		delete: 'ลบ',
+		enter: 'ส่ง',
+		short: (digits) => `กรอกให้ครบ ${digits} หลัก`,
+		duplicate: (guess) => `คุณทาย ${guess} ไปแล้ว`,
+		won: (tries) => (tries === 1 ? 'ทายถูกตั้งแต่ครั้งแรก!' : `ทายถูกใน ${tries} ครั้ง!`),
+		lost: (target) => ['เกือบแล้ว! คำตอบคือ ', { value: target }],
+		statsHeading: 'สถิติ',
+		played: 'เล่นแล้ว',
+		winRate: '% ชนะ',
+		currentStreak: 'ชนะติดต่อกัน',
+		maxStreak: 'ติดต่อกันสูงสุด',
+		distributionHeading: 'จำนวนครั้งที่ใช้ทาย',
+		distributionRow: (tries, wins) => `ทาย ${tries} ครั้ง: ชนะ ${wins} วัน`,
+		share: 'แชร์',
+		copied: 'คัดลอกแล้ว!',
+		shareFailed: 'แชร์ผลลัพธ์ไม่สำเร็จ กรุณาลองใหม่',
+		shareTitle: (puzzle, score) => `Guessle #${puzzle} ${score}`,
+		next: 'Guessle ถัดไปใน',
+		nextReady: 'เล่น Guessle ของวันนี้',
+		practice: 'เล่นแบบคลาสสิก',
 	},
 	notepad: {
 		heading: 'กระดาษทด',

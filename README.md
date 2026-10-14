@@ -8,7 +8,7 @@ A static, interactive number-guessing puzzle built with SvelteKit 2, Svelte 5, T
 
 ## Game
 
-Players guess a secret 2–5 digit number. Each guess reports:
+Players guess a secret 2–5 digit number. In Classic and multiplayer, each guess reports:
 
 - **Correct digits** — digits that appear anywhere in the target.
 - **Correct positions** — digits in the exact target position.
@@ -17,13 +17,21 @@ Example: target `401`, guess `410` → 3 correct digits and 1 correct position.
 
 ### Modes
 
-- **Single player:** The computer generates a number. The player has 3–20 attempts, with 7 by default. Duplicate guesses are rejected without consuming an attempt.
+- **Guessle (daily single player):** The default mode. Everyone gets the same 5-digit number on the same local date and has 6 tries. Each guessed digit becomes a tile: green when it is in the right spot, yellow with a dot when it is in the number but in another spot, and gray when it is not in the number. As in Wordle, a repeated digit turns yellow only while the answer still has an unmatched copy of it; extra copies are gray. Repeated guesses are rejected without using a try. A finished puzzle cannot be replayed; the next one arrives at local midnight. Results share as an emoji grid that shows colors, not digits.
+- **Classic single player:** The computer generates a number. The player has 3–20 attempts, with 7 by default. Duplicate guesses are rejected without consuming an attempt.
 - **Local multiplayer:** Two to four players share one device, choose names and secret numbers, and take turns guessing.
 - **Online multiplayer:** Two to four remote players enter display names, create or join a room with a six-character ID or invite link, and reconnect after refresh. The host can start once at least two players are ready; anyone not ready is left out. Leaving mid-match forfeits, and if the player whose turn it is stays idle for two minutes, the others can remove them. Firebase keeps secrets private and enforces turns on the server.
 
 Secret-number and guess fields read Thai numerals (๐–๙) as digits, discard other non-digits, and stop at the configured digit count. Every mode requires exactly that many digits; nothing is padded.
 
-`Enter` submits a guess. `Escape` closes the settings modal.
+`Enter` submits a guess. `Escape` closes the settings modal. In Guessle, digit keys type into the current row and `Backspace` deletes, just like the on-screen keypad.
+
+### Guessle rules
+
+- Puzzle #1 is 2026-10-14. `dailyNumber` counts local calendar days from that date, and `dailyTarget` derives each answer from a fixed hash of the puzzle number. Answers must never change once published, so a unit test pins known answers. Like any static daily puzzle, the answer can be computed from the shipped JavaScript.
+- Progress and stats live on the device in local storage key `number-guessing-daily`: the puzzle number, its guesses, and the stats. The answer is never stored. Without storage, the puzzle still works for the visit.
+- Stats count games played and won, the current and longest streak of consecutive puzzle days won, and how many tries each win took. A loss or a missed day ends the streak.
+- An unstarted puzzle switches to the new day at midnight. A finished puzzle keeps its result on screen and offers today's puzzle instead of replacing it. A puzzle left unfinished at midnight continues until it ends; a reload opens the new day.
 
 ## Stack
 
@@ -85,7 +93,8 @@ src/routes/
   +layout.svelte               Global styles, locale detection, and <html lang>
   +page.svelte                 Stage and component composition
 src/lib/components/
-  SinglePlayerGame.svelte      Single-player UI
+  DailyGame.svelte             Guessle board, keypad, stats, and sharing
+  SinglePlayerGame.svelte      Classic single-player UI
   MultiPlayerGame.svelte       Multiplayer UI
   OnlineMultiplayerGame.svelte Online room entry, lobby, and synchronized game
   SettingsModal.svelte         Active-mode settings dialog
@@ -95,6 +104,7 @@ src/lib/stores/
 src/lib/i18n/
   messages.ts                  English and Thai dictionaries
   locale.ts                    Locale detection and persistence
+src/lib/daily/progress.ts       Guessle progress and stats persistence
 src/lib/firebase/client.ts      Firebase browser initialization
 src/lib/online/types.ts         Public online state types
 src/lib/services/
@@ -109,11 +119,11 @@ e2e/                           Playwright flows
 static/                        CNAME, favicon, robots.txt
 ```
 
-`gameStore.ts` owns the complete `GameState`: locale, mode, settings, single-player target and history, multiplayer players and turns, phase, active players, and game-over state.
+`gameStore.ts` owns the complete `GameState`: locale, mode, settings, single-player target and history, Guessle progress and stats, multiplayer players and turns, phase, active players, and game-over state.
 
-Components keep only local UI state. They call intent-based store actions such as `startNewGame`, `addGuess`, `savePlayerSetup`, `addMultiPlayerGuess`, and `nextGuesser`.
+Components keep only local UI state. They call intent-based store actions such as `startNewGame`, `addGuess`, `loadDaily`, `addDailyGuess`, `savePlayerSetup`, `addMultiPlayerGuess`, and `nextGuesser`.
 
-Pure helpers such as `validateGuess`, `calculateFeedback`, `generateRandomNumber`, and `sanitizeDigits` are exported from the store for direct unit testing. `keepDigits` applies `sanitizeDigits` to an input event, so every number field filters the same way.
+Pure helpers such as `validateGuess`, `calculateFeedback`, `sanitizeDigits`, and the Guessle helpers `dailyNumber`, `dailyTarget`, `scoreTiles`, and `recordDailyResult` are exported from the store for direct unit testing. `keepDigits` applies `sanitizeDigits` to an input event, so every number field filters the same way.
 
 Online rooms are server-authoritative:
 
@@ -134,7 +144,7 @@ The interface ships in English (`en`) and Thai (`th`).
 - On load the root layout uses the saved choice in local storage key `number-guessing-locale`, then the first browser language that starts with `th` or `en`, then English. Choosing a language in Settings saves it.
 - The layout keeps `<html lang>` and the page keeps the document title in the active language.
 - Stores and services return codes, not copy: `validateGuess` reports a `GuessProblem`, online commands report an `OnlineErrorCode`, and unnamed local players stay blank until a component renders their localized default name.
-- Player-entered names, room IDs, numbers, and the `Enter` and `Escape` key names are not translated.
+- Player-entered names, room IDs, numbers, the Guessle name, and the `Enter` and `Escape` key names are not translated.
 
 ## Rules
 
@@ -183,11 +193,12 @@ Firebase dependencies and backend deployment are explicitly approved for online 
 | --- | --- | --- |
 | Unit | `src/lib/stores/gameStore.test.ts` | Pure helpers, state transitions, edge cases |
 | Component | Colocated `*.test.ts` files | Rendering, interaction, ARIA, component branches |
-| End-to-end | `e2e/*.spec.ts` | Complete single-player and multiplayer flows; `localization.spec.ts` covers Thai browser detection and the saved language |
+| End-to-end | `e2e/*.spec.ts` | Complete Guessle, Classic, and multiplayer flows; `daily.spec.ts` covers a win, a loss, saved progress, sharing, and the next day; `localization.spec.ts` covers Thai browser detection and the saved language |
 | Firebase integration | `functions/src/*.test.ts`, `src/lib/firebase/firestore.rules.test.ts` | Emulator-only transactions, cleanup, and security rules |
 | Online end-to-end | `e2e/online-multiplayer.spec.ts` | Separate browser contexts for create/join, turns, host and invited-player reconnect, forfeit, starting without unready players, and errors |
 | Deployment | `src/tests/deploymentWorkflows.test.ts` | Secret injection, missing-config guard, and Java runtime requirements |
 | Localization | `src/lib/i18n/*.test.ts` | Locale resolution, persistence, and dictionary parity |
+| Guessle storage | `src/lib/daily/progress.test.ts` | Reading, validating, and saving progress and stats |
 | Setup | `src/tests/setup.ts`, `src/tests/appNavigation.ts` | DOM environment, matchers, pinned `Math.random`, and a `$app/navigation` stand-in aliased in `vitest.config.ts` |
 
 ### Test requirements
@@ -199,6 +210,7 @@ Firebase dependencies and backend deployment are explicitly approved for online 
 - Test behavior, not implementation details.
 - Use semantic Testing Library queries and Playwright's built-in waiting.
 - Cover Thai copy by calling `gameStore.setLocale('th')` before rendering, and browser detection in Playwright with `test.use({ locale: 'th-TH' })`. Clear `localStorage` before tests that render the page so a saved language cannot leak between tests.
+- Fix the date for Guessle: in Vitest, `vi.useFakeTimers({ toFake: ['Date'] })` with `vi.setSystemTime(new Date(2026, 9, 14, 9))`; in Playwright, `page.clock.setFixedTime` with a fixed `timezoneId`. Specs that test Classic select it first, because Guessle opens by default.
 - Use fake timers and seeded randomness when needed. `src/tests/setup.ts` pins `Math.random` to 0.5 before every Vitest test, so a three-digit target is `500`; Playwright specs that play single player stub it with `page.addInitScript` before navigation.
 - Keep tests independent; avoid arbitrary timeouts.
 - Run Firebase tests only with project `demo-number-guessing`, never production services.
@@ -241,7 +253,7 @@ The interface should feel like one well-built editorial object, not a dashboard.
 - The right contains a decorative perspective tunnel of numbered tiles.
 - The ticker is the only looping animation.
 
-The Multiplayer card opens the last selected multiplayer variant; a segmented control inside the play panel switches between Local and Online. Instructions replaces the center-panel game content. The icon-only Settings (gear) button beside the GitHub link in the panel header is always available. It opens the active mode's game settings plus the language; once an online room exists its rules are fixed, so only the language remains. The purple New Game action is disabled online because the host-owned restart remains inside the online flow.
+The Single Player card opens the last selected single-player variant, Guessle first; a segmented control inside the play panel switches between Guessle and Classic. The Multiplayer card works the same way for Local and Online. Instructions replaces the center-panel game content. The icon-only Settings (gear) button beside the GitHub link in the panel header is always available. It opens the active mode's game settings plus the language; once an online room exists its rules are fixed, so only the language remains. Guessle has no game settings, so its Settings shows only the language. The purple New Game action is disabled online because the host-owned restart remains inside the online flow, and in Guessle because there is one puzzle per day.
 
 Desktop columns are a ~140px nav rail, a flexible play area with a 320px minimum, and a hero using about 40% of the remaining width.
 
@@ -265,6 +277,11 @@ Define tokens on `:root` in `src/app.css`. Components must reference tokens, nev
 | `--glass-accent` | `#facc15` | Highlighted values |
 | `--surface-white` | `#ffffff` | Inputs, secondary controls, and translucent surfaces |
 | `--scrim-bg` | `rgba(0,0,0,0.4)` | Settings modal backdrop |
+| `--tile-correct` | `var(--accent-green)` | Guessle right-spot tiles and keys |
+| `--tile-present` | `var(--accent-yellow)` | Guessle wrong-spot tiles and keys |
+| `--tile-absent` | `var(--glass-muted)` | Guessle not-in-the-number tiles and keys |
+| `--tile-fg` | `var(--stage-border)` | Text on right- and wrong-spot tiles |
+| `--tile-absent-fg` | `var(--surface-white)` | Text on not-in-the-number tiles |
 
 Accent cards map blue to single player, yellow to multiplayer, orange to instructions, and purple to the primary action.
 
@@ -285,7 +302,7 @@ Each accent has a matching `--accent-*-fg` token. Blue uses white; yellow, orang
 | Validation/duplicate | `--state-warning` | `#f59e0b` |
 | Information | `--state-info` | `#3b82f6` |
 
-State colors are overlays for borders, low-opacity backgrounds, and small icons—not primary surfaces or large text.
+State colors are overlays for borders, low-opacity backgrounds, and small icons—not primary surfaces or large text. Guessle tiles are the one solid use of these hues, through the `--tile-*` tokens, and a wrong-spot tile also carries a dot so green and yellow never rely on color alone.
 
 ### Typography
 
@@ -304,7 +321,10 @@ The main display heading ends with one bold italic word in `--glass-accent`. Use
 | Nav card | Number and arrow above label; solid accent; inset border when active; on phones a single-line card with number and label side by side |
 | Ticker | Short labels separated by `✦`; ~40s seamless scroll; static when motion is reduced |
 | Glass panel | Cream surface, dark 1.5px border, 20px radius, 32px/20px responsive padding |
-| Multiplayer switch | Segmented Local/Online control inside the play panel; active choice is dark-filled |
+| Variant switch | Segmented control inside the play panel: Guessle/Classic for single player and Local/Online for multiplayer; active choice is dark-filled |
+| Guessle board | Six rows of five 52px tiles (56px from 600px): empty tiles are translucent, typed tiles get a dark border, and scored tiles fill with the tile tokens, colored left to right; tiles are `aria-hidden` and each row carries a sentence for screen readers |
+| Guessle keypad | Digits 1–5 and 6–0 in two rows, then Delete and Enter; keys are at least 48px high and take the best state each digit has earned (right spot over wrong spot over not in the number) |
+| Guessle result | Win or lose message with the answer; four stat tiles (Played, Win %, Current streak, Max streak); a guess-distribution bar list with bars at most 24px thick, 4px rounded ends, counts in text tokens, and today's bar in `--tile-correct`; Share (system share sheet, otherwise copy with a Copied! tooltip); a countdown to the next puzzle, or a Play today's Guessle action once it has arrived; and Play Classic |
 | Instructions | Orange card swaps the center panel between the game and the how-to-play content, including how to play with friends |
 | Input | 56px high, white, centered text, 14px radius, visible blue focus ring; game-number fields filter to digits and enforce the configured length; the single-player guess field grows beside Submit Guess and wraps above it on narrow screens |
 | Secondary button | 48px high, white, dark border, 14px radius |
@@ -314,7 +334,7 @@ The main display heading ends with one bold italic word in `--glass-accent`. Use
 | Setup/control strip | Translucent white, dark border, and wrapping controls on narrow screens; labels stack above fields on phones; the local secret number is masked with a 44px eye toggle and re-masks for each player |
 | Notepad | Single-player row of ten 44px digit buttons (5 × 2 on phones) cycling unmarked → ruled out (muted, struck through) → in the answer (correct tint and inset ring); a Clear notes action appears once a digit is marked, and every new game starts blank |
 | Feedback banner | State-tinted low-opacity background and border; warning for validation, info for an unfinished guess, correct/incorrect only for the final result; clears when a new game starts |
-| Result banner | Final win/lose message with a Play again action; takes focus when the game ends and returns focus to the guess field on replay |
+| Result banner | Final win/lose message with a Play again action; takes focus when the game ends and returns focus to the guess field on replay; the Guessle result takes focus the same way |
 | History row | Translucent white; newest row has a purple left border; single-player history lists newest first, shows an empty-state hint, and wraps the guess and score as whole phrases |
 | Player card | Landscape nav-card language; inset turn border; red-tinted eliminated state and visible badge; newest guess first; a finished game offers Play again, which keeps player names |
 | Online multiplayer | One cream-panel flow: name/create/join entry, room-ID lobby with paired Copy and Share actions, accessible confirmation tooltips, readiness, turn/guess state, reconnect status, and host restart; a two-step Leave game that forfeits, a warning banner offering to remove a player idle for two minutes, and players who left labelled Left |
@@ -327,9 +347,9 @@ Icons are monochrome line icons, normally 18×18px with a 1.5px stroke. Icon-onl
 ### Motion
 
 - Default: 180ms with `cubic-bezier(0.2, 0.8, 0.2, 1)`.
-- Allow hover changes, ticker scroll, and short modal or feedback slide-ins.
+- Allow hover changes, ticker scroll, short modal or feedback slide-ins, and the Guessle tile color reveal (each tile 180ms, staggered left to right).
 - Do not use bounce, springs, parallax, page transitions, or non-ticker loops.
-- Under `prefers-reduced-motion`, remove transitions and make the ticker static.
+- Under `prefers-reduced-motion`, remove transitions, including the tile reveal, and make the ticker static.
 
 ### Accessibility
 
@@ -341,6 +361,7 @@ Icons are monochrome line icons, normally 18×18px with a 1.5px stroke. Icon-onl
 - Keep live regions mounted and change only their text; a region created together with its message is often not announced.
 - When an action removes the focused control, move focus to the new content: the guess field, the result, or the new screen's heading.
 - Enter submits only when no input method is composing, and a handled Enter calls `preventDefault` so it cannot also activate the control that receives focus.
+- Guessle reads the physical keyboard only while its board is visible and focus is outside fields and dialogs. With a button focused, Enter activates that button rather than submitting. The status region announces the typed digits and each scored row.
 - Keep the GitHub repository link accessible while its star count is loading or unavailable.
 
 ### Responsive behavior
@@ -358,7 +379,8 @@ Use Tailwind breakpoints `sm: 600px`, `md: 900px`, and `lg: 1200px`. Document an
 | Surface | File |
 | --- | --- |
 | Stage, ticker, nav, glass shell, hero, utilities | `src/routes/+page.svelte` |
-| Single-player panel, result banner, and history | `src/lib/components/SinglePlayerGame.svelte` |
+| Guessle board, keypad, result, stats, and sharing | `src/lib/components/DailyGame.svelte` |
+| Classic single-player panel, result banner, and history | `src/lib/components/SinglePlayerGame.svelte` |
 | Multiplayer panels and player cards | `src/lib/components/MultiPlayerGame.svelte` |
 | Online entry, lobby, synchronized game, reconnect, and result states | `src/lib/components/OnlineMultiplayerGame.svelte` |
 | Active-mode settings modal | `src/lib/components/SettingsModal.svelte` |
@@ -386,6 +408,8 @@ Add new surfaces to this table. The initial editorial design system was recorded
 2026-10-10 — Moved the language choice into the Settings modal and kept Settings available during Instructions and inside online rooms.
 
 2026-10-10 — Added the single-player notepad, masked local secrets, a multiplayer rematch, a 2 × 2 phone nav, and friend rules in Instructions; the Firebase SDK now loads only for online play.
+
+2026-10-14 — Added Guessle, a daily Wordle-style single-player puzzle with tile clues, a keypad, saved stats and streaks, and shareable results. It opens by default, and Classic stays one tap away.
 
 ## Change guide
 
