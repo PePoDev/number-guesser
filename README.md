@@ -2,7 +2,7 @@
 
 Guessle is a static, interactive number-guessing puzzle built with SvelteKit 2, Svelte 5, TypeScript, and Tailwind CSS 4: a daily 5-digit puzzle with Wordle-style clues, plus Classic, local, and online multiplayer modes.
 
-🎮 **[Play the live demo](https://number-guesser.pepo.dev)**
+🎮 **[Play the live demo](https://guessle.pepo.dev)**
 
 > This README is the single source of truth for the project. Its rules apply to humans and AI agents.
 
@@ -46,7 +46,7 @@ Secret-number and guess fields read Thai numerals (๐–๙) as digits, discard
 | End-to-end tests | Playwright with Chromium |
 | Online backend | Firebase Anonymous Auth, Firestore, callable Functions, Admin SDK |
 | Firebase tests | Firebase Emulator Suite |
-| Hosting | GitHub Pages at `number-guesser.pepo.dev` |
+| Hosting | GitHub Pages at `guessle.pepo.dev` |
 | Localization | English and Thai, typed in-house dictionaries; no i18n dependency |
 
 GitHub Pages serves the static SvelteKit client. Callable Cloud Functions own authoritative online commands; Firestore publishes member-only room projections.
@@ -116,7 +116,8 @@ firestore.rules                Member-only reads and server-only writes
 firestore.indexes.json         Firestore query indexes
 src/app.css                    Global styles and design tokens
 e2e/                           Playwright flows
-static/                        CNAME, favicon, robots.txt
+static/                        favicon, robots.txt
+CNAME                          Custom domain record (guessle.pepo.dev)
 ```
 
 `gameStore.ts` owns the complete `GameState`: locale, mode, settings, single-player target and history, Guessle progress and stats, multiplayer players and turns, phase, active players, and game-over state.
@@ -424,6 +425,8 @@ Add new surfaces to this table. The initial editorial design system was recorded
 
 2026-10-17 — Fixed the stage to the window so the page no longer scrolls: the play panel scrolls only as a fallback, Guessle's tiles and keys size themselves to the height, a finished Guessle shows only the rows played above a compact result, Classic's history fills the leftover height, phones get a single-line ticker, and short windows drop the utility row and the Guessle intro line. Classic puts its notepad away once a game ends, and its history always shows the two newest guesses.
 
+2026-10-17 — Moved the site from `number-guesser.pepo.dev` to `guessle.pepo.dev`.
+
 ## Change guide
 
 | Change | Required work |
@@ -448,7 +451,7 @@ Add new surfaces to this table. The initial editorial design system was recorded
 
 ## Deployment
 
-`@sveltejs/adapter-static` builds to `build/`. GitHub Pages deploys the static client from `main` through `.github/workflows/deploy.yml`, which type-checks, runs the unit and end-to-end tests, and then builds; `static/CNAME` sets `number-guesser.pepo.dev`. `.github/workflows/deploy-firebase.yml` deploys Cloud Functions and Firestore rules/indexes to `asia-southeast1`.
+`@sveltejs/adapter-static` builds to `build/`. GitHub Pages deploys the static client from `main` through `.github/workflows/deploy.yml`, which type-checks, runs the unit and end-to-end tests, and then builds. The site is served at `guessle.pepo.dev`: the custom domain lives in the repository's Pages settings, because an Actions deployment ignores CNAME files, and the root `CNAME` file records it. A domain change updates DNS and the Pages setting first, then `CNAME`, `og:url` in `src/app.html`, and this README together. `.github/workflows/deploy-firebase.yml` deploys Cloud Functions and Firestore rules/indexes to `asia-southeast1`.
 
 Before the first backend deploy, create the Firestore database and enable Anonymous Auth. Configure these GitHub repository secrets:
 
