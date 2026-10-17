@@ -276,14 +276,24 @@
 		</ol>
 
 		<!-- Live regions stay mounted so screen readers announce every change, including the first.
-			The warning floats over the board so the tiles never resize under it. -->
-		<div role="alert" class="pointer-events-none absolute inset-x-0 top-0 flex justify-center">
-			{#if warningMessage}
-				<div class="banner banner-warning warning-toast text-center">{warningMessage}</div>
-			{/if}
-		</div>
+			During play the warning floats over the bottom rows, which are empty until the last try,
+			so the tiles never resize under it. -->
+		{#if status === 'playing'}
+			<div role="alert" class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center">
+				{#if warningMessage}
+					<div class="banner banner-warning warning-toast text-center">{warningMessage}</div>
+				{/if}
+			</div>
+		{/if}
 	</div>
 	<p class="sr-only" role="status">{announcement}</p>
+	{#if status !== 'playing'}
+		<div role="alert">
+			{#if warningMessage}
+				<div class="banner banner-warning mt-3 text-center">{warningMessage}</div>
+			{/if}
+		</div>
+	{/if}
 
 	{#if status === 'playing'}
 		<div class="keypad mx-auto mt-3 grid w-full max-w-md gap-2" role="group" aria-label={t.daily.keypad}>
@@ -320,10 +330,10 @@
 				{/if}
 			</p>
 
-			<div class="grid gap-3 @sm:grid-cols-2 @sm:gap-4">
+			<div class="grid gap-3 @min-[22rem]:grid-cols-2 @min-[22rem]:gap-4">
 				<section aria-labelledby="daily-stats-heading">
 					<h3 id="daily-stats-heading" class="eyebrow mb-2 text-center">{t.daily.statsHeading}</h3>
-					<dl class="grid grid-cols-4 gap-2 @sm:grid-cols-2">
+					<dl class="grid grid-cols-4 gap-2 @min-[22rem]:grid-cols-2">
 						{#each statTiles as stat (stat.label)}
 							<div class="surface-translucent flex flex-col-reverse items-center justify-end rounded-xl p-2 text-center">
 								<dt class="text-xs leading-tight text-[var(--glass-muted)]">{stat.label}</dt>
@@ -391,6 +401,13 @@
 	.board-finished {
 		--gap: 0.25rem;
 		--tile-min: 1.25rem;
+	}
+
+	/* Phones and sideways windows scroll a finished game anyway, so shrinking its tiles saves nothing. */
+	@media (max-width: 599px), (max-height: 539px) {
+		.board-finished {
+			--tile-min: 2rem;
+		}
 	}
 
 	.board {
@@ -484,9 +501,9 @@
 	}
 
 	.tile.mark-present::after {
-		bottom: calc(var(--tile) * 0.08);
-		width: max(4px, calc(var(--tile) * 0.11));
-		height: max(4px, calc(var(--tile) * 0.11));
+		bottom: calc(var(--tile) * 0.05);
+		width: max(3px, calc(var(--tile) * 0.12));
+		height: max(3px, calc(var(--tile) * 0.12));
 	}
 
 	.mark-absent {

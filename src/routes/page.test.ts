@@ -553,6 +553,30 @@ describe("+page.svelte Component", () => {
     expect(header).toContainElement(switches()[0]);
   });
 
+  it("keeps keyboard focus on the Daily/Classic switch as it moves", async () => {
+    const user = userEvent.setup();
+    render(Page);
+
+    screen.getByRole("button", { name: "Classic" }).focus();
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Classic" })).toHaveFocus();
+    });
+    expect(get(gameStore).mode).toBe("single");
+
+    await user.keyboard("{Enter}");
+    expect(get(gameStore).mode).toBe("single");
+
+    screen.getByRole("button", { name: "Daily" }).focus();
+    await user.keyboard(" ");
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Daily" })).toHaveFocus();
+    });
+    expect(get(gameStore).mode).toBe("daily");
+  });
+
   it("explains Guessle tiles in Instructions", async () => {
     const user = userEvent.setup();
     render(Page);

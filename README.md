@@ -193,7 +193,7 @@ Firebase dependencies and backend deployment are explicitly approved for online 
 | --- | --- | --- |
 | Unit | `src/lib/stores/gameStore.test.ts` | Pure helpers, state transitions, edge cases |
 | Component | Colocated `*.test.ts` files | Rendering, interaction, ARIA, component branches |
-| End-to-end | `e2e/*.spec.ts` | Complete Guessle, Classic, and multiplayer flows; `daily.spec.ts` covers a win, a loss, saved progress, sharing, and the next day; `localization.spec.ts` covers Thai browser detection and the saved language; `layout.spec.ts` checks at real window sizes that the page never scrolls, Guessle in play fits without panel scroll from 720px tall, and the panel and the Classic history scroll instead |
+| End-to-end | `e2e/*.spec.ts` | Complete Guessle, Classic, and multiplayer flows; `daily.spec.ts` covers a win, a loss, saved progress, sharing, and the next day; `localization.spec.ts` covers Thai browser detection and the saved language; `layout.spec.ts` checks at real window sizes that the page never scrolls from 540px tall, Guessle in play fits without panel scroll from 720px tall at desktop widths and from 740px tall below 900px wide, a taller window never gives a finished Guessle less room, warnings never resize the board, each screen opens at its top, and the panel and the Classic history scroll instead |
 | Firebase integration | `functions/src/*.test.ts`, `src/lib/firebase/firestore.rules.test.ts` | Emulator-only transactions, cleanup, and security rules |
 | Online end-to-end | `e2e/online-multiplayer.spec.ts` | Separate browser contexts for create/join, turns, host and invited-player reconnect, forfeit, starting without unready players, and errors |
 | Deployment | `src/tests/deploymentWorkflows.test.ts` | Secret injection, missing-config guard, and Java runtime requirements |
@@ -249,8 +249,8 @@ The interface should feel like one well-built editorial object, not a dashboard.
 
 - A blue grid fills the viewport.
 - One dark-bordered rounded container holds a top ticker, three-column body, and bottom utility row with keyboard hints and the current mode.
-- From 540px tall, the stage is fixed to the window (`100dvh`) and the page never scrolls. The container fills the window up to 60rem tall and centers in it, the body row takes the height between the ticker and the utility row, and the play panel is the only scroll container, used only when its content cannot fit. Shorter windows, such as phones held sideways, keep the natural page flow and scroll the page.
-- Windows shorter than 60rem (960px) compact the stage so the game keeps its space: 12px stage and body padding, 24px desktop panel padding, no utility row, and the Guessle intro line visually hidden (screen readers still read it). Taller windows show everything.
+- From 540px tall, the stage is fixed to the window (`100dvh`) and the page never scrolls. The container fills the window and centers in it, the body row takes the height between the ticker and the utility row, and the play panel is the only scroll container, used only when its content cannot fit. Opening another screen starts the panel at its top. Shorter windows, such as phones held sideways, keep the natural page flow and scroll the page.
+- Windows shorter than 1128px compact the stage so the game keeps its space: the container stops at 60rem tall, the stage and body get 12px padding and the desktop panel 24px, the utility row is hidden, and the Guessle intro line is visually hidden (screen readers still read it). Taller windows show everything, and their container stops at 68rem instead, so the panel never has less room than in a shorter window.
 - The left rail contains three numbered accent cards and a shorter purple primary-action card.
 - The center contains the cream glass play panel.
 - The right contains a decorative perspective tunnel of numbered tiles.
@@ -322,12 +322,12 @@ The main display heading is the Guessle wordmark: "Guess" followed by "le." in t
 | Surface | Contract |
 | --- | --- |
 | Nav card | Number and arrow above label; solid accent; inset border when active; on phones a single-line card with number and label side by side |
-| Ticker | Short labels separated by `✦` on one line at every width; ~40s seamless scroll; static when motion is reduced |
-| Glass panel | Cream surface, dark 1.5px border, 20px radius, 32px/24px/16px responsive padding (24px on desktop below 60rem tall); fills the body row and scrolls only when its content cannot fit |
-| Variant switch | Segmented control inside the play panel: Daily/Classic for single player and Local/Online for multiplayer; active choice is dark-filled; in Guessle it shares a row with the `Guessle #N` heading |
-| Guessle board | Six rows of five tiles that fill the height left between the heading and the keypad: each tile is `min(3.5rem, height ÷ rows, width ÷ 5)`, never below 2rem; empty tiles are translucent, typed tiles get a dark border, and scored tiles fill with the tile tokens, colored left to right; a finished board shows only the rows played, down to 1.25rem tiles; tiles are `aria-hidden` and each row carries a sentence for screen readers |
+| Ticker | Short labels separated by `✦` on one line at every width; ~40s seamless scroll; static and wrapped to show every label when motion is reduced |
+| Glass panel | Cream surface, dark 1.5px border, 20px radius, 32px/24px/16px responsive padding (24px on desktop below 1128px tall); fills the body row and scrolls only when its content cannot fit, keeping 8px between a focused control and its edge |
+| Variant switch | Segmented control inside the play panel: Daily/Classic for single player and Local/Online for multiplayer; active choice is dark-filled; in Guessle it shares a row with the `Guessle #N` heading, which drops to 1.25rem below 600px wide to fit beside it; keyboard focus stays on the pressed choice when the switch moves |
+| Guessle board | Six rows of five tiles that fill the height left between the heading and the keypad: each tile is `min(3.5rem, height ÷ rows, width ÷ 5)`, never below 2rem; empty tiles are translucent, typed tiles get a dark border, and scored tiles fill with the tile tokens, colored left to right; a finished board shows only the rows played, down to 1.25rem tiles (2rem on phones and below 540px tall, where the panel or page scrolls anyway); tiles are `aria-hidden` and each row carries a sentence for screen readers |
 | Guessle keypad | Digits 1–5 and 6–0 in two rows, then Delete and Enter, pinned under the board; keys are `clamp(2.75rem, 6dvh, 3.25rem)` high (44–52px) and take the best state each digit has earned (right spot over wrong spot over not in the number) |
-| Guessle result | Win or lose message with the answer; four stat tiles (Played, Win %, Current streak, Max streak); a guess-distribution bar list with bars at most 24px thick, 4px rounded ends, counts in text tokens, and today's bar in `--tile-correct`; the stats sit in a 2 × 2 grid beside the distribution once the result is 24rem wide, and stack above it in narrower panels; one actions row holds Share (system share sheet, otherwise copy with a Copied! tooltip), Play Classic, and a countdown to the next puzzle, or a Play today's Guessle action once it has arrived |
+| Guessle result | Win or lose message with the answer; four stat tiles (Played, Win %, Current streak, Max streak); a guess-distribution bar list with bars at most 24px thick, 4px rounded ends, counts in text tokens, and today's bar in `--tile-correct`; the stats sit in a 2 × 2 grid beside the distribution once the result is 22rem wide, and stack above it in narrower panels; one actions row holds Share (system share sheet, otherwise copy with a Copied! tooltip), Play Classic, and a countdown to the next puzzle, or a Play today's Guessle action once it has arrived |
 | Instructions | Orange card swaps the center panel between the game and the how-to-play content, including how to play with friends |
 | Input | 56px high, white, centered text, 14px radius, visible blue focus ring; game-number fields filter to digits and enforce the configured length; the single-player guess field grows beside Submit Guess and wraps above it on narrow screens |
 | Secondary button | 48px high, white, dark border, 14px radius |
@@ -335,15 +335,15 @@ The main display heading is the Guessle wordmark: "Guess" followed by "le." in t
 | Panel header | Display title with the Settings and GitHub icon group top-right; the group wraps above the title when the title needs the full width |
 | GitHub stars | Icon-only GitHub mark beside Settings in the panel header; puts a validated live count in its accessible name and tooltip when available and remains a labeled link on API failure |
 | Setup/control strip | Translucent white, dark border, and wrapping controls on narrow screens; labels stack above fields on phones; the local secret number is masked with a 44px eye toggle and re-masks for each player |
-| Notepad | Single-player row of ten 44px digit buttons (5 × 2 on phones) cycling unmarked → ruled out (muted, struck through) → in the answer (correct tint and inset ring); a Clear notes action appears once a digit is marked, and every new game starts blank |
-| Feedback banner | State-tinted low-opacity background and border; warning for validation and info for an unfinished guess; the final result shows only in the result banner; clears when a new game starts; Guessle's warning floats over the top of the board on an opaque tint, so the board never resizes |
+| Notepad | Single-player row of ten 44px digit buttons (5 × 2 on phones) cycling unmarked → ruled out (muted, struck through) → in the answer (correct tint and inset ring); a Clear notes action appears once a digit is marked; the notepad is put away once the game ends, and every new game starts blank |
+| Feedback banner | State-tinted low-opacity background and border; warning for validation and info for an unfinished guess; the final result shows only in the result banner; clears when a new game starts; during play Guessle's warning floats over the bottom of the board, whose last rows stay empty until the last try, on an opaque tint, so the board never resizes; after the game it sits above the result |
 | Result banner | Final win/lose message with a Play again action; takes focus when the game ends and returns focus to the guess field on replay; the Guessle result takes focus the same way |
-| History row | Translucent white; newest row has a purple left border; single-player history lists newest first, shows an empty-state hint, wraps the guess and score as whole phrases, and grows into the panel's leftover height, scrolling inside its box once it fills it |
+| History row | Translucent white; newest row has a purple left border; single-player history lists newest first, shows an empty-state hint, wraps the guess and score as whole phrases, and grows into the panel's leftover height, always with room for the two newest guesses, scrolling inside its box once it fills it |
 | Player card | Landscape nav-card language; inset turn border; red-tinted eliminated state and visible badge; newest guess first; a finished game offers Play again, which keeps player names |
 | Online multiplayer | One cream-panel flow: name/create/join entry, room-ID lobby with paired Copy and Share actions, accessible confirmation tooltips, readiness, turn/guess state, reconnect status, and host restart; a two-step Leave game that forfeits, a warning banner offering to remove a player idle for two minutes, and players who left labelled Left |
 | Settings modal | Active-mode title and fields with a note that changing them starts a new game, then a Language select whose options are written in their own language with a matching `lang`; cream surface, 480px maximum, blurred 40% black scrim, focus trap, and viewport-bounded scrolling |
 | Hero | Decorative CSS/SVG tile tunnel with `aria-hidden="true"` |
-| Utility row | Current mode plus visible `Enter` and `Escape` keyboard hints; hidden below 600px wide and below 60rem tall |
+| Utility row | Current mode plus visible `Enter` and `Escape` keyboard hints; hidden below 600px wide and below 1128px tall |
 
 Icons are monochrome line icons, normally 18×18px with a 1.5px stroke. Icon-only buttons use 20×20px glyphs; the GitHub mark is the one filled brand icon.
 
@@ -377,11 +377,11 @@ Icons are monochrome line icons, normally 18×18px with a 1.5px stroke. Icon-onl
 
 | Height | Layout |
 | --- | --- |
-| `< 540px` | Natural page flow; the page scrolls |
-| `540–959px` | Stage fixed to the window; compact padding; no utility row; Guessle intro line visually hidden |
-| `≥ 960px` | Stage fixed to the window; the container stops at 60rem tall and centers |
+| `< 540px` | Natural page flow; the page scrolls; compact padding; no utility row; Guessle intro line visually hidden |
+| `540–1127px` | Stage fixed to the window; the container stops at 60rem tall; compact padding; no utility row; Guessle intro line visually hidden |
+| `≥ 1128px` | Stage fixed to the window; the container stops at 68rem tall and centers; full padding and utility row |
 
-Use Tailwind breakpoints `sm: 600px`, `md: 900px`, and `lg: 1200px`, and the height variants `fit` (at least 540px tall) and `short` (below 960px tall), defined with `@custom-variant` in `src/app.css`. Document any additional breakpoint here first.
+Use Tailwind breakpoints `sm: 600px`, `md: 900px`, and `lg: 1200px`, and the height variants `fit` (at least 540px tall) and `short` (below 1128px tall), defined with `@custom-variant` in `src/app.css`. Document any additional breakpoint here first.
 
 ### File map
 
@@ -422,7 +422,7 @@ Add new surfaces to this table. The initial editorial design system was recorded
 
 2026-10-17 — Renamed the project to Guessle: the heading is now the Guessle wordmark, and the page title, link previews, and room invites use the name, and the single-player switch reads Daily/Classic. The repository moved to `PePoDev/guessle`, and the GitHub link and star count follow it.
 
-2026-10-17 — Fixed the stage to the window so the page no longer scrolls: the play panel scrolls only as a fallback, Guessle's tiles and keys size themselves to the height, a finished Guessle shows only the rows played above a compact result, Classic's history fills the leftover height, phones get a single-line ticker, and short windows drop the utility row and the Guessle intro line.
+2026-10-17 — Fixed the stage to the window so the page no longer scrolls: the play panel scrolls only as a fallback, Guessle's tiles and keys size themselves to the height, a finished Guessle shows only the rows played above a compact result, Classic's history fills the leftover height, phones get a single-line ticker, and short windows drop the utility row and the Guessle intro line. Classic puts its notepad away once a game ends, and its history always shows the two newest guesses.
 
 ## Change guide
 

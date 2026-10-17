@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { gameStore, DAILY_DIGITS, DAILY_TRIES, type GameMode } from '$lib/stores/gameStore';
 	import SettingsModal from '$lib/components/SettingsModal.svelte';
 	import DailyGame from '$lib/components/DailyGame.svelte';
@@ -10,6 +10,7 @@
 	import { onlineGameService } from '$lib/services/onlineGameService';
 	import { messages } from '$lib/i18n/messages';
 
+	let panel = $state<HTMLElement>();
 	let showSettings = $state(false);
 	let showInstructions = $state(false);
 	let chosenSingleMode = $state<'daily' | 'single'>('daily');
@@ -27,19 +28,26 @@
 	const singleMode = $derived($gameStore.mode === 'daily' || $gameStore.mode === 'single');
 	// Single-player boards stretch to fill the panel; other screens keep block flow and its collapsing margins.
 	const fillPanel = $derived(singleMode && !showInstructions);
+	const panelScreen = $derived(`${$gameStore.mode}:${showInstructions}`);
 
 	function startNewGame() {
 		showInstructions = false;
 		gameStore.startNewGame();
 	}
 
-	function selectMode(mode: GameMode) {
+	async function selectMode(mode: GameMode) {
 		showInstructions = false;
 		if ($gameStore.mode === mode) {
 			return;
 		}
+		const fromSwitch = document.activeElement?.closest('.variant-switch');
 		gameStore.setMode(mode);
 		gameStore.startNewGame();
+		// Guessle and Classic draw the switch in different places, so focus follows it.
+		if (fromSwitch) {
+			await tick();
+			document.querySelector<HTMLElement>('.variant-switch [aria-pressed="true"]')?.focus();
+		}
 	}
 
 	const navCards = $derived([
@@ -65,6 +73,14 @@
 			onclick: () => (showInstructions = !showInstructions),
 		},
 	]);
+
+	// The panel scrolls on its own, so a new screen would otherwise open at the last one's scroll position.
+	$effect(() => {
+		void panelScreen;
+		if (panel) {
+			panel.scrollTop = 0;
+		}
+	});
 
 	$effect(() => {
 		if ($gameStore.mode === 'daily' || $gameStore.mode === 'single') {
@@ -128,7 +144,7 @@
 </svelte:head>
 
 <div class="stage flex min-h-dvh items-center justify-center p-3 sm:p-5 short:p-3 fit:h-dvh fit:overflow-hidden">
-	<div class="stage-frame flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl md:rounded-3xl fit:h-full fit:max-h-[60rem]">
+	<div class="stage-frame flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl md:rounded-3xl fit:h-full fit:max-h-[68rem] short:max-h-[60rem]">
 		<div class="ticker">
 			<div class="ticker-track">
 				<span class="ticker-seq">{tickerText}</span>
@@ -168,7 +184,7 @@
 				</button>
 			</nav>
 
-			<main class="panel relative p-4 sm:p-6 md:p-8 md:short:p-6 fit:min-h-0 fit:overflow-y-auto {fillPanel ? 'flex flex-col' : ''}">
+			<main bind:this={panel} class="panel relative scroll-py-2 p-4 sm:p-6 md:p-8 md:short:p-6 fit:min-h-0 fit:overflow-y-auto {fillPanel ? 'flex flex-col' : ''}">
 				<header class="game-info mb-6 flex flex-col gap-2">
 					<!-- wrap-reverse lifts the icons above the title, not below it, when the title needs the full width. -->
 					<div class="flex flex-wrap-reverse items-center justify-between gap-3">
@@ -316,6 +332,24 @@
 	@keyframes ticker-scroll {
 		to {
 			transform: translateX(-50%);
+		}
+	}
+
+	/* A still ticker wraps so every label stays readable. */
+	@media (prefers-reduced-motion: reduce) {
+		.ticker-track {
+			width: auto;
+		}
+
+		.ticker-seq {
+			padding: 6px 12px;
+			white-space: normal;
+			text-align: center;
+			line-height: 1.5;
+		}
+
+		.ticker-seq[aria-hidden='true'] {
+			display: none;
 		}
 	}
 

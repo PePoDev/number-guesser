@@ -724,6 +724,24 @@ describe('SinglePlayerGame notepad', () => {
 		expect(screen.getByRole('button', { name: '9, ruled out' })).toBeInTheDocument()
 	})
 
+	it('puts the notepad away once the game ends and brings it back blank', async () => {
+		const user = userEvent.setup()
+		gameStore.updateSettings({ maxAttempts: 3 })
+		gameStore.startNewGame()
+		render(SinglePlayerGame)
+		await user.click(screen.getByRole('button', { name: '9, not marked' }))
+
+		for (const value of ['111', '222', '333']) {
+			await user.type(screen.getByLabelText('Guess'), value)
+			await user.click(screen.getByRole('button', { name: 'Submit Guess' }))
+		}
+
+		expect(screen.queryByRole('heading', { name: 'Notepad' })).not.toBeInTheDocument()
+		await user.click(screen.getByRole('button', { name: 'Play again' }))
+		expect(screen.getByRole('heading', { name: 'Notepad' })).toBeInTheDocument()
+		expect(screen.getByRole('button', { name: '9, not marked' })).toBeInTheDocument()
+	})
+
 	it('labels the notepad in Thai', () => {
 		gameStore.setLocale('th')
 		render(SinglePlayerGame)

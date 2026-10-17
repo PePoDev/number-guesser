@@ -9,7 +9,7 @@
 }
 
 @custom-variant fit (@media (min-height: 540px));
-@custom-variant short (@media (max-height: 959px));
+@custom-variant short (@media (max-height: 1127px));
 
 :root {
 	--stage-bg: #1d4ed8;

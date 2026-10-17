@@ -197,33 +197,41 @@
 			</div>
 		{/if}
 
-		<section class="mt-8 short:mt-6" aria-labelledby="single-player-notepad">
-			<div class="mb-1 flex flex-wrap items-center justify-between gap-x-3">
-				<h3 id="single-player-notepad" class="font-display text-lg font-bold">{t.notepad.heading}</h3>
-				{#if hasNotes}
-					<button type="button" class="note-clear min-h-11 text-sm font-semibold underline" onclick={clearNotes}>
-						{t.notepad.clear}
-					</button>
-				{/if}
-			</div>
-			<p class="mb-3 text-sm text-[var(--glass-muted)]">{t.notepad.hint}</p>
-			<div class="grid grid-cols-5 gap-2 sm:grid-cols-10">
-				{#each digits as digit (digit)}
-					<button
-						type="button"
-						class="note-digit note-{marks[digit] ?? 'none'}"
-						aria-label={t.notepad.digit(digit, marks[digit] ?? 'none')}
-						onclick={() => cycleMark(digit)}
-					>
-						{digit}
-					</button>
-				{/each}
-			</div>
-		</section>
+		<!-- Notes stop mattering once the answer is out, so the history gets their room. -->
+		{#if !$gameStore.gameOver}
+			<section class="mt-8 short:mt-6" aria-labelledby="single-player-notepad">
+				<div class="mb-1 flex flex-wrap items-center justify-between gap-x-3">
+					<h3 id="single-player-notepad" class="font-display text-lg font-bold">{t.notepad.heading}</h3>
+					{#if hasNotes}
+						<button type="button" class="note-clear min-h-11 text-sm font-semibold underline" onclick={clearNotes}>
+							{t.notepad.clear}
+						</button>
+					{/if}
+				</div>
+				<p class="mb-3 text-sm text-[var(--glass-muted)]">{t.notepad.hint}</p>
+				<div class="grid grid-cols-5 gap-2 sm:grid-cols-10">
+					{#each digits as digit (digit)}
+						<button
+							type="button"
+							class="note-digit note-{marks[digit] ?? 'none'}"
+							aria-label={t.notepad.digit(digit, marks[digit] ?? 'none')}
+							onclick={() => cycleMark(digit)}
+						>
+							{digit}
+						</button>
+					{/each}
+				</div>
+			</section>
+		{/if}
 	</div>
 
-	<!-- Size containment keeps a long history from stretching the panel; the list scrolls instead. -->
-	<section class="mt-8 flex min-h-24 flex-1 flex-col short:mt-6 fit:contain-size" aria-labelledby="single-player-history">
+	<!-- Size containment keeps a long history from stretching the panel; the list scrolls instead,
+		but the box always has room for the two newest guesses. -->
+	<section
+		class="history mt-8 flex flex-1 flex-col short:mt-6 fit:contain-size"
+		style:--shown={Math.min(Math.max(newestFirst.length, 1), 2)}
+		aria-labelledby="single-player-history"
+	>
 		<h3 id="single-player-history" class="mb-3 font-display text-lg font-bold">{t.single.historyHeading}</h3>
 		<div class="surface-translucent-soft min-h-0 space-y-1 overflow-y-auto rounded-2xl border-[1.5px] border-[var(--glass-border)] p-2">
 			{#each newestFirst as entry (entry.number)}
@@ -241,6 +249,17 @@
 </div>
 
 <style>
+	.history {
+		--history-row: 2.875rem;
+		min-height: calc(3.4375rem + var(--shown) * var(--history-row));
+	}
+
+	@media (max-width: 599px) {
+		.history {
+			--history-row: 4.25rem;
+		}
+	}
+
 	.note-digit {
 		min-height: 44px;
 		border: 1.5px solid var(--glass-border);
