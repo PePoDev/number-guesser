@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     Math.random = () => 0.5
   })
-  await page.route("https://api.github.com/repos/PePoDev/number-guesser", async (route) => {
+  await page.route("https://api.github.com/repos/PePoDev/guessle", async (route) => {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({ stargazers_count: 128 }),
@@ -75,7 +75,7 @@ test.describe("Single Player Game", () => {
       .getByRole('button', { name: 'Open Single Player settings' })
       .boundingBox()
     const githubIcon = await page
-      .getByRole('link', { name: /Open number-guesser on GitHub/ })
+      .getByRole('link', { name: /Open Guessle on GitHub/ })
       .boundingBox()
     expect(settingsIcon?.y).toBe(githubIcon?.y)
     expect(settingsIcon?.width).toBe(settingsIcon?.height)

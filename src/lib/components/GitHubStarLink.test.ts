@@ -3,8 +3,8 @@ import { render, screen, waitFor } from '@testing-library/svelte'
 import GitHubStarLink from './GitHubStarLink.svelte'
 import { gameStore } from '$lib/stores/gameStore'
 
-const repoUrl = 'https://github.com/PePoDev/number-guesser'
-const apiUrl = 'https://api.github.com/repos/PePoDev/number-guesser'
+const repoUrl = 'https://github.com/PePoDev/guessle'
+const apiUrl = 'https://api.github.com/repos/PePoDev/guessle'
 
 afterEach(() => {
 	vi.unstubAllGlobals()
@@ -17,7 +17,7 @@ it('shows an accessible repository link while stars are loading', () => {
 	render(GitHubStarLink)
 
 	const link = screen.getByRole('link', {
-		name: 'Open number-guesser on GitHub',
+		name: 'Open Guessle on GitHub',
 	})
 	expect(link).toHaveAttribute('href', repoUrl)
 	expect(link.textContent?.trim()).toBe('')
@@ -33,12 +33,12 @@ it('exposes the live GitHub star count in the name and tooltip', async () => {
 	render(GitHubStarLink)
 
 	const link = await screen.findByRole('link', {
-		name: 'Open number-guesser on GitHub, 128 stars',
+		name: 'Open Guessle on GitHub, 128 stars',
 	})
 	expect(link).toHaveAttribute('href', repoUrl)
 	expect(link).toHaveAttribute(
 		'title',
-		'Open number-guesser on GitHub, 128 stars',
+		'Open Guessle on GitHub, 128 stars',
 	)
 	expect(link.textContent?.trim()).toBe('')
 	expect(fetchMock).toHaveBeenCalledWith(apiUrl, {
@@ -77,7 +77,7 @@ it.each([
 
 	await waitFor(() => expect(fetchMock).toHaveBeenCalled())
 	expect(
-		screen.getByRole('link', { name: 'Open number-guesser on GitHub' }),
+		screen.getByRole('link', { name: 'Open Guessle on GitHub' }),
 	).toHaveAttribute('href', repoUrl)
 	expect(screen.queryByText(/^\d+$/)).not.toBeInTheDocument()
 })
@@ -96,7 +96,7 @@ it('labels the link in Thai', async () => {
 
 	expect(
 		await screen.findByRole('link', {
-			name: 'เปิด number-guesser บน GitHub, 128 ดาว',
+			name: 'เปิด Guessle บน GitHub, 128 ดาว',
 		}),
-	).toHaveAttribute('title', 'เปิด number-guesser บน GitHub, 128 ดาว')
+	).toHaveAttribute('title', 'เปิด Guessle บน GitHub, 128 ดาว')
 })

@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 async function mockGitHubStars(page: Page) {
 	await page.route(
-		'https://api.github.com/repos/PePoDev/number-guesser',
+		'https://api.github.com/repos/PePoDev/guessle',
 		async (route) => {
 			await route.fulfill({
 				contentType: 'application/json',

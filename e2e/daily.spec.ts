@@ -7,7 +7,7 @@ const day2 = new Date('2026-10-15T09:00:00+07:00')
 
 test.beforeEach(async ({ page }) => {
 	await page.clock.setFixedTime(day1)
-	await page.route('https://api.github.com/repos/PePoDev/number-guesser', async (route) => {
+	await page.route('https://api.github.com/repos/PePoDev/guessle', async (route) => {
 		await route.fulfill({
 			contentType: 'application/json',
 			body: JSON.stringify({ stargazers_count: 128 }),

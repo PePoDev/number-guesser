@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
 		Math.random = () => 0.5
 	})
 	await page.route(
-		'https://api.github.com/repos/PePoDev/number-guesser',
+		'https://api.github.com/repos/PePoDev/guessle',
 		async (route) => {
 			await route.fulfill({
 				contentType: 'application/json',

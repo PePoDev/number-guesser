@@ -109,9 +109,9 @@ const en = {
 		close: 'closes settings',
 	},
 	github: {
-		open: 'Open number-guesser on GitHub',
+		open: 'Open Guessle on GitHub',
 		openWithStars: (count: number) =>
-			`Open number-guesser on GitHub, ${count} stars`,
+			`Open Guessle on GitHub, ${count} stars`,
 	},
 	settings: {
 		titles: {
@@ -417,8 +417,8 @@ const th: Messages = {
 		close: 'ปิดการตั้งค่า',
 	},
 	github: {
-		open: 'เปิด number-guesser บน GitHub',
-		openWithStars: (count) => `เปิด number-guesser บน GitHub, ${count} ดาว`,
+		open: 'เปิด Guessle บน GitHub',
+		openWithStars: (count) => `เปิด Guessle บน GitHub, ${count} ดาว`,
 	},
 	settings: {
 		titles: {

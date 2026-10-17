@@ -58,12 +58,12 @@ describe("+page.svelte Component", () => {
     render(Page);
 
     const link = await screen.findByRole("link", {
-      name: "Open number-guesser on GitHub, 128 stars",
+      name: "Open Guessle on GitHub, 128 stars",
     });
 
     expect(link).toHaveAttribute(
       "href",
-      "https://github.com/PePoDev/number-guesser"
+      "https://github.com/PePoDev/guessle"
     );
     expect(link.closest("header")).toHaveClass("game-info");
   });
@@ -75,7 +75,7 @@ describe("+page.svelte Component", () => {
       name: 'Open Daily Guessle settings',
     })
     const github = await screen.findByRole('link', {
-      name: 'Open number-guesser on GitHub, 128 stars',
+      name: 'Open Guessle on GitHub, 128 stars',
     })
 
     expect(settings.parentElement).toBe(github.parentElement)
@@ -106,7 +106,7 @@ describe("+page.svelte Component", () => {
       screen.getByRole('button', { name: 'Open Daily Guessle settings' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: /Open number-guesser on GitHub/ }),
+      screen.getByRole('link', { name: /Open Guessle on GitHub/ }),
     ).toBeInTheDocument()
   })
 

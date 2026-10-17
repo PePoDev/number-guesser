@@ -3,8 +3,8 @@
 	import { gameStore } from '$lib/stores/gameStore'
 	import { messages } from '$lib/i18n/messages'
 
-	const repoUrl = 'https://github.com/PePoDev/number-guesser'
-	const apiUrl = 'https://api.github.com/repos/PePoDev/number-guesser'
+	const repoUrl = 'https://github.com/PePoDev/guessle'
+	const apiUrl = 'https://api.github.com/repos/PePoDev/guessle'
 	let starCount = $state<number | undefined>()
 	const t = $derived(messages[$gameStore.locale])
 	const accessibleName = $derived(

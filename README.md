@@ -411,7 +411,7 @@ Add new surfaces to this table. The initial editorial design system was recorded
 
 2026-10-14 — Added Guessle, a daily Wordle-style single-player puzzle with tile clues, a keypad, saved stats and streaks, and shareable results. It opens by default, and Classic stays one tap away.
 
-2026-10-17 — Renamed the project to Guessle: the heading is now the Guessle wordmark, and the page title, link previews, and room invites use the name, and the single-player switch reads Daily/Classic.
+2026-10-17 — Renamed the project to Guessle: the heading is now the Guessle wordmark, and the page title, link previews, and room invites use the name, and the single-player switch reads Daily/Classic. The repository moved to `PePoDev/guessle`, and the GitHub link and star count follow it.
 
 ## Change guide
 

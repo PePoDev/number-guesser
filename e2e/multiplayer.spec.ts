@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
-  await page.route("https://api.github.com/repos/PePoDev/number-guesser", async (route) => {
+  await page.route("https://api.github.com/repos/PePoDev/guessle", async (route) => {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({ stargazers_count: 128 }),
