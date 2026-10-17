@@ -259,6 +259,23 @@ test('scrolls a long Random game inside its board, not the page or the panel', a
 	await expect(board.getByRole('listitem').last()).toBeInViewport({ ratio: 1 })
 })
 
+test('ends a finished Random game with every row and the winning one in view', async ({ page }) => {
+	await page.setViewportSize({ width: 768, height: 720 })
+	await openRandom(page)
+	for (const digits of ['123', '456', '789', '927', '793', '082', '500']) {
+		await guess(page, digits)
+	}
+
+	await expect(page.getByRole('heading', { name: 'Solved in 7 tries!' })).toBeVisible()
+	const rows = page.getByRole('list', { name: 'Guesses' }).getByRole('listitem')
+	await expect(rows).toHaveCount(7)
+	expect(await boardOverflow(page)).toBeLessThanOrEqual(0)
+	await expect(rows.first()).toBeInViewport({ ratio: 1 })
+	await expect(rows.last()).toBeInViewport({ ratio: 1 })
+	await expect(page.getByRole('button', { name: 'Play again' })).toBeInViewport({ ratio: 1 })
+	expect(await panelOverflow(page)).toBeLessThanOrEqual(0)
+})
+
 test('shows every row of a finished Random game on a phone instead of a nested scroll', async ({ page }) => {
 	await page.setViewportSize({ width: 360, height: 740 })
 	await openRandom(page)
@@ -266,7 +283,7 @@ test('shows every row of a finished Random game on a phone instead of a nested s
 		await guess(page, digits)
 	}
 
-	await expect(page.getByText(/Game Over!/)).toBeVisible()
+	await expect(page.getByRole('heading', { name: 'Out of tries' })).toBeVisible()
 	expect(await sizes(page, '.tile')).toHaveLength(21)
 	expect(await boardOverflow(page)).toBeLessThanOrEqual(0)
 	expect(Math.min(...(await sizes(page, '.tile')))).toBeGreaterThanOrEqual(32)

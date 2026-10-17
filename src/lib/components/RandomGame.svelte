@@ -9,6 +9,7 @@
 
 	let heading = $state<HTMLHeadingElement>()
 	let board = $state<HTMLOListElement>()
+	let scroller = $state<HTMLDivElement>()
 	let resultPanel = $state<HTMLDivElement>()
 	let announce = $state<'entry' | 'guess' | null>(null)
 	// Typed digits and warnings belong to one round, so a new game clears them.
@@ -33,6 +34,13 @@
 	)
 	const playing = $derived(!$gameStore.gameOver)
 	const rows = $derived(playing ? history.length + $gameStore.attemptsLeft : history.length)
+	const status = $derived(
+		playing
+			? t.random.triesLeft($gameStore.attemptsLeft)
+			: won
+				? t.random.solved(history.length)
+				: t.random.outOfTries,
+	)
 	const warningMessage = $derived(
 		warning.render && warning.guesses === history && warning.entry === entry
 			? warning.render(t)
@@ -89,8 +97,12 @@
 			celebrate($gameStore.sound)
 		}
 		await tick()
-		// The keypad leaves with the last guess, so focus moves to the result.
+		// The keypad leaves with the last guess, so focus moves to the result,
+		// and a long board ends on the row that settled the game.
 		if ($gameStore.gameOver) {
+			if (scroller) {
+				scroller.scrollTop = scroller.scrollHeight
+			}
 			resultPanel?.focus()
 		} else {
 			board?.children[history.length]?.scrollIntoView?.({ block: 'nearest' })
@@ -108,7 +120,7 @@
 	<div class="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-4">
 		{@render toolbar?.()}
 		<h2 id="random-heading" bind:this={heading} tabindex="-1" class="font-display text-lg font-bold sm:text-2xl">
-			{t.random.triesLeft($gameStore.attemptsLeft)}
+			{status}
 		</h2>
 	</div>
 
@@ -127,7 +139,7 @@
 	</div>
 
 	<div class="random-area relative" class:board-finished={!playing} style:--rows={rows} style:--cols={digits}>
-		<div class="board-scroll absolute inset-0 overflow-y-auto">
+		<div bind:this={scroller} class="board-scroll absolute inset-y-0 right-0 left-0 mx-auto w-fit overflow-x-hidden overflow-y-auto">
 			<ol bind:this={board} class="board mx-auto grid w-fit" aria-label={t.board.label}>
 				{#each { length: rows } as _, rowIndex}
 					{@const row = history[rowIndex]}
@@ -159,21 +171,17 @@
 	{#if playing}
 		<Keypad ontype={type} onerase={erase} onsubmit={() => void submit()} />
 	{:else}
+		<!-- The heading already shows the outcome, so the result strip carries the answer
+			and the next step; screen readers hear the outcome first when it takes focus. -->
 		<div
 			bind:this={resultPanel}
 			tabindex="-1"
-			class="banner {won ? 'banner-correct' : 'banner-incorrect'} mt-3 space-y-3 p-5 text-center"
+			class="banner {won ? 'banner-correct' : 'banner-incorrect'} mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-center"
 		>
-			{#if won}
-				<div class="text-xl font-bold text-balance">
-					<p>{t.random.won(target)}</p>
-					<p>{t.random.wonWith(history.length)}</p>
-				</div>
-			{:else}
-				<p class="text-xl font-bold text-balance">
-					{#each t.random.lost(target) as part}{#if typeof part === 'string'}{part}{:else}<strong class="tracking-widest">{part.value}</strong>{/if}{/each}
-				</p>
-			{/if}
+			<p class="text-lg font-semibold">
+				<span class="sr-only">{status}</span>
+				{#each t.random.answer(target) as part}{#if typeof part === 'string'}{part}{:else}<strong class="accent-value tracking-widest">{part.value}</strong>{/if}{/each}
+			</p>
 			<button type="button" class="btn-primary" onclick={playAgain}>{t.random.playAgain}</button>
 		</div>
 	{/if}
@@ -190,6 +198,12 @@
 		flex: 1 1 0;
 		min-height: calc(min(var(--rows), 5) * var(--tile-min) + (min(var(--rows), 5) - 1) * var(--gap));
 		max-height: calc(var(--rows) * var(--tile-max) + (var(--rows) - 1) * var(--gap));
+	}
+
+	/* A finished board keeps a default game's seven rows in view, so the answer row
+	   never hides inside the box. */
+	.board-finished {
+		min-height: calc(min(var(--rows), 7) * var(--tile-min) + (min(var(--rows), 7) - 1) * var(--gap));
 	}
 
 	/* Where the panel or page scrolls anyway, the board shows every row rather
@@ -262,21 +276,11 @@
 		font-weight: 700;
 	}
 
+	/* Shape tells the hints apart without color: a circle for digits in the number,
+	   a square for digits in the right spot. */
 	.hint-digits {
-		background: var(--tile-present);
-	}
-
-	/* The dot matches the wrong-spot tiles, so the two hints never rely on color alone. */
-	.hint-digits::after {
-		content: '';
-		position: absolute;
-		bottom: calc(var(--tile) * 0.06);
-		left: 50%;
-		width: max(3px, calc(var(--tile) * 0.1));
-		height: max(3px, calc(var(--tile) * 0.1));
 		border-radius: 50%;
-		background: currentColor;
-		transform: translateX(-50%);
+		background: var(--tile-present);
 	}
 
 	.hint-spots {
@@ -291,16 +295,11 @@
 		--tile: 1.5rem;
 	}
 
-	/* High-contrast themes drop background fills, so the hints keep an outline and their dot. */
+	/* High-contrast themes drop background fills, so the hints keep an outline in their shape. */
 	@media (forced-colors: active) {
 		.hint-digits,
 		.hint-spots {
 			border: 1.5px solid CanvasText;
-		}
-
-		.hint-digits::after {
-			forced-color-adjust: none;
-			background: CanvasText;
 		}
 	}
 </style>

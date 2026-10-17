@@ -148,18 +148,13 @@ const en = {
 	},
 	random: {
 		triesLeft: (count: number) => `${count} ${count === 1 ? 'try' : 'tries'} left`,
+		solved: (tries: number) => (tries === 1 ? 'Got it in one!' : `Solved in ${tries} tries!`),
+		outOfTries: 'Out of tries',
+		answer: (target: string): RichText => ['The number was ', { value: target }],
 		inNumber: 'in the number',
 		inSpot: 'in the right spot',
 		row: (number: number, digits: string, inNumber: number, inSpot: number) =>
 			`Guess ${number}: ${digits}, ${inNumber} in the number, ${inSpot} in the right spot`,
-		won: (target: string) =>
-			`Congratulations! You guessed the number ${target} correctly!`,
-		wonWith: (attempts: number) =>
-			`You won with ${attempts} ${attempts === 1 ? 'attempt' : 'attempts'}!`,
-		lost: (target: string): RichText => [
-			"Game Over! You've used all your attempts. The correct number was: ",
-			{ value: target },
-		],
 		playAgain: 'Play again',
 	},
 	daily: {
@@ -440,13 +435,13 @@ const th: Messages = {
 	},
 	random: {
 		triesLeft: (count) => `เหลือ ${count} ครั้ง`,
+		solved: (tries) => (tries === 1 ? 'ทายถูกตั้งแต่ครั้งแรก!' : `ทายถูกใน ${tries} ครั้ง!`),
+		outOfTries: 'หมดโอกาสทายแล้ว',
+		answer: (target) => ['คำตอบคือ ', { value: target }],
 		inNumber: 'มีในคำตอบ',
 		inSpot: 'ถูกตำแหน่ง',
 		row: (number, digits, inNumber, inSpot) =>
 			`ครั้งที่ ${number}: ${digits} มีในคำตอบ ${inNumber} ตัว ถูกตำแหน่ง ${inSpot} ตัว`,
-		won: (target) => `ยินดีด้วย! คุณทายเลข ${target} ถูกแล้ว!`,
-		wonWith: (attempts) => `ชนะด้วยการทาย ${attempts} ครั้ง!`,
-		lost: (target) => ['จบเกม! คุณใช้โอกาสทายหมดแล้ว คำตอบที่ถูกคือ ', { value: target }],
 		playAgain: 'เล่นอีกครั้ง',
 	},
 	daily: {

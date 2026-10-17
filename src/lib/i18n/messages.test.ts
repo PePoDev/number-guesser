@@ -51,9 +51,9 @@ describe('messages', () => {
 	})
 
 	it('pluralizes English counts and keeps Thai counts invariant', () => {
-		expect(messages.en.random.wonWith(1)).toBe('You won with 1 attempt!')
-		expect(messages.en.random.wonWith(3)).toBe('You won with 3 attempts!')
-		expect(messages.th.random.wonWith(1)).toBe('ชนะด้วยการทาย 1 ครั้ง!')
+		expect(messages.en.random.solved(1)).toBe('Got it in one!')
+		expect(messages.en.random.solved(3)).toBe('Solved in 3 tries!')
+		expect(messages.th.random.solved(3)).toBe('ทายถูกใน 3 ครั้ง!')
 		expect(messages.en.random.triesLeft(1)).toBe('1 try left')
 		expect(messages.en.random.triesLeft(7)).toBe('7 tries left')
 		expect(messages.th.random.triesLeft(1)).toBe('เหลือ 1 ครั้ง')

@@ -127,8 +127,8 @@ describe('RandomGame', () => {
 		await user.keyboard('123{Enter}500{Enter}')
 
 		expect(result()).toHaveFocus()
-		expect(result()).toHaveTextContent('Congratulations! You guessed the number 500 correctly!')
-		expect(result()).toHaveTextContent('You won with 2 attempts!')
+		expect(result()).toHaveTextContent('Solved in 2 tries! The number was 500')
+		expect(screen.getByRole('heading', { name: 'Solved in 2 tries!' })).toBeInTheDocument()
 		expect(screen.getByRole('status')).toHaveTextContent('Guess 2: 5 0 0, 3 in the number, 3 in the right spot')
 		expect(screen.queryByRole('group', { name: 'Number keypad' })).not.toBeInTheDocument()
 		expect(rows()).toHaveLength(2)
@@ -146,7 +146,7 @@ describe('RandomGame', () => {
 
 		await user.keyboard('500{Enter}')
 
-		expect(result()).toHaveTextContent('You won with 1 attempt!')
+		expect(result()).toHaveTextContent('Got it in one! The number was 500')
 		expect(celebrate).toHaveBeenCalledWith(false)
 	})
 
@@ -161,10 +161,8 @@ describe('RandomGame', () => {
 		await user.keyboard('123{Enter}456{Enter}789{Enter}')
 
 		expect(result()).toHaveFocus()
-		expect(result()).toHaveTextContent(
-			"Game Over! You've used all your attempts. The correct number was: 500",
-		)
-		expect(screen.getByRole('heading', { name: '0 tries left' })).toBeInTheDocument()
+		expect(result()).toHaveTextContent('Out of tries The number was 500')
+		expect(screen.getByRole('heading', { name: 'Out of tries' })).toBeInTheDocument()
 		expect(screen.queryByRole('group', { name: 'Number keypad' })).not.toBeInTheDocument()
 		expect(rows()).toHaveLength(3)
 		expect(celebrate).not.toHaveBeenCalled()
@@ -187,8 +185,7 @@ describe('RandomGame', () => {
 		expect(screen.getByRole('group', { name: 'Number keypad' })).toBeInTheDocument()
 
 		await user.keyboard('123{Enter}')
-		expect(result()).toHaveTextContent('Congratulations! You guessed the number 123 correctly!')
-		expect(result()).toHaveTextContent('You won with 1 attempt!')
+		expect(result()).toHaveTextContent('Got it in one! The number was 123')
 	})
 
 	it('drops the typed entry and warning when a new game starts', async () => {
@@ -210,7 +207,7 @@ describe('RandomGame', () => {
 		await user.keyboard('56')
 		expect(screen.getByRole('status')).toHaveTextContent(/^Current guess: 1 2 3 4 5$/)
 		await user.keyboard('{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}50000{Enter}')
-		expect(result()).toHaveTextContent('Congratulations! You guessed the number 50000 correctly!')
+		expect(result()).toHaveTextContent('Got it in one! The number was 50000')
 	})
 
 	it('sets the toolbar beside the tries heading', () => {
@@ -245,8 +242,8 @@ describe('RandomGame', () => {
 
 		await user.keyboard('{Backspace}{Backspace}{Backspace}500{Enter}')
 		expect(result('เล่นอีกครั้ง')).toHaveFocus()
-		expect(result('เล่นอีกครั้ง')).toHaveTextContent('ยินดีด้วย! คุณทายเลข 500 ถูกแล้ว!')
-		expect(result('เล่นอีกครั้ง')).toHaveTextContent('ชนะด้วยการทาย 2 ครั้ง!')
+		expect(result('เล่นอีกครั้ง')).toHaveTextContent('ทายถูกใน 2 ครั้ง! คำตอบคือ 500')
+		expect(screen.getByRole('heading', { name: 'ทายถูกใน 2 ครั้ง!' })).toBeInTheDocument()
 	})
 
 	it('reveals the number in Thai after the last attempt', async () => {
@@ -259,6 +256,7 @@ describe('RandomGame', () => {
 		await user.keyboard('123{Enter}456{Enter}789{Enter}')
 
 		expect(screen.getByText('500')).toHaveProperty('tagName', 'STRONG')
-		expect(result('เล่นอีกครั้ง')).toHaveTextContent('จบเกม! คุณใช้โอกาสทายหมดแล้ว คำตอบที่ถูกคือ 500')
+		expect(result('เล่นอีกครั้ง')).toHaveTextContent('หมดโอกาสทายแล้ว คำตอบคือ 500')
+		expect(screen.getByRole('heading', { name: 'หมดโอกาสทายแล้ว' })).toBeInTheDocument()
 	})
 })

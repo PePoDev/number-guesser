@@ -112,8 +112,8 @@ test('celebrates a win and draws a fresh number with Play again', async ({ page 
 	await guess(page, '123')
 	await guess(page, '500')
 
-	await expect(page.getByText('Congratulations! You guessed the number 500 correctly!')).toBeVisible()
-	await expect(page.locator(':focus')).toContainText('You won with 2 attempts!')
+	await expect(page.getByRole('heading', { name: 'Solved in 2 tries!' })).toBeVisible()
+	await expect(page.locator(':focus')).toContainText('The number was 500')
 	const confetti = page.locator('canvas.confetti')
 	await expect(confetti).toBeAttached()
 	await expect(confetti).toHaveAttribute('aria-hidden', 'true')
@@ -133,8 +133,8 @@ test('celebrates a win and draws a fresh number with Play again', async ({ page 
 	await guess(page, '500')
 	await expect(board).toContainText('Guess 1: 5 0 0, 2 in the number, 1 in the right spot')
 	await guess(page, '250')
-	await expect(page.getByText('Congratulations! You guessed the number 250 correctly!')).toBeVisible()
-	await expect(page.getByText('You won with 2 attempts!')).toBeVisible()
+	await expect(page.getByRole('heading', { name: 'Solved in 2 tries!' })).toBeVisible()
+	await expect(page.getByText('The number was 250')).toBeVisible()
 })
 
 test('reveals the number after the last attempt', async ({ page }) => {
@@ -147,10 +147,8 @@ test('reveals the number after the last attempt', async ({ page }) => {
 	await expect(page.getByRole('heading', { name: '1 try left' })).toBeVisible()
 	await guess(page, '901')
 
-	await expect(page.getByText(/The correct number was:/)).toHaveText(
-		"Game Over! You've used all your attempts. The correct number was: 500",
-	)
-	await expect(page.getByRole('heading', { name: '0 tries left' })).toBeVisible()
+	await expect(page.getByText('The number was 500')).toBeVisible()
+	await expect(page.getByRole('heading', { name: 'Out of tries' })).toBeVisible()
 	await expect(page.getByRole('group', { name: 'Number keypad' })).toHaveCount(0)
 	await expect(page.getByRole('list', { name: 'Guesses' }).getByRole('listitem')).toHaveCount(7)
 	await expect(page.locator('canvas.confetti')).toHaveCount(0)
@@ -184,7 +182,7 @@ test('changes the digits and attempts in Settings', async ({ page }) => {
 	)
 	await expect(page.getByRole('heading', { name: '19 tries left' })).toBeVisible()
 	await guess(page, '50000')
-	await expect(page.getByText('Congratulations! You guessed the number 50000 correctly!')).toBeVisible()
+	await expect(page.getByText('The number was 50000')).toBeVisible()
 })
 
 test('starts a fresh board with New Game and keeps the game through Settings and Instructions', async ({
@@ -211,7 +209,7 @@ test('starts a fresh board with New Game and keeps the game through Settings and
 	// A tapped New Game lets go of focus, so a physical Enter submits instead of restarting.
 	await expect(page.getByRole('button', { name: /New Game/ })).not.toBeFocused()
 	await guess(page, '500')
-	await expect(page.getByText('You won with 1 attempt!')).toBeVisible()
+	await expect(page.getByRole('heading', { name: 'Got it in one!' })).toBeVisible()
 })
 
 test('keeps keyboard focus on the switch as it moves between boards', async ({ page }) => {
@@ -257,7 +255,7 @@ test('saves the sound setting and stays quiet when it is off', async ({ page }) 
 
 	// Settings opened with a tap hands focus back to nothing, so Enter submits instead of reopening it.
 	await guess(page, '500')
-	await expect(page.getByText('You won with 1 attempt!')).toBeVisible()
+	await expect(page.getByRole('heading', { name: 'Got it in one!' })).toBeVisible()
 	await expect(page.locator('canvas.confetti')).toBeAttached()
 	expect(await chimes(page)).toBe(0)
 })
@@ -290,8 +288,8 @@ test.describe('in a Thai browser', () => {
 		await page.keyboard.type('500')
 		await keypad.getByRole('button', { name: 'ส่ง' }).click()
 
-		await expect(page.getByText('ยินดีด้วย! คุณทายเลข 500 ถูกแล้ว!')).toBeVisible()
-		await expect(page.getByText('ชนะด้วยการทาย 2 ครั้ง!')).toBeVisible()
+		await expect(page.getByRole('heading', { name: 'ทายถูกใน 2 ครั้ง!' })).toBeVisible()
+		await expect(page.getByText('คำตอบคือ 500')).toBeVisible()
 		await expect(page.getByRole('button', { name: 'เล่นอีกครั้ง' })).toBeVisible()
 
 		await page.getByRole('button', { name: 'เปิดการตั้งค่าโหมดสุ่มเลข' }).click()
