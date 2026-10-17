@@ -8,7 +8,7 @@ import { gameStore, type GameMode } from '$lib/stores/gameStore'
 describe('SettingsModal Component', () => {
 	const mockOnClose = vi.fn()
 
-	function renderSettings(mode: GameMode = 'single') {
+	function renderSettings(mode: GameMode = 'random') {
 		gameStore.setMode(mode)
 		return render(SettingsModal, {
 			props: { mode, onclose: mockOnClose },
@@ -27,20 +27,20 @@ describe('SettingsModal Component', () => {
 
 	it('switches the language and saves the choice', async () => {
 		const user = userEvent.setup()
-		renderSettings('single')
+		renderSettings('random')
 
 		await user.selectOptions(screen.getByLabelText('Language:'), 'th')
 
 		expect(get(gameStore).locale).toBe('th')
 		expect(localStorage.getItem('number-guessing-locale')).toBe('th')
 		expect(
-			screen.getByRole('heading', { name: 'ตั้งค่าโหมดเล่นคนเดียว' }),
+			screen.getByRole('heading', { name: 'ตั้งค่าโหมดสุ่มเลข' }),
 		).toBeInTheDocument()
 		expect(screen.getByLabelText('ภาษา:')).toHaveValue('th')
 	})
 
 	it('writes each language option in its own language', () => {
-		renderSettings('single')
+		renderSettings('random')
 
 		expect(screen.getByRole('option', { name: 'English' })).toHaveAttribute(
 			'lang',
@@ -53,14 +53,14 @@ describe('SettingsModal Component', () => {
 	})
 
 	it('warns that changing game options starts a new game', () => {
-		renderSettings('single')
+		renderSettings('random')
 
 		expect(
 			screen.getByText('Changing these options starts a new game.'),
 		).toBeInTheDocument()
 	})
 
-	it('offers only the language once an online room starts', () => {
+	it('offers only the language and sound once an online room starts', () => {
 		gameStore.setMode('online')
 		gameStore.applyOnlineSnapshot({
 			room: {
@@ -81,6 +81,7 @@ describe('SettingsModal Component', () => {
 		renderSettings('online')
 
 		expect(screen.getByLabelText('Language:')).toHaveValue('en')
+		expect(screen.getByLabelText('Sound effects:')).toHaveValue('on')
 		expect(
 			screen.queryByText('Changing these options starts a new game.'),
 		).not.toBeInTheDocument()
@@ -93,22 +94,25 @@ describe('SettingsModal Component', () => {
 	it('shows Thai titles, labels, and options', () => {
 		gameStore.setLocale('th')
 
-		renderSettings('single')
+		renderSettings('random')
 
 		expect(
-			screen.getByRole('heading', { name: 'ตั้งค่าโหมดเล่นคนเดียว' }),
+			screen.getByRole('heading', { name: 'ตั้งค่าโหมดสุ่มเลข' }),
 		).toBeInTheDocument()
 		expect(screen.getByLabelText('จำนวนหลัก:')).toHaveDisplayValue('3 หลัก')
 		expect(screen.getByLabelText('จำนวนครั้งที่ทายได้:')).toHaveDisplayValue(
 			'7 ครั้ง',
 		)
+		expect(screen.getByLabelText('เสียงประกอบ:')).toHaveDisplayValue('เปิด')
+		expect(screen.getByRole('option', { name: 'ปิด' })).toHaveValue('off')
 		expect(
 			screen.getByRole('button', { name: 'ปิดการตั้งค่า' }),
 		).toBeInTheDocument()
 	})
 
 	it.each([
-		['single', 'Single Player Settings'],
+		['daily', 'Daily Guessle Settings'],
+		['random', 'Random Settings'],
 		['multi', 'Local Multiplayer Settings'],
 		['online', 'Online Multiplayer Settings'],
 	] as const)('shows the %s mode title', (mode, title) => {
@@ -123,13 +127,28 @@ describe('SettingsModal Component', () => {
 		expect(screen.queryByLabelText('Game Mode:')).not.toBeInTheDocument()
 	})
 
-	it('shows only single-player settings', () => {
-		renderSettings('single')
+	it('shows digits and attempts, but not players, in Random', () => {
+		renderSettings('random')
 
 		expect(screen.getByLabelText('Number of Digits:')).toBeInTheDocument()
 		expect(screen.getByLabelText('Max Attempts:')).toBeInTheDocument()
 		expect(
 			screen.queryByLabelText('Number of Players:'),
+		).not.toBeInTheDocument()
+	})
+
+	it('offers only the language and sound in Guessle', () => {
+		renderSettings('daily')
+
+		expect(screen.getByLabelText('Language:')).toBeInTheDocument()
+		expect(screen.getByLabelText('Sound effects:')).toBeInTheDocument()
+		expect(screen.queryByLabelText('Number of Digits:')).not.toBeInTheDocument()
+		expect(screen.queryByLabelText('Max Attempts:')).not.toBeInTheDocument()
+		expect(
+			screen.queryByLabelText('Number of Players:'),
+		).not.toBeInTheDocument()
+		expect(
+			screen.queryByText('Changing these options starts a new game.'),
 		).not.toBeInTheDocument()
 	})
 
@@ -180,6 +199,55 @@ describe('SettingsModal Component', () => {
 			'3 players',
 			'4 players',
 		])
+	})
+
+	it('starts a new Random game with the chosen settings', async () => {
+		const user = userEvent.setup()
+		renderSettings('random')
+		gameStore.startNewGame()
+
+		await user.selectOptions(screen.getByLabelText('Number of Digits:'), '4')
+
+		expect(get(gameStore).targetNumber).toHaveLength(4)
+		expect(get(gameStore).attemptsLeft).toBe(7)
+
+		await user.selectOptions(screen.getByLabelText('Max Attempts:'), '3')
+
+		expect(get(gameStore).attemptsLeft).toBe(3)
+	})
+
+	it.each(['daily', 'random', 'multi', 'online'] as const)(
+		'turns sound effects off and on in %s mode and saves the choice',
+		async (mode) => {
+			const user = userEvent.setup()
+			renderSettings(mode)
+			const sound = screen.getByLabelText('Sound effects:') as HTMLSelectElement
+
+			expect(Array.from(sound.options, (option) => option.text)).toEqual([
+				'On',
+				'Off',
+			])
+			expect(sound).toHaveValue('on')
+
+			await user.selectOptions(sound, 'Off')
+
+			expect(get(gameStore).sound).toBe(false)
+			expect(localStorage.getItem('number-guessing-sound')).toBe('off')
+			expect(sound).toHaveValue('off')
+
+			await user.selectOptions(sound, 'On')
+
+			expect(get(gameStore).sound).toBe(true)
+			expect(localStorage.getItem('number-guessing-sound')).toBe('on')
+		},
+	)
+
+	it('shows sound effects as off when they are off', () => {
+		gameStore.setSound(false)
+
+		renderSettings('random')
+
+		expect(screen.getByLabelText('Sound effects:')).toHaveDisplayValue('Off')
 	})
 
 	it('reflects and updates current settings', async () => {

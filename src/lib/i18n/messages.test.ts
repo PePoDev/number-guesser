@@ -51,9 +51,37 @@ describe('messages', () => {
 	})
 
 	it('pluralizes English counts and keeps Thai counts invariant', () => {
-		expect(messages.en.single.wonWith(1)).toBe('You won with 1 attempt!')
-		expect(messages.en.single.wonWith(3)).toBe('You won with 3 attempts!')
-		expect(messages.th.single.wonWith(1)).toBe('ชนะด้วยการทาย 1 ครั้ง!')
+		expect(messages.en.random.wonWith(1)).toBe('You won with 1 attempt!')
+		expect(messages.en.random.wonWith(3)).toBe('You won with 3 attempts!')
+		expect(messages.th.random.wonWith(1)).toBe('ชนะด้วยการทาย 1 ครั้ง!')
+		expect(messages.en.random.triesLeft(1)).toBe('1 try left')
+		expect(messages.en.random.triesLeft(7)).toBe('7 tries left')
+		expect(messages.th.random.triesLeft(1)).toBe('เหลือ 1 ครั้ง')
+	})
+
+	it('describes a Random row with both hints in both languages', () => {
+		expect(messages.en.random.row(1, '1 2 3', 2, 1)).toBe(
+			'Guess 1: 1 2 3, 2 in the number, 1 in the right spot',
+		)
+		expect(messages.th.random.row(1, '1 2 3', 2, 1)).toBe(
+			'ครั้งที่ 1: 1 2 3 มีในคำตอบ 2 ตัว ถูกตำแหน่ง 1 ตัว',
+		)
+	})
+
+	it('shares the board copy between Guessle and Random', () => {
+		expect(messages.en.board.short(3)).toBe('Enter all 3 digits.')
+		expect(messages.en.board.duplicate('123')).toBe("You've already tried 123.")
+		expect(messages.en.board.entry('')).toBe('Current guess is empty')
+		expect(messages.th.board.short(3)).toBe('กรอกให้ครบ 3 หลัก')
+	})
+
+	it('names Random and sound effects in both languages', () => {
+		expect(messages.en.modes.random).toBe('Random')
+		expect(messages.en.header.random).toBe('Random')
+		expect(messages.en.settings.titles.random).toBe('Random Settings')
+		expect(messages.en.settings.sound).toBe('Sound effects:')
+		expect(messages.th.modes.random).toBe('สุ่มเลข')
+		expect(messages.th.settings.sound).toBe('เสียงประกอบ:')
 	})
 
 	it('describes guess problems in both languages', () => {

@@ -11,16 +11,16 @@
 		formatCountdown,
 		liveStreak,
 		msUntilDaily,
-		sanitizeDigits,
 		scoreTiles,
 		shareGrid,
 	} from '$lib/stores/gameStore'
 	import { readDailyProgress, saveDailyProgress } from '$lib/daily/progress'
 	import { messages, type Messages } from '$lib/i18n/messages'
+	import { celebrate } from '$lib/effects/celebrate'
+	import Keypad from './Keypad.svelte'
 
 	let { toolbar }: { toolbar?: Snippet } = $props()
 
-	let root = $state<HTMLDivElement>()
 	let heading = $state<HTMLHeadingElement>()
 	let resultPanel = $state<HTMLDivElement>()
 	let entry = $state('')
@@ -77,7 +77,7 @@
 	const mostWins = $derived(Math.max(1, ...daily.stats.distribution))
 	const announcement = $derived.by(() => {
 		const latest = scored.length - 1
-		if (announce === 'entry') return t.daily.entry(spaced(entry))
+		if (announce === 'entry') return t.board.entry(spaced(entry))
 		if (announce === 'copied') return t.daily.copied
 		if (announce === 'guess' && latest >= 0) return rowLabel(t, latest)
 		return ''
@@ -114,61 +114,25 @@
 	async function submit() {
 		const guess = entry
 		if (guess.length < DAILY_DIGITS) {
-			warn((t) => t.daily.short(DAILY_DIGITS))
+			warn((t) => t.board.short(DAILY_DIGITS))
 			return
 		}
 		if (daily.guesses.includes(guess)) {
-			warn((t) => t.daily.duplicate(guess))
+			warn((t) => t.board.duplicate(guess))
 			return
 		}
 		gameStore.addDailyGuess(guess)
 		saveDailyProgress($gameStore.daily)
 		entry = ''
 		announce = 'guess'
+		if (status === 'won') {
+			celebrate($gameStore.sound)
+		}
 		await tick()
 		// The keypad leaves with the last guess, so focus moves to the result.
 		if (status !== 'playing') {
 			resultPanel?.focus()
 		}
-	}
-
-	// A tapped key gives focus back, so a later physical Enter submits instead
-	// of pressing that key again; keyboard activation keeps focus in place.
-	function press(action: () => void) {
-		return (event: MouseEvent) => {
-			if (event.detail > 0) {
-				;(event.currentTarget as HTMLElement).blur()
-			}
-			action()
-		}
-	}
-
-	function handleKeydown(event: KeyboardEvent) {
-		const target = event.target instanceof Element ? event.target : null
-		if (
-			status !== 'playing' ||
-			event.defaultPrevented ||
-			event.isComposing ||
-			event.ctrlKey ||
-			event.metaKey ||
-			event.altKey ||
-			target?.closest('input, select, textarea, [contenteditable], [role="dialog"]') ||
-			!root ||
-			root.closest('[hidden]')
-		) {
-			return
-		}
-		const digit = event.key.length === 1 ? sanitizeDigits(event.key, 1) : ''
-		if (digit) {
-			type(digit)
-		} else if (event.key === 'Backspace') {
-			erase()
-		} else if (event.key === 'Enter' && !target?.closest('button, a')) {
-			void submit()
-		} else {
-			return
-		}
-		event.preventDefault()
 	}
 
 	async function shareResult() {
@@ -208,11 +172,11 @@
 		heading?.focus()
 	}
 
-	async function playClassic() {
-		gameStore.setMode('single')
+	async function playRandom() {
+		gameStore.setMode('random')
 		gameStore.startNewGame()
 		await tick()
-		document.getElementById('single-player-guess')?.focus()
+		document.getElementById('random-heading')?.focus()
 	}
 
 	// An unstarted board follows the calendar; a started or finished one waits
@@ -231,37 +195,29 @@
 	})
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
-
-{#snippet key(digit: string)}
-	<button
-		type="button"
-		class="key mark-{keys[digit] ?? 'none'}"
-		aria-label={keys[digit] ? t.daily.tile(digit, keys[digit]) : digit}
-		onclick={press(() => type(digit))}
-	>
-		{digit}
-	</button>
-{/snippet}
-
-<div class="game-area flex flex-1 flex-col" bind:this={root}>
+<div class="game-area flex flex-1 flex-col">
 	<div class="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-4">
 		{@render toolbar?.()}
-		<h2 bind:this={heading} tabindex="-1" class="font-display text-xl font-bold sm:text-2xl">
+		<h2 bind:this={heading} tabindex="-1" class="font-display text-lg font-bold sm:text-2xl">
 			{t.daily.heading(daily.day)}
 		</h2>
 	</div>
 
-	<div class="board-area relative" class:board-finished={status !== 'playing'} style:--rows={rows}>
-		<ol class="board mx-auto grid w-fit" aria-label={t.daily.board}>
+	<div
+		class="board-area relative"
+		class:board-finished={status !== 'playing'}
+		style:--rows={rows}
+		style:--cols={DAILY_DIGITS}
+	>
+		<ol class="board mx-auto grid w-fit" aria-label={t.board.label}>
 			{#each { length: rows } as _, rowIndex}
 				{@const row = scored[rowIndex]}
 				{@const current = !row && rowIndex === scored.length && status === 'playing'}
-				<li class="board-row grid grid-cols-5" aria-hidden={row || current ? undefined : 'true'}>
+				<li class="board-row grid" aria-hidden={row || current ? undefined : 'true'}>
 					{#if row}
 						<span class="sr-only">{rowLabel(t, rowIndex)}</span>
 					{:else if current}
-						<span class="sr-only">{t.daily.entry(spaced(entry))}</span>
+						<span class="sr-only">{t.board.entry(spaced(entry))}</span>
 					{/if}
 					{#each { length: DAILY_DIGITS } as _, index}
 						{@const digit = row ? row.guess[index] : current ? entry[index] : undefined}
@@ -296,26 +252,7 @@
 	{/if}
 
 	{#if status === 'playing'}
-		<div class="keypad mx-auto mt-3 grid w-full max-w-md gap-2" role="group" aria-label={t.daily.keypad}>
-			<div class="grid grid-cols-5 gap-2">
-				{#each ['1', '2', '3', '4', '5'] as digit (digit)}{@render key(digit)}{/each}
-			</div>
-			<div class="grid grid-cols-5 gap-2">
-				{#each ['6', '7', '8', '9', '0'] as digit (digit)}{@render key(digit)}{/each}
-			</div>
-			<div class="grid grid-cols-2 gap-2">
-				<button type="button" class="btn-secondary inline-flex items-center justify-center gap-2" onclick={press(erase)}>
-					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-						<path d="M9 5h11a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9l-6-7z" />
-						<path d="m12 9 6 6M18 9l-6 6" />
-					</svg>
-					{t.daily.delete}
-				</button>
-				<button type="button" class="btn-primary" onclick={press(() => void submit())}>
-					{t.daily.enter}
-				</button>
-			</div>
-		</div>
+		<Keypad states={keys} ontype={type} onerase={erase} onsubmit={() => void submit()} />
 	{:else}
 		<div
 			bind:this={resultPanel}
@@ -371,7 +308,7 @@
 					{/if}
 					<button type="button" class="btn-primary" onclick={shareResult}>{t.daily.share}</button>
 				</div>
-				<button type="button" class="btn-secondary" onclick={playClassic}>{t.daily.practice}</button>
+				<button type="button" class="btn-secondary" onclick={playRandom}>{t.daily.practice}</button>
 				{#if untilNext <= 0}
 					<button type="button" class="btn-secondary" onclick={playToday}>{t.daily.nextReady}</button>
 				{:else}
@@ -415,7 +352,7 @@
 			var(--tile-min),
 			min(
 				(100cqh - (var(--rows) - 1) * var(--gap)) / var(--rows),
-				(100cqw - 4 * var(--gap)) / 5
+				(100cqw - (var(--cols) - 1) * var(--gap)) / var(--cols)
 			),
 			var(--tile-max)
 		);
@@ -423,93 +360,8 @@
 	}
 
 	.board-row {
+		grid-template-columns: repeat(var(--cols), var(--tile));
 		gap: var(--gap);
-	}
-
-	.warning-toast {
-		background: color-mix(in srgb, var(--state-warning) 18%, var(--glass-bg));
-	}
-
-	.tile {
-		position: relative;
-		display: grid;
-		place-items: center;
-		width: var(--tile);
-		height: var(--tile);
-		border: 1.5px solid color-mix(in srgb, var(--glass-border) 25%, transparent);
-		border-radius: calc(var(--tile) * 0.18);
-		background: color-mix(in srgb, var(--surface-white) 40%, transparent);
-		font-family: var(--font-display);
-		font-size: calc(var(--tile) * 0.5);
-		font-weight: 700;
-		transition:
-			background-color var(--motion-duration) var(--motion-easing),
-			border-color var(--motion-duration) var(--motion-easing),
-			color var(--motion-duration) var(--motion-easing);
-		transition-delay: calc(var(--i) * 90ms);
-	}
-
-	.tile.mark-typed {
-		border-color: var(--glass-border);
-		background: var(--surface-white);
-		transition-delay: 0ms;
-	}
-
-	.keypad button {
-		min-height: clamp(2.75rem, 6dvh, 3.25rem);
-	}
-
-	.key {
-		position: relative;
-		border: 1.5px solid var(--glass-border);
-		border-radius: 10px;
-		background: var(--surface-white);
-		color: var(--glass-fg);
-		font-family: var(--font-display);
-		font-size: 1.25rem;
-		font-weight: 700;
-		cursor: pointer;
-	}
-
-	.key:hover {
-		transform: translateY(-1px);
-	}
-
-	.mark-correct {
-		border-color: var(--tile-correct);
-		background: var(--tile-correct);
-		color: var(--tile-fg);
-	}
-
-	.mark-present {
-		border-color: var(--tile-present);
-		background: var(--tile-present);
-		color: var(--tile-fg);
-	}
-
-	/* Green and yellow can look alike to color-blind players; the dot tells them apart. */
-	.mark-present::after {
-		content: '';
-		position: absolute;
-		bottom: 5px;
-		left: 50%;
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background: currentColor;
-		transform: translateX(-50%);
-	}
-
-	.tile.mark-present::after {
-		bottom: calc(var(--tile) * 0.05);
-		width: max(3px, calc(var(--tile) * 0.12));
-		height: max(3px, calc(var(--tile) * 0.12));
-	}
-
-	.mark-absent {
-		border-color: var(--tile-absent);
-		background: var(--tile-absent);
-		color: var(--tile-absent-fg);
 	}
 
 	.dist-bar {
@@ -523,9 +375,4 @@
 		background: var(--tile-correct);
 	}
 
-	@media (prefers-reduced-motion: reduce) {
-		.tile {
-			transition: none;
-		}
-	}
 </style>

@@ -25,6 +25,15 @@ async function guess(page: Page, digits: string) {
 	await page.keyboard.press('Enter')
 }
 
+async function openRandom(page: Page) {
+	await openGuessle(page)
+	await page
+		.getByRole('group', { name: 'Single-player type' })
+		.getByRole('button', { name: 'Random' })
+		.click()
+	await expect(page.getByRole('heading', { name: '7 tries left' })).toBeVisible()
+}
+
 function pageOverflow(page: Page) {
 	return page.evaluate(() => document.scrollingElement!.scrollHeight - window.innerHeight)
 }
@@ -53,7 +62,7 @@ for (const viewport of viewports) {
 	test(`fits Guessle in play to a ${viewport.width} × ${viewport.height} window`, async ({ page }) => {
 		await page.setViewportSize(viewport)
 		await openGuessle(page)
-		await guess(page, '12345')
+		await guess(page, '123')
 
 		expect(await pageOverflow(page)).toBeLessThanOrEqual(0)
 		expect(await panelOverflow(page)).toBeLessThanOrEqual(0)
@@ -68,7 +77,61 @@ for (const viewport of viewports) {
 			),
 		).toBeGreaterThanOrEqual(44)
 	})
+
+	test(`fits Random in play to a ${viewport.width} × ${viewport.height} window`, async ({ page }) => {
+		await page.setViewportSize(viewport)
+		await openRandom(page)
+		await guess(page, '123')
+
+		await expect(page.getByRole('heading', { name: '6 tries left' })).toBeVisible()
+		expect(await pageOverflow(page)).toBeLessThanOrEqual(0)
+		expect(await panelOverflow(page)).toBeLessThanOrEqual(0)
+		await expect(
+			page.getByRole('group', { name: 'Number keypad' }).getByRole('button', { name: 'Enter' }),
+		).toBeInViewport({ ratio: 1 })
+		expect(Math.min(...(await sizes(page, '.tile')))).toBeGreaterThanOrEqual(32)
+	})
 }
+
+test('adapts the stage between phone, tablet, and desktop', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 })
+	await openRandom(page)
+	const nav = page.getByRole('navigation', { name: 'Game navigation' })
+	await expect(page.locator('.hero')).toBeHidden()
+	expect(await nav.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
+	for (const name of [/Single Player/, /Multiplayer/, /Instructions/, /New Game/]) {
+		await expect(nav.getByRole('button', { name })).toBeInViewport({ ratio: 1 })
+	}
+	const ticker = page.locator('.ticker-seq').first()
+	await expect(ticker).toHaveCSS('white-space', 'nowrap')
+	expect((await ticker.boundingBox())?.height).toBeLessThan(40)
+
+	await page.setViewportSize({ width: 840, height: 800 })
+	const navTops = await nav
+		.getByRole('button')
+		.evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().top))
+	expect(new Set(navTops).size).toBe(1)
+	await expect(
+		page.getByRole('group', { name: 'Number keypad' }).getByRole('button', { name: 'Enter' }),
+	).toBeInViewport()
+	const settingsIcon = await page.getByRole('button', { name: 'Open Random settings' }).boundingBox()
+	const githubIcon = await page.getByRole('link', { name: /Open Guessle on GitHub/ }).boundingBox()
+	expect(settingsIcon?.y).toBe(githubIcon?.y)
+	expect(settingsIcon?.width).toBe(settingsIcon?.height)
+	expect((githubIcon?.x ?? 0) - (settingsIcon?.x ?? 0) - (settingsIcon?.width ?? 0)).toBeLessThanOrEqual(12)
+
+	await page.setViewportSize({ width: 640, height: 360 })
+	await page.getByRole('button', { name: 'Open Random settings' }).click()
+	await expect(page.getByRole('dialog')).toHaveCSS('overflow-y', 'auto')
+	await page.getByRole('button', { name: 'Close', exact: true }).scrollIntoViewIfNeeded()
+	await page.getByRole('button', { name: 'Close', exact: true }).click()
+
+	await page.setViewportSize({ width: 1000, height: 800 })
+	await expect(page.locator('.hero')).toBeVisible()
+	const singlePlayerCard = await nav.getByRole('button', { name: /Single Player/ }).boundingBox()
+	const newGameCard = await nav.getByRole('button', { name: /New Game/ }).boundingBox()
+	expect(newGameCard?.height).toBeLessThan(singlePlayerCard?.height ?? 0)
+})
 
 test('grows the tiles into a tall window and shrinks them in a short one', async ({ page }) => {
 	await page.setViewportSize({ width: 1920, height: 1080 })
@@ -83,26 +146,26 @@ test('grows the tiles into a tall window and shrinks them in a short one', async
 test('floats a warning over the board without resizing it', async ({ page }) => {
 	await page.setViewportSize({ width: 1280, height: 720 })
 	await openGuessle(page)
-	await guess(page, '12345')
+	await guess(page, '123')
 	const firstTile = page.locator('.tile').first()
 	const before = await firstTile.boundingBox()
 
 	await guess(page, '12')
 
-	await expect(page.getByRole('alert')).toHaveText('Enter all 5 digits.')
+	await expect(page.getByRole('alert')).toHaveText('Enter all 3 digits.')
 	expect(await firstTile.boundingBox()).toEqual(before)
 	expect(await panelOverflow(page)).toBeLessThanOrEqual(0)
-	await expect(page.getByText('Enter all 5 digits.')).toBeInViewport()
+	await expect(page.getByText('Enter all 3 digits.')).toBeInViewport()
 })
 
 test('shows only the rows played above the result without scrolling the page', async ({ page }) => {
 	await page.setViewportSize({ width: 1440, height: 900 })
 	await openGuessle(page)
-	await guess(page, '12345')
-	await guess(page, '42273')
+	await guess(page, '123')
+	await guess(page, '273')
 
 	await expect(page.getByText('Solved in 2 tries!')).toBeVisible()
-	expect(await sizes(page, '.tile')).toHaveLength(10)
+	expect(await sizes(page, '.tile')).toHaveLength(6)
 	expect(await pageOverflow(page)).toBeLessThanOrEqual(0)
 	expect(await panelOverflow(page)).toBeLessThanOrEqual(0)
 	await expect(page.getByRole('timer')).toBeInViewport()
@@ -111,7 +174,7 @@ test('shows only the rows played above the result without scrolling the page', a
 test('gives a finished Guessle at least as much room in a taller window', async ({ page }) => {
 	await page.setViewportSize({ width: 1024, height: 1000 })
 	await openGuessle(page)
-	for (const digits of ['00000', '11111', '55555', '66666', '88888', '99999']) {
+	for (const digits of ['000', '111', '555', '666', '888', '999']) {
 		await guess(page, digits)
 	}
 	await expect(page.getByText(/So close!/)).toBeVisible()
@@ -134,7 +197,7 @@ test('keeps a failed share warning beside the result, not over the board', async
 	})
 	await page.setViewportSize({ width: 1440, height: 900 })
 	await openGuessle(page)
-	await guess(page, '42273')
+	await guess(page, '273')
 	await page.getByRole('button', { name: 'Share' }).click()
 
 	const warning = page.getByText("Couldn't share your result.", { exact: false })
@@ -144,30 +207,27 @@ test('keeps a failed share warning beside the result, not over the board', async
 	expect(box!.y).toBeGreaterThanOrEqual(board!.y + board!.height)
 })
 
-test('scrolls a long Classic history inside its box, not the page', async ({ page }) => {
-	await page.setViewportSize({ width: 2000, height: 861 })
-	await openGuessle(page)
-	await page
-		.getByRole('group', { name: 'Single-player type' })
-		.getByRole('button', { name: 'Classic' })
-		.click()
-	const field = page.getByLabel('Guess', { exact: true })
-	for (const digits of ['123', '456', '789', '012', '345', '678', '901']) {
-		await field.fill(digits)
-		await field.press('Enter')
+test('scrolls a long Random game inside its board, not the page or the panel', async ({ page }) => {
+	await page.setViewportSize({ width: 1440, height: 900 })
+	await openRandom(page)
+	await page.getByRole('button', { name: 'Open Random settings' }).click()
+	await page.getByLabel('Max Attempts:').selectOption('20')
+	await page.getByRole('button', { name: 'Close', exact: true }).click()
+	// Closing Settings hands focus back to the gear, which would take a physical Enter.
+	await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+
+	for (const digits of ['123', '456', '789', '012', '345', '678', '901', '234']) {
+		await guess(page, digits)
 	}
 
-	await expect(page.getByText(/Game Over!/)).toBeVisible()
+	await expect(page.getByRole('heading', { name: '12 tries left' })).toBeVisible()
 	expect(await pageOverflow(page)).toBeLessThanOrEqual(0)
 	expect(await panelOverflow(page)).toBeLessThanOrEqual(0)
-	const history = page.getByRole('region', { name: 'Guess History:' })
+	const board = page.getByRole('list', { name: 'Guesses' })
 	expect(
-		await history.evaluate((section) => {
-			const list = section.lastElementChild!
-			return list.scrollHeight > list.clientHeight && list.clientHeight > 90
-		}),
+		await board.evaluate((list) => list.parentElement!.scrollHeight > list.parentElement!.clientHeight),
 	).toBe(true)
-	await expect(page.getByRole('heading', { name: 'Notepad' })).toHaveCount(0)
+	await expect(board.getByRole('listitem').last()).toBeInViewport({ ratio: 1 })
 })
 
 test('scrolls the panel, never the page, when its content cannot fit', async ({ page }) => {
@@ -187,10 +247,10 @@ test('scrolls the panel, never the page, when its content cannot fit', async ({ 
 test('opens each screen at its top after the panel was scrolled', async ({ page }) => {
 	await page.setViewportSize({ width: 360, height: 740 })
 	await openGuessle(page)
-	await page
-		.getByRole('group', { name: 'Single-player type' })
-		.getByRole('button', { name: 'Classic' })
-		.click()
+	for (const digits of ['000', '111', '555', '666', '888', '999']) {
+		await guess(page, digits)
+	}
+	await expect(page.getByText(/So close!/)).toBeVisible()
 	await page.getByRole('main').evaluate((panel) => panel.scrollTo(0, panel.scrollHeight))
 	expect(await page.getByRole('main').evaluate((panel) => panel.scrollTop)).toBeGreaterThan(0)
 

@@ -20,12 +20,15 @@ describe('resolveLocale', () => {
 
 	it('uses the first supported browser language', () => {
 		expect(resolveLocale(null, ['fr-FR', 'th-TH', 'en-US'])).toBe('th')
+		expect(resolveLocale(null, ['fr-FR', 'en-US', 'th-TH'])).toBe('en')
+		expect(resolveLocale(null, ['en-US'])).toBe('en')
 		expect(resolveLocale(null, ['EN-gb'])).toBe('en')
 	})
 
-	it('ignores unsupported saved values and falls back to English', () => {
-		expect(resolveLocale('fr', ['de-DE'])).toBe('en')
-		expect(resolveLocale(null, [])).toBe('en')
+	it('ignores unsupported saved values and falls back to Thai', () => {
+		expect(resolveLocale('fr', ['de-DE'])).toBe('th')
+		expect(resolveLocale(null, ['fr-FR'])).toBe('th')
+		expect(resolveLocale(null, [])).toBe('th')
 	})
 })
 
@@ -60,5 +63,18 @@ describe('locale persistence', () => {
 		vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['th-TH'])
 
 		expect(detectLocale()).toBe('en')
+	})
+
+	it('detects an English browser when nothing is saved', () => {
+		vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US'])
+
+		expect(detectLocale()).toBe('en')
+	})
+
+	it('starts in Thai when neither the saved choice nor the browser is supported', () => {
+		localStorage.setItem(LOCALE_STORAGE_KEY, 'fr')
+		vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['fr-FR', 'de-DE'])
+
+		expect(detectLocale()).toBe('th')
 	})
 })

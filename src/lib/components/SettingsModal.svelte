@@ -2,6 +2,7 @@
     import { gameStore, type GameMode, type GameSettings } from '$lib/stores/gameStore';
     import { locales, messages } from '$lib/i18n/messages';
     import { isLocale, storeLocale } from '$lib/i18n/locale';
+    import { storeSoundSetting } from '$lib/effects/celebrate';
     
     interface Props {
         mode: GameMode;
@@ -36,6 +37,12 @@
         }
     }
     
+    function setSound(value: string) {
+        const on = value === 'on';
+        gameStore.setSound(on);
+        storeSoundSetting(on);
+    }
+
     function handleBackdropClick(e: MouseEvent) {
         if (e.target === e.currentTarget) {
             onclose();
@@ -130,16 +137,17 @@
         
         <div class="space-y-5 p-5">
             {#if !gameSettingsLocked}
-                {#if mode !== 'single'}
+                {#if mode !== 'random'}
                     {@render field('player-count', t.settings.players, $gameStore.settings.playerCount, counts([2, 3, 4], t.settings.playerOption), setting('playerCount'))}
                 {/if}
                 {@render field('digit-count', t.settings.digits, $gameStore.settings.digitCount, counts([2, 3, 4, 5], t.settings.digitOption), setting('digitCount'))}
-                {#if mode === 'single'}
+                {#if mode === 'random'}
                     {@render field('max-attempts', t.settings.attempts, $gameStore.settings.maxAttempts, counts([3, 5, 7, 10, 15, 20], t.settings.attemptOption), setting('maxAttempts'))}
                 {/if}
                 <p class="text-sm text-[var(--glass-muted)]">{t.settings.restartHint}</p>
             {/if}
             {@render field('language', t.settings.language, $gameStore.locale, locales.map((locale) => ({ value: locale, label: messages[locale].languageName, lang: locale })), setLocale)}
+            {@render field('sound', t.settings.sound, $gameStore.sound ? 'on' : 'off', [{ value: 'on', label: t.settings.soundOn }, { value: 'off', label: t.settings.soundOff }], setSound)}
         </div>
         
         <div class="border-t-[1.5px] border-[var(--glass-border)] p-5 text-center">

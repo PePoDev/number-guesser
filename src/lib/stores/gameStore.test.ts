@@ -16,6 +16,8 @@ import {
   recordDailyResult,
   liveStreak,
   shareGrid,
+  DAILY_DIGITS,
+  DAILY_TRIES,
   EMPTY_DAILY_STATS,
 } from "./gameStore";
 
@@ -28,6 +30,7 @@ describe("Game Store", () => {
     it("should have correct initial state", () => {
       const state = get(gameStore);
       expect(state.locale).toBe("en");
+      expect(state.sound).toBe(true);
       expect(state.mode).toBe("daily");
       expect(state.settings.digitCount).toBe(3);
       expect(state.settings.maxAttempts).toBe(7);
@@ -40,7 +43,7 @@ describe("Game Store", () => {
 
   describe("Rounds", () => {
     it("counts every new game", () => {
-      gameStore.setMode("single");
+      gameStore.setMode("random");
       gameStore.startNewGame();
       gameStore.startNewGame();
       expect(get(gameStore).round).toBe(2);
@@ -75,6 +78,23 @@ describe("Game Store", () => {
     });
   });
 
+  describe("Sound", () => {
+    it("turns win sounds off and back on", () => {
+      gameStore.setSound(false);
+      expect(get(gameStore).sound).toBe(false);
+
+      gameStore.setSound(true);
+      expect(get(gameStore).sound).toBe(true);
+    });
+
+    it("keeps the sound choice when a new game starts", () => {
+      gameStore.setSound(false);
+      gameStore.setMode("random");
+      gameStore.startNewGame();
+      expect(get(gameStore).sound).toBe(false);
+    });
+  });
+
   describe("Mode Management", () => {
     it("should switch to multiplayer mode", () => {
       gameStore.setMode("multi");
@@ -82,11 +102,11 @@ describe("Game Store", () => {
       expect(state.mode).toBe("multi");
     });
 
-    it("should switch back to single player mode", () => {
+    it("should switch back to random mode", () => {
       gameStore.setMode("multi");
-      gameStore.setMode("single");
+      gameStore.setMode("random");
       const state = get(gameStore);
-      expect(state.mode).toBe("single");
+      expect(state.mode).toBe("random");
     });
 
     it("initializes online mode without local multiplayer players", () => {
@@ -166,16 +186,33 @@ describe("Game Store", () => {
     });
   });
 
-  describe("Single Player Game", () => {
+  describe("Random Game", () => {
     beforeEach(() => {
-      gameStore.setMode("single");
+      gameStore.setMode("random");
       gameStore.startNewGame();
     });
 
-    it("should generate a target number with correct digit count", () => {
+    it("should generate a three-digit target by default", () => {
       const state = get(gameStore);
-      expect(state.targetNumber).toHaveLength(3);
-      expect(state.targetNumber).toMatch(/^\d{3}$/);
+      expect(state.targetNumber).toBe("500");
+    });
+
+    it("starts each new game fresh with the chosen digits and attempts", () => {
+      gameStore.addGuess({
+        guess: "123",
+        correctDigits: 0,
+        correctPositions: 0,
+      });
+      gameStore.setGameOver(true);
+      gameStore.updateSettings({ digitCount: 5, maxAttempts: 10 });
+
+      gameStore.startNewGame();
+
+      const state = get(gameStore);
+      expect(state.targetNumber).toBe("50000");
+      expect(state.attemptsLeft).toBe(10);
+      expect(state.guessHistory).toEqual([]);
+      expect(state.gameOver).toBe(false);
     });
 
     it("should initialize attempts correctly", () => {
@@ -579,80 +616,58 @@ describe('msUntilDaily and formatCountdown', () => {
 })
 
 describe('dailyTarget', () => {
+  it('is three digits in six tries', () => {
+    expect(DAILY_DIGITS).toBe(3)
+    expect(DAILY_TRIES).toBe(6)
+  })
+
   it('never changes a published answer', () => {
     expect([1, 2, 3, 4, 5, 6, 7].map(dailyTarget)).toEqual([
-      '42273',
-      '18866',
-      '03054',
-      '30937',
-      '99185',
-      '39542',
-      '46885',
+      '273',
+      '866',
+      '054',
+      '937',
+      '185',
+      '542',
+      '885',
     ])
   })
 
-  it('always returns five digits', () => {
+  it('always returns three digits', () => {
     for (let day = 1; day <= 1000; day++) {
-      expect(dailyTarget(day)).toMatch(/^\d{5}$/)
+      expect(dailyTarget(day)).toMatch(/^\d{3}$/)
     }
   })
 })
 
 describe('scoreTiles', () => {
   it('marks right spots, wrong spots, and missing digits', () => {
-    expect(scoreTiles('31415', '63705')).toEqual([
-      'present',
-      'absent',
-      'absent',
-      'absent',
-      'correct',
-    ])
-    expect(scoreTiles('54321', '12345')).toEqual([
-      'present',
-      'present',
-      'correct',
-      'present',
-      'present',
-    ])
+    expect(scoreTiles('315', '635')).toEqual(['present', 'absent', 'correct'])
+    expect(scoreTiles('321', '123')).toEqual(['present', 'correct', 'present'])
   })
 
   it('gives each copy of a digit in the target to one guessed digit, right spots first', () => {
-    expect(scoreTiles('11111', '10001')).toEqual([
-      'correct',
-      'absent',
-      'absent',
-      'absent',
-      'correct',
-    ])
-    expect(scoreTiles('11223', '21111')).toEqual([
-      'present',
-      'correct',
-      'present',
-      'absent',
-      'absent',
-    ])
+    expect(scoreTiles('111', '101')).toEqual(['correct', 'absent', 'correct'])
+    expect(scoreTiles('113', '214')).toEqual(['absent', 'correct', 'absent'])
+    expect(scoreTiles('221', '112')).toEqual(['present', 'absent', 'present'])
   })
 })
 
 describe('digitStates', () => {
   it('keeps the best state each digit has earned', () => {
-    expect(digitStates(['12345', '21345'], '21000')).toEqual({
-      1: 'correct',
-      2: 'correct',
-      3: 'absent',
-      4: 'absent',
-      5: 'absent',
-    })
-    expect(digitStates([], '21000')).toEqual({})
+    const best = { 1: 'correct', 2: 'correct', 3: 'absent' }
+    expect(digitStates(['123', '213'], '210')).toEqual(best)
+    expect(digitStates(['213', '123'], '210')).toEqual(best)
+    expect(digitStates([], '210')).toEqual({})
   })
 })
 
 describe('dailyStatus', () => {
   it('is won by the answer and lost after six misses', () => {
-    expect(dailyStatus([], '12345')).toBe('playing')
-    expect(dailyStatus(['00000', '12345'], '12345')).toBe('won')
-    expect(dailyStatus(Array.from({ length: 5 }, (_, i) => `0000${i}`), '12345')).toBe('playing')
-    expect(dailyStatus(Array.from({ length: 6 }, (_, i) => `0000${i}`), '12345')).toBe('lost')
+    expect(dailyStatus([], '123')).toBe('playing')
+    expect(dailyStatus(['000', '123'], '123')).toBe('won')
+    expect(dailyStatus(Array.from({ length: 5 }, (_, i) => `00${i}`), '123')).toBe('playing')
+    expect(dailyStatus(Array.from({ length: 6 }, (_, i) => `00${i}`), '123')).toBe('lost')
   })
 })
 
@@ -703,7 +718,7 @@ describe('liveStreak', () => {
 
 describe('shareGrid', () => {
   it('shows colors only, one row per guess', () => {
-    expect(shareGrid(['31415', '63705'], '63705')).toBe('🟨⬜⬜⬜🟩\n🟩🟩🟩🟩🟩')
+    expect(shareGrid(['315', '635'], '635')).toBe('🟨⬜🟩\n🟩🟩🟩')
   })
 })
 
@@ -714,24 +729,24 @@ describe('Guessle store actions', () => {
 
   it('loads progress and records the result when the puzzle ends', () => {
     gameStore.loadDaily({ day: 1, guesses: [], stats: EMPTY_DAILY_STATS })
-    gameStore.addDailyGuess('12345')
+    gameStore.addDailyGuess('123')
     expect(get(gameStore).daily.stats.played).toBe(0)
 
     gameStore.addDailyGuess(dailyTarget(1))
     const { daily } = get(gameStore)
-    expect(daily.guesses).toEqual(['12345', dailyTarget(1)])
+    expect(daily.guesses).toEqual(['123', dailyTarget(1)])
     expect(daily.stats).toMatchObject({ played: 1, wins: 1, distribution: [0, 1, 0, 0, 0, 0] })
   })
 
   it('ignores guesses after the puzzle ends', () => {
     gameStore.loadDaily({ day: 1, guesses: [dailyTarget(1)], stats: EMPTY_DAILY_STATS })
-    gameStore.addDailyGuess('12345')
+    gameStore.addDailyGuess('123')
     expect(get(gameStore).daily.guesses).toEqual([dailyTarget(1)])
   })
 
   it('records a loss after the sixth miss', () => {
     gameStore.loadDaily({ day: 2, guesses: [], stats: EMPTY_DAILY_STATS })
-    for (const guess of ['00000', '11111', '22222', '33333', '44444', '55555']) {
+    for (const guess of ['000', '111', '222', '333', '444', '555']) {
       gameStore.addDailyGuess(guess)
     }
     expect(get(gameStore).daily.stats).toMatchObject({ played: 1, wins: 0, currentStreak: 0 })

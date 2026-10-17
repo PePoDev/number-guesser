@@ -1,6 +1,6 @@
 # Guessle
 
-Guessle is a static, interactive number-guessing puzzle built with SvelteKit 2, Svelte 5, TypeScript, and Tailwind CSS 4: a daily 5-digit puzzle with Wordle-style clues, plus Classic, local, and online multiplayer modes.
+Guessle is a static, interactive number-guessing puzzle built with SvelteKit 2, Svelte 5, TypeScript, and Tailwind CSS 4: a daily 3-digit puzzle with Wordle-style clues, a replayable Random mode, and local and online multiplayer.
 
 🎮 **[Play the live demo](https://guessle.pepo.dev)**
 
@@ -8,7 +8,7 @@ Guessle is a static, interactive number-guessing puzzle built with SvelteKit 2, 
 
 ## Game
 
-Players guess a secret 2–5 digit number. In Classic and multiplayer, each guess reports:
+Players guess a secret 2–5 digit number. In Random and multiplayer, each guess reports:
 
 - **Correct digits** — digits that appear anywhere in the target.
 - **Correct positions** — digits in the exact target position.
@@ -17,18 +17,21 @@ Example: target `401`, guess `410` → 3 correct digits and 1 correct position.
 
 ### Modes
 
-- **Guessle (daily single player):** The default mode. Everyone gets the same 5-digit number on the same local date and has 6 tries. Each guessed digit becomes a tile: green when it is in the right spot, yellow with a dot when it is in the number but in another spot, and gray when it is not in the number. As in Wordle, a repeated digit turns yellow only while the answer still has an unmatched copy of it; extra copies are gray. Repeated guesses are rejected without using a try. A finished puzzle cannot be replayed; the next one arrives at local midnight. Results share as an emoji grid that shows colors, not digits.
-- **Classic single player:** The computer generates a number. The player has 3–20 attempts, with 7 by default. Duplicate guesses are rejected without consuming an attempt.
+- **Guessle (daily single player):** The default mode. Everyone gets the same 3-digit number on the same local date and has 6 tries. Each guessed digit becomes a tile: green when it is in the right spot, yellow with a dot when it is in the number but in another spot, and gray when it is not in the number. As in Wordle, a repeated digit turns yellow only while the answer still has an unmatched copy of it; extra copies are gray. Repeated guesses are rejected without using a try. A finished puzzle cannot be replayed; the next one arrives at local midnight. Results share as an emoji grid that shows colors, not digits.
+- **Random (single player):** For players who want more than the daily puzzle. Every game draws a new random number and plays on the same board and keypad as Guessle, but each guessed row keeps its digits plain and shows the hints beside it: how many digits are in the number and how many are in the right spot. Settings choose 2–5 digits (3 by default) and 3–20 attempts (7 by default). Repeated guesses are rejected without using a try, and New Game or Play again draws a fresh number.
 - **Local multiplayer:** Two to four players share one device, choose names and secret numbers, and take turns guessing.
 - **Online multiplayer:** Two to four remote players enter display names, create or join a room with a six-character ID or invite link, and reconnect after refresh. The host can start once at least two players are ready; anyone not ready is left out. Leaving mid-match forfeits, and if the player whose turn it is stays idle for two minutes, the others can remove them. Firebase keeps secrets private and enforces turns on the server.
 
 Secret-number and guess fields read Thai numerals (๐–๙) as digits, discard other non-digits, and stop at the configured digit count. Every mode requires exactly that many digits; nothing is padded.
 
-`Enter` submits a guess. `Escape` closes the settings modal. In Guessle, digit keys type into the current row and `Backspace` deletes, just like the on-screen keypad.
+`Enter` submits a guess. `Escape` closes the settings modal. In Guessle and Random, digit keys type into the current row and `Backspace` deletes, just like the on-screen keypad.
+
+A win in Guessle or Random sets off a short confetti burst and a rising four-note chime. The confetti is skipped when the system asks for reduced motion. The chime is synthesized with the Web Audio API, so the app ships no sound files, and Settings can turn sound effects off; the choice is saved in local storage key `number-guessing-sound`.
 
 ### Guessle rules
 
 - Puzzle #1 is 2026-10-14. `dailyNumber` counts local calendar days from that date, and `dailyTarget` derives each answer from a fixed hash of the puzzle number. Answers must never change once published, so a unit test pins known answers. Like any static daily puzzle, the answer can be computed from the shipped JavaScript.
+- Guessle switched from 5 digits to 3 on 2026-10-17, during puzzle #4, at the owner's request. Each 3-digit answer is the last three digits of the old 5-digit one (the same hash, taken modulo 1,000). Saved guesses of the old length are dropped as invalid, so a player who had started or finished #4 sees a fresh board; stats keep the earlier result, and a day is never counted twice.
 - Progress and stats live on the device in local storage key `number-guessing-daily`: the puzzle number, its guesses, and the stats. The answer is never stored. Without storage, the puzzle still works for the visit. Storage keys keep the `number-guessing-` prefix from before the project became Guessle, so saved languages, rooms, and progress survive the rename.
 - Stats count games played and won, the current and longest streak of consecutive puzzle days won, and how many tries each win took. A loss or a missed day ends the streak.
 - An unstarted puzzle switches to the new day at midnight. A finished puzzle keeps its result on screen and offers today's puzzle instead of replacing it. A puzzle left unfinished at midnight continues until it ends; a reload opens the new day.
@@ -93,8 +96,9 @@ src/routes/
   +layout.svelte               Global styles, locale detection, and <html lang>
   +page.svelte                 Stage and component composition
 src/lib/components/
-  DailyGame.svelte             Guessle board, keypad, stats, and sharing
-  SinglePlayerGame.svelte      Classic single-player UI
+  DailyGame.svelte             Guessle board, stats, and sharing
+  RandomGame.svelte            Random board with digit and position hints
+  Keypad.svelte                On-screen and physical-keyboard digit entry for both boards
   MultiPlayerGame.svelte       Multiplayer UI
   OnlineMultiplayerGame.svelte Online room entry, lobby, and synchronized game
   SettingsModal.svelte         Active-mode settings dialog
@@ -105,6 +109,7 @@ src/lib/i18n/
   messages.ts                  English and Thai dictionaries
   locale.ts                    Locale detection and persistence
 src/lib/daily/progress.ts       Guessle progress and stats persistence
+src/lib/effects/celebrate.ts    Win confetti, chime, and the saved sound setting
 src/lib/firebase/client.ts      Firebase browser initialization
 src/lib/online/types.ts         Public online state types
 src/lib/services/
@@ -120,7 +125,7 @@ static/                        favicon, robots.txt
 CNAME                          Custom domain record (guessle.pepo.dev)
 ```
 
-`gameStore.ts` owns the complete `GameState`: locale, mode, settings, single-player target and history, Guessle progress and stats, multiplayer players and turns, phase, active players, and game-over state.
+`gameStore.ts` owns the complete `GameState`: locale, sound, mode, settings, the Random target and guesses, Guessle progress and stats, multiplayer players and turns, phase, active players, and game-over state.
 
 Components keep only local UI state. They call intent-based store actions such as `startNewGame`, `addGuess`, `loadDaily`, `addDailyGuess`, `savePlayerSetup`, `addMultiPlayerGuess`, and `nextGuesser`.
 
@@ -142,7 +147,7 @@ The interface ships in English (`en`) and Thai (`th`).
 - All user-visible copy lives in `src/lib/i18n/messages.ts`. `en` is the source dictionary and `th` is typed against it, so a missing or mistyped Thai entry fails `pnpm check`.
 - Copy that depends on a count or embeds a value is a function. Copy that wraps a highlighted value returns `RichText` parts, and each component renders the value with its own markup.
 - `gameStore` owns `locale` and the `setLocale` action. Components read `messages[$gameStore.locale]`.
-- On load the root layout uses the saved choice in local storage key `number-guessing-locale`, then the first browser language that starts with `th` or `en`, then English. Choosing a language in Settings saves it.
+- On load the root layout uses the saved choice in local storage key `number-guessing-locale`, then the first browser language that starts with `th` or `en`, then Thai. Choosing a language in Settings saves it.
 - The layout keeps `<html lang>` and the page keeps the document title in the active language.
 - Stores and services return codes, not copy: `validateGuess` reports a `GuessProblem`, online commands report an `OnlineErrorCode`, and unnamed local players stay blank until a component renders their localized default name.
 - Player-entered names, room IDs, numbers, the Guessle name, and the `Enter` and `Escape` key names are not translated.
@@ -194,12 +199,13 @@ Firebase dependencies and backend deployment are explicitly approved for online 
 | --- | --- | --- |
 | Unit | `src/lib/stores/gameStore.test.ts` | Pure helpers, state transitions, edge cases |
 | Component | Colocated `*.test.ts` files | Rendering, interaction, ARIA, component branches |
-| End-to-end | `e2e/*.spec.ts` | Complete Guessle, Classic, and multiplayer flows; `daily.spec.ts` covers a win, a loss, saved progress, sharing, and the next day; `localization.spec.ts` covers Thai browser detection and the saved language; `layout.spec.ts` checks at real window sizes that the page never scrolls from 540px tall, Guessle in play fits without panel scroll from 720px tall at desktop widths and from 740px tall below 900px wide, a taller window never gives a finished Guessle less room, warnings never resize the board, each screen opens at its top, and the panel and the Classic history scroll instead |
+| End-to-end | `e2e/*.spec.ts` | Complete Guessle, Random, and multiplayer flows; `daily.spec.ts` covers a win with confetti, a loss, saved progress, sharing, and the next day; `random.spec.ts` covers hints, a win, a loss, settings, New Game, keyboard focus on the switch, Thai copy, and the saved sound setting; `localization.spec.ts` covers Thai browser detection and the saved language; `layout.spec.ts` checks at real window sizes that the stage adapts between phone, tablet, and desktop, the page never scrolls from 540px tall, Guessle and Random in play fit without panel scroll from 720px tall at desktop widths and from 740px tall below 900px wide, a taller window never gives a finished Guessle less room, warnings never resize the board, each screen opens at its top, and the panel and a long Random board scroll instead |
 | Firebase integration | `functions/src/*.test.ts`, `src/lib/firebase/firestore.rules.test.ts` | Emulator-only transactions, cleanup, and security rules |
 | Online end-to-end | `e2e/online-multiplayer.spec.ts` | Separate browser contexts for create/join, turns, host and invited-player reconnect, forfeit, starting without unready players, and errors |
 | Deployment | `src/tests/deploymentWorkflows.test.ts` | Secret injection, missing-config guard, and Java runtime requirements |
 | Localization | `src/lib/i18n/*.test.ts` | Locale resolution, persistence, and dictionary parity |
-| Guessle storage | `src/lib/daily/progress.test.ts` | Reading, validating, and saving progress and stats |
+| Guessle storage | `src/lib/daily/progress.test.ts` | Reading, validating, and saving progress and stats, including guesses saved before the 3-digit switch |
+| Win effects | `src/lib/effects/celebrate.test.ts` | Confetti canvas lifecycle and reduced motion, the chime on a stubbed `AudioContext`, and the saved sound setting |
 | Setup | `src/tests/setup.ts`, `src/tests/appNavigation.ts` | DOM environment, matchers, pinned `Math.random`, and a `$app/navigation` stand-in aliased in `vitest.config.ts` |
 
 ### Test requirements
@@ -211,7 +217,7 @@ Firebase dependencies and backend deployment are explicitly approved for online 
 - Test behavior, not implementation details.
 - Use semantic Testing Library queries and Playwright's built-in waiting.
 - Cover Thai copy by calling `gameStore.setLocale('th')` before rendering, and browser detection in Playwright with `test.use({ locale: 'th-TH' })`. Clear `localStorage` before tests that render the page so a saved language cannot leak between tests.
-- Fix the date for Guessle: in Vitest, `vi.useFakeTimers({ toFake: ['Date'] })` with `vi.setSystemTime(new Date(2026, 9, 14, 9))`; in Playwright, `page.clock.setFixedTime` with a fixed `timezoneId`. Specs that test Classic select it first, because Guessle opens by default.
+- Fix the date for Guessle: in Vitest, `vi.useFakeTimers({ toFake: ['Date'] })` with `vi.setSystemTime(new Date(2026, 9, 14, 9))`; in Playwright, `page.clock.setFixedTime` with a fixed `timezoneId`. Specs that test Random select it first, because Guessle opens by default.
 - Test layout in Playwright, because jsdom does not lay out: set the window with `page.setViewportSize`, then compare `document.scrollingElement.scrollHeight` with `innerHeight` for the page and the panel's `scrollHeight` with its `clientHeight`.
 - Use fake timers and seeded randomness when needed. `src/tests/setup.ts` pins `Math.random` to 0.5 before every Vitest test, so a three-digit target is `500`; Playwright specs that play single player stub it with `page.addInitScript` before navigation.
 - Keep tests independent; avoid arbitrary timeouts.
@@ -257,7 +263,7 @@ The interface should feel like one well-built editorial object, not a dashboard.
 - The right contains a decorative perspective tunnel of numbered tiles.
 - The ticker is the only looping animation.
 
-The Single Player card opens the last selected single-player variant, Daily first; a segmented control inside the play panel switches between Daily (Guessle) and Classic. The Multiplayer card works the same way for Local and Online. Instructions replaces the center-panel game content. The icon-only Settings (gear) button beside the GitHub link in the panel header is always available. It opens the active mode's game settings plus the language; once an online room exists its rules are fixed, so only the language remains. Guessle has no game settings, so its Settings shows only the language. The purple New Game action is disabled online because the host-owned restart remains inside the online flow, and in Guessle because there is one puzzle per day.
+The Single Player card opens the last selected single-player variant, Daily first; a segmented control inside the play panel switches between Daily (Guessle) and Random. The Multiplayer card works the same way for Local and Online. Instructions replaces the center-panel game content. The icon-only Settings (gear) button beside the GitHub link in the panel header is always available. It opens the active mode's game settings plus the language and sound effects; once an online room exists its rules are fixed, so only the language and sound remain. Guessle has no game settings, so its Settings shows only the language and sound. The purple New Game action is disabled online because the host-owned restart remains inside the online flow, and in Guessle because there is one puzzle per day.
 
 Desktop columns are a ~140px nav rail, a flexible play area with a 320px minimum, and a hero using about 40% of the remaining width.
 
@@ -325,25 +331,27 @@ The main display heading is the Guessle wordmark: "Guess" followed by "le." in t
 | Nav card | Number and arrow above label; solid accent; inset border when active; on phones a single-line card with number and label side by side |
 | Ticker | Short labels separated by `✦` on one line at every width; ~40s seamless scroll; static and wrapped to show every label when motion is reduced |
 | Glass panel | Cream surface, dark 1.5px border, 20px radius, 32px/24px/16px responsive padding (24px on desktop below 1128px tall); fills the body row and scrolls only when its content cannot fit, keeping 8px between a focused control and its edge |
-| Variant switch | Segmented control inside the play panel: Daily/Classic for single player and Local/Online for multiplayer; active choice is dark-filled; in Guessle it shares a row with the `Guessle #N` heading, which drops to 1.25rem below 600px wide to fit beside it; keyboard focus stays on the pressed choice when the switch moves |
-| Guessle board | Six rows of five tiles that fill the height left between the heading and the keypad: each tile is `min(3.5rem, height ÷ rows, width ÷ 5)`, never below 2rem; empty tiles are translucent, typed tiles get a dark border, and scored tiles fill with the tile tokens, colored left to right; a finished board shows only the rows played, down to 1.25rem tiles (2rem on phones and below 540px tall, where the panel or page scrolls anyway); tiles are `aria-hidden` and each row carries a sentence for screen readers |
-| Guessle keypad | Digits 1–5 and 6–0 in two rows, then Delete and Enter, pinned under the board; keys are `clamp(2.75rem, 6dvh, 3.25rem)` high (44–52px) and take the best state each digit has earned (right spot over wrong spot over not in the number) |
-| Guessle result | Win or lose message with the answer; four stat tiles (Played, Win %, Current streak, Max streak); a guess-distribution bar list with bars at most 24px thick, 4px rounded ends, counts in text tokens, and today's bar in `--tile-correct`; the stats sit in a 2 × 2 grid beside the distribution once the result is 22rem wide, and stack above it in narrower panels; one actions row holds Share (system share sheet, otherwise copy with a Copied! tooltip), Play Classic, and a countdown to the next puzzle, or a Play today's Guessle action once it has arrived |
+| Variant switch | Segmented control inside the play panel: Daily/Random for single player and Local/Online for multiplayer; active choice is dark-filled; on both single-player boards it shares a row with the board's heading (`Guessle #N`, or the tries left in Random), which drops to 1.125rem below 600px wide to fit beside it; keyboard focus stays on the pressed choice when the switch moves, and a tapped choice lets go of focus so a physical `Enter` submits the guess |
+| Guessle board | Six rows of three tiles that fill the height left between the heading and the keypad: each tile is `min(3.5rem, height ÷ rows, width ÷ columns)`, never below 2rem; empty tiles are translucent, typed tiles get a dark border, and scored tiles fill with the tile tokens, colored left to right; a finished board shows only the rows played, down to 1.25rem tiles (2rem on phones and below 540px tall, where the panel or page scrolls anyway); tiles are `aria-hidden` and each row carries a sentence for screen readers |
+| Keypad | Shared by Guessle and Random: digits 1–5 and 6–0 in two rows, then Delete and Enter, pinned under the board; keys are `clamp(2.75rem, 6dvh, 3.25rem)` high (44–52px); in Guessle they take the best state each digit has earned (right spot over wrong spot over not in the number), and in Random they stay plain because its hints never say which digit matched |
+| Random board | One row per attempt (3–20) sized like the Guessle board, never below 2rem, scrolling inside its box once the rows no longer fit; a played row shows its digits on dark ink tiles and two hint squares 0.8 tile wide: the count of digits in the number (`--tile-present` with a dot) and the count in the right spot (`--tile-correct`); a one-line legend above the board names both; a finished board keeps only the rows played; each row carries a sentence for screen readers |
+| Random result | Win or lose banner with the number and the attempts used, and Play again, which draws a new number and returns focus to the board heading |
+| Guessle result | Win or lose message with the answer; four stat tiles (Played, Win %, Current streak, Max streak); a guess-distribution bar list with bars at most 24px thick, 4px rounded ends, counts in text tokens, and today's bar in `--tile-correct`; the stats sit in a 2 × 2 grid beside the distribution once the result is 22rem wide, and stack above it in narrower panels; one actions row holds Share (system share sheet, otherwise copy with a Copied! tooltip), Play Random, and a countdown to the next puzzle, or a Play today's Guessle action once it has arrived |
 | Instructions | Orange card swaps the center panel between the game and the how-to-play content, including how to play with friends |
-| Input | 56px high, white, centered text, 14px radius, visible blue focus ring; game-number fields filter to digits and enforce the configured length; the single-player guess field grows beside Submit Guess and wraps above it on narrow screens |
+| Input | 56px high, white, centered text, 14px radius, visible blue focus ring; game-number fields filter to digits and enforce the configured length |
 | Secondary button | 48px high, white, dark border, 14px radius |
 | Icon button | 44px square `.btn-icon` secondary variant with a 20px glyph, an `aria-label`, and a matching `title` tooltip |
 | Panel header | Display title with the Settings and GitHub icon group top-right; the group wraps above the title when the title needs the full width |
 | GitHub stars | Icon-only GitHub mark beside Settings in the panel header; puts a validated live count in its accessible name and tooltip when available and remains a labeled link on API failure |
 | Setup/control strip | Translucent white, dark border, and wrapping controls on narrow screens; labels stack above fields on phones; the local secret number is masked with a 44px eye toggle and re-masks for each player |
-| Notepad | Single-player row of ten 44px digit buttons (5 × 2 on phones) cycling unmarked → ruled out (muted, struck through) → in the answer (correct tint and inset ring); a Clear notes action appears once a digit is marked; the notepad is put away once the game ends, and every new game starts blank |
-| Feedback banner | State-tinted low-opacity background and border; warning for validation and info for an unfinished guess; the final result shows only in the result banner; clears when a new game starts; during play Guessle's warning floats over the bottom of the board, whose last rows stay empty until the last try, on an opaque tint, so the board never resizes; after the game it sits above the result |
-| Result banner | Final win/lose message with a Play again action; takes focus when the game ends and returns focus to the guess field on replay; the Guessle result takes focus the same way |
-| History row | Translucent white; newest row has a purple left border; single-player history lists newest first, shows an empty-state hint, wraps the guess and score as whole phrases, and grows into the panel's leftover height, always with room for the two newest guesses, scrolling inside its box once it fills it |
+| Feedback banner | State-tinted low-opacity background and border; warning for validation and info for an unfinished guess; the final result shows only in the result banner; clears when a new game starts; during play the Guessle and Random warning floats over the bottom of the board, whose last rows stay empty until the last try, on an opaque tint, so the board never resizes; after the game it sits above the result |
+| Result banner | Final win/lose message; takes focus when the game ends, so a win's confetti and chime arrive with the announcement |
+| History row | Translucent white; newest row has a purple left border; used by the multiplayer player cards |
 | Player card | Landscape nav-card language; inset turn border; red-tinted eliminated state and visible badge; newest guess first; a finished game offers Play again, which keeps player names |
 | Online multiplayer | One cream-panel flow: name/create/join entry, room-ID lobby with paired Copy and Share actions, accessible confirmation tooltips, readiness, turn/guess state, reconnect status, and host restart; a two-step Leave game that forfeits, a warning banner offering to remove a player idle for two minutes, and players who left labelled Left |
-| Settings modal | Active-mode title and fields with a note that changing them starts a new game, then a Language select whose options are written in their own language with a matching `lang`; cream surface, 480px maximum, blurred 40% black scrim, focus trap, and viewport-bounded scrolling |
+| Settings modal | Active-mode title and fields with a note that changing them starts a new game, then a Language select whose options are written in their own language with a matching `lang`, then a Sound effects On/Off select; cream surface, 480px maximum, blurred 40% black scrim, focus trap, and viewport-bounded scrolling |
 | Hero | Decorative CSS/SVG tile tunnel with `aria-hidden="true"` |
+| Confetti | One-shot `aria-hidden` canvas over the whole window when a Guessle or Random game is won: pieces in the five accent tokens, about two seconds, no pointer events, removed afterwards; skipped under reduced motion |
 | Utility row | Current mode plus visible `Enter` and `Escape` keyboard hints; hidden below 600px wide and below 1128px tall |
 
 Icons are monochrome line icons, normally 18×18px with a 1.5px stroke. Icon-only buttons use 20×20px glyphs; the GitHub mark is the one filled brand icon.
@@ -351,9 +359,9 @@ Icons are monochrome line icons, normally 18×18px with a 1.5px stroke. Icon-onl
 ### Motion
 
 - Default: 180ms with `cubic-bezier(0.2, 0.8, 0.2, 1)`.
-- Allow hover changes, ticker scroll, short modal or feedback slide-ins, and the Guessle tile color reveal (each tile 180ms, staggered left to right).
+- Allow hover changes, ticker scroll, short modal or feedback slide-ins, the Guessle tile color reveal (each tile 180ms, staggered left to right), and a one-shot confetti burst of about two seconds when a single-player game is won.
 - Do not use bounce, springs, parallax, page transitions, or non-ticker loops.
-- Under `prefers-reduced-motion`, remove transitions, including the tile reveal, and make the ticker static.
+- Under `prefers-reduced-motion`, remove transitions, including the tile reveal, skip the confetti, and make the ticker static.
 
 ### Accessibility
 
@@ -365,7 +373,7 @@ Icons are monochrome line icons, normally 18×18px with a 1.5px stroke. Icon-onl
 - Keep live regions mounted and change only their text; a region created together with its message is often not announced.
 - When an action removes the focused control, move focus to the new content: the guess field, the result, or the new screen's heading.
 - Enter submits only when no input method is composing, and a handled Enter calls `preventDefault` so it cannot also activate the control that receives focus.
-- Guessle reads the physical keyboard only while its board is visible and focus is outside fields and dialogs. With a button focused, Enter activates that button rather than submitting. The status region announces the typed digits and each scored row.
+- Guessle and Random read the physical keyboard only while their board is visible and focus is outside fields and dialogs. With a button focused, Enter activates that button rather than submitting. The status region announces the typed digits and each scored row.
 - Keep the GitHub repository link accessible while its star count is loading or unavailable.
 
 ### Responsive behavior
@@ -389,13 +397,15 @@ Use Tailwind breakpoints `sm: 600px`, `md: 900px`, and `lg: 1200px`, and the hei
 | Surface | File |
 | --- | --- |
 | Stage, ticker, nav, glass shell, hero, utilities | `src/routes/+page.svelte` |
-| Guessle board, keypad, result, stats, and sharing | `src/lib/components/DailyGame.svelte` |
-| Classic single-player panel, result banner, and history | `src/lib/components/SinglePlayerGame.svelte` |
+| Guessle board, result, stats, and sharing | `src/lib/components/DailyGame.svelte` |
+| Random board, hints, and result | `src/lib/components/RandomGame.svelte` |
+| Keypad and physical-keyboard entry | `src/lib/components/Keypad.svelte` |
+| Win confetti and chime | `src/lib/effects/celebrate.ts` |
 | Multiplayer panels and player cards | `src/lib/components/MultiPlayerGame.svelte` |
 | Online entry, lobby, synchronized game, reconnect, and result states | `src/lib/components/OnlineMultiplayerGame.svelte` |
 | Active-mode settings modal | `src/lib/components/SettingsModal.svelte` |
 | GitHub repository link and live star count | `src/lib/components/GitHubStarLink.svelte` |
-| Tokens, Tailwind `@theme` mappings, shared control classes, and global motion/focus styles | `src/app.css` |
+| Tokens, Tailwind `@theme` mappings, shared control classes, board tiles, keys, clue marks, and global motion/focus styles | `src/app.css` |
 | Display, body, and Thai font loading | `src/app.html` |
 | English and Thai copy | `src/lib/i18n/messages.ts` |
 
@@ -426,6 +436,8 @@ Add new surfaces to this table. The initial editorial design system was recorded
 2026-10-17 — Fixed the stage to the window so the page no longer scrolls: the play panel scrolls only as a fallback, Guessle's tiles and keys size themselves to the height, a finished Guessle shows only the rows played above a compact result, Classic's history fills the leftover height, phones get a single-line ticker, and short windows drop the utility row and the Guessle intro line. Classic puts its notepad away once a game ends, and its history always shows the two newest guesses.
 
 2026-10-17 — Moved the site from `number-guesser.pepo.dev` to `guessle.pepo.dev`.
+
+2026-10-17 — Replaced Classic with Random, a replayable mode on the Guessle board whose rows show digit and position hints; Guessle became a 3-digit puzzle; Thai became the fallback language; a win now sets off confetti and a chime, with a Sound effects setting.
 
 ## Change guide
 

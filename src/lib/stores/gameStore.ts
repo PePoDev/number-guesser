@@ -7,7 +7,7 @@ import type {
 } from "../online/types";
 import type { Locale } from "../i18n/messages";
 
-export type GameMode = "daily" | "single" | "multi" | "online";
+export type GameMode = "daily" | "random" | "multi" | "online";
 export type GamePhase = "setup" | "guessing" | "finished";
 export type GuessProblem = "invalid" | "range" | "length";
 
@@ -54,7 +54,7 @@ export interface DailyProgress {
   stats: DailyStats
 }
 
-export const DAILY_DIGITS = 5
+export const DAILY_DIGITS = 3
 export const DAILY_TRIES = 6
 
 export const EMPTY_DAILY_STATS: DailyStats = {
@@ -75,6 +75,7 @@ export interface GameSettings {
 
 export interface GameState {
   locale: Locale;
+  sound: boolean;
   mode: GameMode;
   round: number;
   settings: GameSettings;
@@ -109,6 +110,7 @@ const initialOnlineState: OnlineGameState = {
 
 const initialState: GameState = {
   locale: "en",
+  sound: true,
   mode: "daily",
   round: 0,
   settings: initialSettings,
@@ -131,6 +133,7 @@ function createGameStore() {
   return {
     subscribe,
     setLocale: (locale: Locale) => update((state) => ({ ...state, locale })),
+    setSound: (sound: boolean) => update((state) => ({ ...state, sound })),
     setMode: (mode: GameMode) => update((state) => ({ ...state, mode })),
     updateSettings: (settings: Partial<GameSettings>) =>
       update((state) => ({
@@ -176,7 +179,7 @@ function createGameStore() {
       })),
     startNewGame: () =>
       update((state) => {
-        if (state.mode === "single") {
+        if (state.mode === "random") {
           return {
             ...state,
             round: state.round + 1,
@@ -391,7 +394,8 @@ export function formatCountdown(ms: number): string {
 }
 
 // Published answers must never change: every shared result and saved game
-// depends on this exact mixing of the puzzle number.
+// depends on this exact mixing of the puzzle number. Guessle switched from 5 to
+// 3 digits during puzzle #4, so each answer is the old one's last three digits.
 export function dailyTarget(day: number): string {
   let x = (day + 0x4e47) >>> 0
   x ^= x >>> 16

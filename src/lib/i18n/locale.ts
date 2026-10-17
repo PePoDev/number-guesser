@@ -22,7 +22,7 @@ export function resolveLocale(
 			return base
 		}
 	}
-	return 'en'
+	return 'th'
 }
 
 // Storage can throw in private browsing or with blocked site data; the

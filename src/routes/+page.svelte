@@ -3,7 +3,7 @@
 	import { gameStore, DAILY_DIGITS, DAILY_TRIES, type GameMode } from '$lib/stores/gameStore';
 	import SettingsModal from '$lib/components/SettingsModal.svelte';
 	import DailyGame from '$lib/components/DailyGame.svelte';
-	import SinglePlayerGame from '$lib/components/SinglePlayerGame.svelte';
+	import RandomGame from '$lib/components/RandomGame.svelte';
 	import MultiPlayerGame from '$lib/components/MultiPlayerGame.svelte';
 	import OnlineMultiplayerGame from '$lib/components/OnlineMultiplayerGame.svelte';
 	import GitHubStarLink from '$lib/components/GitHubStarLink.svelte';
@@ -13,7 +13,7 @@
 	let panel = $state<HTMLElement>();
 	let showSettings = $state(false);
 	let showInstructions = $state(false);
-	let chosenSingleMode = $state<'daily' | 'single'>('daily');
+	let chosenSingleMode = $state<'daily' | 'random'>('daily');
 	let chosenMultiMode = $state<'multi' | 'online'>('multi');
 	let invitedRoomId = $state('');
 	const displayedDigitCount = $derived(
@@ -25,7 +25,7 @@
 	const t = $derived(messages[$gameStore.locale]);
 	const settingsLabel = $derived(t.header.openSettings(t.modes[$gameStore.mode]));
 	const tickerText = $derived(`${t.ticker.join(' ✦ ')} ✦ `);
-	const singleMode = $derived($gameStore.mode === 'daily' || $gameStore.mode === 'single');
+	const singleMode = $derived($gameStore.mode === 'daily' || $gameStore.mode === 'random');
 	// Single-player boards stretch to fill the panel; other screens keep block flow and its collapsing margins.
 	const fillPanel = $derived(singleMode && !showInstructions);
 	const panelScreen = $derived(`${$gameStore.mode}:${showInstructions}`);
@@ -43,11 +43,22 @@
 		const fromSwitch = document.activeElement?.closest('.variant-switch');
 		gameStore.setMode(mode);
 		gameStore.startNewGame();
-		// Guessle and Classic draw the switch in different places, so focus follows it.
+		// Each single-player board draws its own copy of the switch, so focus follows it.
 		if (fromSwitch) {
 			await tick();
 			document.querySelector<HTMLElement>('.variant-switch [aria-pressed="true"]')?.focus();
 		}
+	}
+
+	// A tapped choice lets go of focus, so a physical Enter submits a guess
+	// instead of pressing the switch again; keyboard activation keeps focus.
+	function pickVariant(mode: GameMode) {
+		return (event: MouseEvent) => {
+			if (event.detail > 0) {
+				(event.currentTarget as HTMLElement).blur();
+			}
+			void selectMode(mode);
+		};
 	}
 
 	const navCards = $derived([
@@ -83,7 +94,7 @@
 	});
 
 	$effect(() => {
-		if ($gameStore.mode === 'daily' || $gameStore.mode === 'single') {
+		if ($gameStore.mode === 'daily' || $gameStore.mode === 'random') {
 			chosenSingleMode = $gameStore.mode;
 		} else {
 			chosenMultiMode = $gameStore.mode;
@@ -124,7 +135,7 @@
 			<button
 				type="button"
 				aria-pressed={$gameStore.mode === option.mode}
-				onclick={() => selectMode(option.mode)}
+				onclick={pickVariant(option.mode)}
 			>
 				{option.label}
 			</button>
@@ -135,7 +146,7 @@
 {#snippet singleSwitch()}
 	{@render variantSwitch(t.header.singleType, [
 		{ mode: 'daily', label: t.header.dailyMode },
-		{ mode: 'single', label: t.header.classic },
+		{ mode: 'random', label: t.header.random },
 	])}
 {/snippet}
 
@@ -213,15 +224,10 @@
 						{#if $gameStore.mode === 'daily'}
 							<p class="short:sr-only">{@render rich(t.header.daily(DAILY_DIGITS, DAILY_TRIES))}</p>
 						{:else}
-							<p>{@render rich(t.header.thinking(displayedDigitCount))}</p>
+							<p class={singleMode ? 'short:sr-only' : ''}>{@render rich(t.header.thinking(displayedDigitCount))}</p>
 						{/if}
-						{#if $gameStore.mode === 'single'}
-							<p>{@render rich(t.header.attemptsLeft($gameStore.attemptsLeft))}</p>
-						{/if}
-						<!-- Guessle sets the switch beside its puzzle heading to save a row. -->
-						{#if $gameStore.mode === 'single'}
-							<div class="mt-2">{@render singleSwitch()}</div>
-						{:else if !singleMode}
+						<!-- Single-player boards set the switch beside their heading to save a row. -->
+						{#if !singleMode}
 							<div class="mt-2">
 								{@render variantSwitch(t.header.multiplayerType, [
 									{ mode: 'multi', label: t.header.local },
@@ -237,7 +243,7 @@
 						<h2 id="instructions-heading" class="font-display text-2xl font-bold">{t.instructions.heading}</h2>
 						<h3 class="font-display text-lg font-bold">{t.instructions.dailyHeading}</h3>
 						{@render steps(t.instructions.dailySteps)}
-						<h3 class="font-display text-lg font-bold">{t.instructions.classicHeading}</h3>
+						<h3 class="font-display text-lg font-bold">{t.instructions.randomHeading}</h3>
 						{@render steps(t.instructions.steps)}
 						<h3 class="font-display text-lg font-bold">{t.instructions.friendsHeading}</h3>
 						<ul class="list-disc space-y-2 pl-5 text-sm">
@@ -250,8 +256,8 @@
 				<div hidden={showInstructions} class={fillPanel ? 'flex flex-1 flex-col' : ''}>
 					{#if $gameStore.mode === 'daily'}
 						<DailyGame toolbar={singleSwitch} />
-					{:else if $gameStore.mode === 'single'}
-						<SinglePlayerGame />
+					{:else if $gameStore.mode === 'random'}
+						<RandomGame toolbar={singleSwitch} />
 					{:else if $gameStore.mode === 'multi'}
 						<MultiPlayerGame />
 					{:else}
@@ -486,7 +492,7 @@
 
 	@media (max-width: 599px) {
 		.variant-switch button {
-			padding: 10px 14px;
+			padding: 10px;
 		}
 	}
 

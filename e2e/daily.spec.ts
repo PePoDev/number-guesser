@@ -4,6 +4,7 @@ test.use({ timezoneId: 'Asia/Bangkok' })
 
 const day1 = new Date('2026-10-14T09:00:00+07:00')
 const day2 = new Date('2026-10-15T09:00:00+07:00')
+const day4 = new Date('2026-10-17T09:00:00+07:00')
 
 test.beforeEach(async ({ page }) => {
 	await page.clock.setFixedTime(day1)
@@ -29,64 +30,121 @@ test("wins today's Guessle, keeps it after a reload, shares it, and continues th
 
 	await expect(page.getByRole('heading', { name: 'Guessle #1' })).toBeVisible()
 	await expect(page.getByRole('button', { name: /New Game/ })).toBeDisabled()
-	await guess(page, '12345')
+	await guess(page, '123')
 	await expect(page.getByRole('list', { name: 'Guesses' })).toContainText(
-		'Guess 1: 1 not in the number, 2 in the right spot, 3 in another spot, 4 in another spot, 5 not in the number',
+		'Guess 1: 1 not in the number, 2 in another spot, 3 in the right spot',
 	)
-	await expect(page.getByRole('button', { name: '2 in the right spot' })).toBeVisible()
-
 	const keypad = page.getByRole('group', { name: 'Number keypad' })
-	for (const digit of '42273') {
+	await expect(keypad.getByRole('button', { name: '1 not in the number' })).toBeVisible()
+	await expect(keypad.getByRole('button', { name: '2 in another spot' })).toBeVisible()
+	await expect(keypad.getByRole('button', { name: '3 in the right spot' })).toBeVisible()
+
+	for (const digit of '273') {
 		await keypad.getByRole('button', { name: new RegExp(`^${digit}`) }).click()
 	}
 	await keypad.getByRole('button', { name: 'Enter' }).click()
 
 	await expect(page.getByText('Solved in 2 tries!')).toBeVisible()
+	const confetti = page.locator('canvas.confetti')
+	await expect(confetti).toBeAttached()
+	await expect(confetti).toHaveAttribute('aria-hidden', 'true')
+	await expect(confetti).toHaveCount(0)
 	await expect(page.getByRole('region', { name: 'Statistics' })).toContainText('Current streak')
 	await expect(page.getByRole('timer')).toHaveText('15:00:00')
 	await page.getByRole('button', { name: 'Share' }).click()
 	await expect(page.getByText('Copied!', { exact: true }).first()).toBeVisible()
 	expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-		'Guessle #1 2/6\n\n⬜🟩🟨🟨⬜\n🟩🟩🟩🟩🟩\n\nhttp://localhost:5173/',
+		'Guessle #1 2/6\n\n⬜🟨🟩\n🟩🟩🟩\n\nhttp://localhost:5173/',
 	)
 
 	await page.reload()
 	await expect(page.getByText('Solved in 2 tries!')).toBeVisible()
 	await expect(keypad).toHaveCount(0)
+	await expect(confetti).toHaveCount(0)
 
 	await page.clock.setFixedTime(day2)
 	await page.reload()
 	await expect(page.getByRole('heading', { name: 'Guessle #2' })).toBeVisible()
-	await guess(page, '18866')
+	await guess(page, '866')
 	await expect(page.getByText('Got it in one!')).toBeVisible()
 	await expect(page.getByRole('region', { name: 'Statistics' })).toContainText(
 		/Played\s*2\s*Win %\s*100\s*Current streak\s*2\s*Max streak\s*2/,
 	)
 })
 
-test('reveals the answer after six misses and offers Classic', async ({ page }) => {
+test('skips the confetti when the system asks for reduced motion', async ({ page }) => {
+	await page.emulateMedia({ reducedMotion: 'reduce' })
+	await page.goto('/')
+	await expect(page.getByRole('heading', { name: 'Guessle #1' })).toBeVisible()
+
+	await guess(page, '273')
+
+	await expect(page.getByText('Got it in one!')).toBeVisible()
+	await expect(page.locator('canvas.confetti')).toHaveCount(0)
+})
+
+test('reveals the answer after six misses and offers Random', async ({ page }) => {
 	await page.goto('/')
 	await expect(page.getByRole('heading', { name: 'Guessle #1' })).toBeVisible()
 	await guess(page, '12')
-	await expect(page.getByRole('alert')).toHaveText('Enter all 5 digits.')
+	await expect(page.getByRole('alert')).toHaveText('Enter all 3 digits.')
 	await page.keyboard.press('Backspace')
 	await page.keyboard.press('Backspace')
 
-	for (const digits of ['00000', '11111', '55555', '66666', '88888', '99999']) {
+	for (const digits of ['000', '111', '555', '666', '888', '999']) {
 		await guess(page, digits)
 	}
 
-	await expect(page.getByText('So close! The number was 42273')).toBeVisible()
-	await page.getByRole('button', { name: 'Play Classic' }).click()
-	await expect(page.getByLabel('Guess', { exact: true })).toBeFocused()
+	await expect(page.getByText('So close! The number was 273')).toBeVisible()
+	await expect(page.locator('canvas.confetti')).toHaveCount(0)
+	await page.getByRole('button', { name: 'Play Random' }).click()
+	await expect(page.getByRole('heading', { name: '7 tries left' })).toBeFocused()
 	await expect(
-		page.getByRole('group', { name: 'Single-player type' }).getByRole('button', { name: 'Classic' }),
+		page.getByRole('group', { name: 'Single-player type' }).getByRole('button', { name: 'Random' }),
 	).toHaveAttribute('aria-pressed', 'true')
+	await expect(page.getByRole('button', { name: /New Game/ })).toBeEnabled()
+})
+
+test('gives a puzzle saved with 5 digits a fresh board without counting the day twice', async ({
+	page,
+}) => {
+	await page.clock.setFixedTime(day4)
+	await page.goto('/')
+	await expect(page.getByRole('heading', { name: 'Guessle #4' })).toBeVisible()
+	await page.evaluate(() => {
+		localStorage.setItem(
+			'number-guessing-daily',
+			JSON.stringify({
+				day: 4,
+				guesses: ['12345', '04937'],
+				stats: {
+					played: 4,
+					wins: 4,
+					currentStreak: 4,
+					maxStreak: 4,
+					distribution: [1, 2, 1, 0, 0, 0],
+					lastPlayedDay: 4,
+					lastWonDay: 4,
+				},
+			}),
+		)
+	})
+	await page.reload()
+
+	await expect(page.getByRole('heading', { name: 'Guessle #4' })).toBeVisible()
+	await expect(page.getByRole('list', { name: 'Guesses' })).not.toContainText('Guess 1')
+	await guess(page, '937')
+
+	await expect(page.getByText('Got it in one!')).toBeVisible()
+	await expect(page.getByRole('region', { name: 'Statistics' })).toContainText(
+		/Played\s*4\s*Win %\s*100\s*Current streak\s*4\s*Max streak\s*4/,
+	)
 })
 
 test('fits the board and keypad on a phone', async ({ page }) => {
 	await page.setViewportSize({ width: 360, height: 740 })
 	await page.goto('/')
+	await expect(page.getByRole('heading', { name: 'Guessle #1' })).toBeVisible()
 
 	const main = page.getByRole('main')
 	expect(await main.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
@@ -94,5 +152,6 @@ test('fits the board and keypad on a phone', async ({ page }) => {
 		.getByRole('group', { name: 'Number keypad' })
 		.getByRole('button')
 		.evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().height))
+	expect(keys).toHaveLength(12)
 	expect(Math.min(...keys)).toBeGreaterThanOrEqual(44)
 })

@@ -251,3 +251,99 @@ a {
 	border-radius: 0.3em;
 	font-weight: 700;
 }
+
+/* Board tiles, keypad keys, and their clue marks are shared by Guessle and Random. */
+.warning-toast {
+	background: color-mix(in srgb, var(--state-warning) 18%, var(--glass-bg));
+}
+
+.tile {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: var(--tile);
+	height: var(--tile);
+	border: 1.5px solid color-mix(in srgb, var(--glass-border) 25%, transparent);
+	border-radius: calc(var(--tile) * 0.18);
+	background: color-mix(in srgb, var(--surface-white) 40%, transparent);
+	font-family: var(--font-display);
+	font-size: calc(var(--tile) * 0.5);
+	font-weight: 700;
+	transition:
+		background-color var(--motion-duration) var(--motion-easing),
+		border-color var(--motion-duration) var(--motion-easing),
+		color var(--motion-duration) var(--motion-easing);
+	transition-delay: calc(var(--i) * 90ms);
+}
+
+.tile.mark-typed {
+	border-color: var(--glass-border);
+	background: var(--surface-white);
+	transition-delay: 0ms;
+}
+
+.key {
+	position: relative;
+	border: 1.5px solid var(--glass-border);
+	border-radius: 10px;
+	background: var(--surface-white);
+	color: var(--glass-fg);
+	font-family: var(--font-display);
+	font-size: 1.25rem;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.key:hover {
+	transform: translateY(-1px);
+}
+
+.mark-correct {
+	border-color: var(--tile-correct);
+	background: var(--tile-correct);
+	color: var(--tile-fg);
+}
+
+.mark-present {
+	border-color: var(--tile-present);
+	background: var(--tile-present);
+	color: var(--tile-fg);
+}
+
+/* Green and yellow can look alike to color-blind players; the dot tells them apart. */
+.mark-present::after {
+	content: '';
+	position: absolute;
+	bottom: 5px;
+	left: 50%;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: currentColor;
+	transform: translateX(-50%);
+}
+
+.tile.mark-present::after {
+	bottom: calc(var(--tile) * 0.05);
+	width: max(3px, calc(var(--tile) * 0.12));
+	height: max(3px, calc(var(--tile) * 0.12));
+}
+
+.mark-absent {
+	border-color: var(--tile-absent);
+	background: var(--tile-absent);
+	color: var(--tile-absent-fg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.tile {
+		transition: none;
+	}
+}
+
+.confetti {
+	position: fixed;
+	inset: 0;
+	z-index: 60;
+	pointer-events: none;
+}
