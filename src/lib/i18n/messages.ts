@@ -16,7 +16,7 @@ interface InstructionStep {
 
 const en = {
 	languageName: 'English',
-	title: 'Number Guessing Game',
+	title: 'Guessle: Daily Number Puzzle',
 	ticker: [
 		'Guess the number',
 		'Daily Guessle',
@@ -40,8 +40,8 @@ const en = {
 		newGame: 'New Game',
 	},
 	header: {
-		title: 'Number Guessing',
-		titleSignature: 'Game.',
+		title: 'Guess',
+		titleSignature: 'le.',
 		thinking: (digits: number): RichText => [
 			"I'm thinking of a ",
 			{ value: digits },
@@ -60,7 +60,7 @@ const en = {
 			' tries. Everyone gets the same one.',
 		],
 		singleType: 'Single-player type',
-		guessle: 'Guessle',
+		dailyMode: 'Daily',
 		classic: 'Classic',
 		multiplayerType: 'Multiplayer type',
 		local: 'Local',
@@ -264,7 +264,7 @@ const en = {
 		copyRoomId: 'Copy Room ID',
 		linkCopied: 'Link copied!',
 		share: 'Share',
-		shareText: (roomId: string) => `Join my number guessing room ${roomId}.`,
+		shareText: (roomId: string) => `Join my Guessle room ${roomId}.`,
 		playerCount: (count: number, max: number) => `${count} / ${max} players`,
 		host: '(Host)',
 		ready: 'Ready',
@@ -333,7 +333,7 @@ export type Messages = typeof en
 
 const th: Messages = {
 	languageName: 'ภาษาไทย',
-	title: 'เกมทายตัวเลข',
+	title: 'Guessle: เกมทายเลขรายวัน',
 	ticker: [
 		'ทายตัวเลข',
 		'Guessle รายวัน',
@@ -357,8 +357,8 @@ const th: Messages = {
 		newGame: 'เกมใหม่',
 	},
 	header: {
-		title: 'เกมทาย',
-		titleSignature: 'ตัวเลข',
+		title: 'Guess',
+		titleSignature: 'le.',
 		thinking: (digits) => [
 			'ฉันคิดตัวเลข ',
 			{ value: digits },
@@ -373,7 +373,7 @@ const th: Messages = {
 			' ครั้ง ทุกคนได้เลขเดียวกัน',
 		],
 		singleType: 'รูปแบบการเล่นคนเดียว',
-		guessle: 'Guessle',
+		dailyMode: 'รายวัน',
 		classic: 'คลาสสิก',
 		multiplayerType: 'รูปแบบการเล่นหลายคน',
 		local: 'เครื่องเดียว',
@@ -554,7 +554,7 @@ const th: Messages = {
 		copyRoomId: 'คัดลอกรหัสห้อง',
 		linkCopied: 'คัดลอกลิงก์แล้ว!',
 		share: 'แชร์',
-		shareText: (roomId) => `มาเล่นเกมทายตัวเลขในห้อง ${roomId} กัน!`,
+		shareText: (roomId) => `มาเล่น Guessle ในห้อง ${roomId} กัน!`,
 		playerCount: (count, max) => `ผู้เล่น ${count} / ${max} คน`,
 		host: '(เจ้าของห้อง)',
 		ready: 'พร้อม',

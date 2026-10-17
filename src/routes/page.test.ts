@@ -40,7 +40,7 @@ describe("+page.svelte Component", () => {
   it("should render the main title", () => {
     render(Page);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Number Guessing Game."
+      "Guessle."
     );
   });
 
@@ -332,7 +332,7 @@ describe("+page.svelte Component", () => {
     await user.click(screen.getByRole("button", { name: /Instructions/ }));
     expect(screen.getByText("How to Play:")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Number Guessing Game."
+      "Guessle."
     );
   });
 
@@ -418,7 +418,7 @@ describe("+page.svelte Component", () => {
     const variants = within(
       screen.getByRole('group', { name: 'Single-player type' }),
     )
-    expect(variants.getByRole('button', { name: 'Guessle' })).toHaveAttribute(
+    expect(variants.getByRole('button', { name: 'Daily' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
@@ -519,7 +519,7 @@ describe("+page.svelte Component", () => {
     // The title is set in svelte:head, which may not be testable in this context
     // but we can verify the component renders
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Number Guessing Game."
+      "Guessle."
     );
   });
 
@@ -606,7 +606,7 @@ describe('+page.svelte in Thai', () => {
 		).toBeInTheDocument()
 		expect(screen.getByLabelText('ภาษา:')).toHaveValue('th')
 		expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-			'เกมทาย ตัวเลข',
+			'Guessle.',
 		)
 		expect(
 			screen.getByRole('navigation', { name: 'เมนูเกม' }),
@@ -616,7 +616,7 @@ describe('+page.svelte in Thai', () => {
 		).toBeInTheDocument()
 		expect(localStorage.getItem('number-guessing-locale')).toBe('th')
 		await waitFor(() => {
-			expect(document.title).toBe('เกมทายตัวเลข')
+			expect(document.title).toBe('Guessle: เกมทายเลขรายวัน')
 		})
 	})
 

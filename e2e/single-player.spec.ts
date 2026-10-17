@@ -27,7 +27,7 @@ test.describe("Single Player Game", () => {
   });
 
   test("should display game title and instructions", async ({ page }) => {
-    await expect(page.locator("h1")).toContainText("Number Guessing Game");
+    await expect(page.locator("h1")).toContainText("Guessle.");
     await page.getByRole("button", { name: /Instructions/ }).click();
     await expect(page.locator("text=How to Play:")).toBeVisible();
     await page.getByRole("button", { name: /Instructions/ }).click();

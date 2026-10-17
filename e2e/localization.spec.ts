@@ -27,9 +27,9 @@ test('opens in Thai for a Thai browser and remembers English', async ({
 		.click()
 
 	await expect(page.locator('html')).toHaveAttribute('lang', 'th')
-	await expect(page).toHaveTitle('เกมทายตัวเลข')
+	await expect(page).toHaveTitle('Guessle: เกมทายเลขรายวัน')
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-		'เกมทาย ตัวเลข',
+		'Guessle.',
 	)
 	const input = page.getByLabel('คำทาย', { exact: true })
 	await input.fill('123')
@@ -48,7 +48,7 @@ test('opens in Thai for a Thai browser and remembers English', async ({
 	await page.reload()
 
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-		'Number Guessing Game.',
+		'Guessle.',
 	)
 })
 

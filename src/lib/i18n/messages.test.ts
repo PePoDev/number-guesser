@@ -41,8 +41,8 @@ describe('messages', () => {
 
 	it('translates every Thai entry instead of copying English', () => {
 		const thai = new Map(leaves(messages.th))
-		// The Guessle name and its share heading read the same in every language.
-		const names = ['.header.guessle', '.daily.heading', '.daily.shareTitle']
+		// The Guessle name, its wordmark, and its share heading read the same in every language.
+		const names = ['.header.title', '.header.titleSignature', '.daily.heading', '.daily.shareTitle']
 		const untranslated = leaves(messages.en)
 			.filter(([path, english]) => thai.get(path) === english && !names.includes(path))
 			.map(([path]) => path)

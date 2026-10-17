@@ -166,7 +166,7 @@
 					<!-- wrap-reverse lifts the icons above the title, not below it, when the title needs the full width. -->
 					<div class="flex flex-wrap-reverse items-center justify-between gap-3">
 						<h1 class="font-display text-[clamp(2rem,4vw,3rem)] font-bold leading-tight">
-							{t.header.title} <em class="sig">{t.header.titleSignature}</em>
+							{t.header.title}<em class="sig">{t.header.titleSignature}</em>
 						</h1>
 						<div class="ml-auto flex shrink-0 items-center gap-2">
 							<button
@@ -199,7 +199,7 @@
 						{/if}
 						{#if singleMode}
 							{@render variantSwitch(t.header.singleType, [
-								{ mode: 'daily', label: t.header.guessle },
+								{ mode: 'daily', label: t.header.dailyMode },
 								{ mode: 'single', label: t.header.classic },
 							])}
 						{:else}

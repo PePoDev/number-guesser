@@ -1,6 +1,6 @@
-# Number Guessing Game
+# Guessle
 
-A static, interactive number-guessing puzzle built with SvelteKit 2, Svelte 5, TypeScript, and Tailwind CSS 4.
+Guessle is a static, interactive number-guessing puzzle built with SvelteKit 2, Svelte 5, TypeScript, and Tailwind CSS 4: a daily 5-digit puzzle with Wordle-style clues, plus Classic, local, and online multiplayer modes.
 
 🎮 **[Play the live demo](https://number-guesser.pepo.dev)**
 
@@ -29,7 +29,7 @@ Secret-number and guess fields read Thai numerals (๐–๙) as digits, discard
 ### Guessle rules
 
 - Puzzle #1 is 2026-10-14. `dailyNumber` counts local calendar days from that date, and `dailyTarget` derives each answer from a fixed hash of the puzzle number. Answers must never change once published, so a unit test pins known answers. Like any static daily puzzle, the answer can be computed from the shipped JavaScript.
-- Progress and stats live on the device in local storage key `number-guessing-daily`: the puzzle number, its guesses, and the stats. The answer is never stored. Without storage, the puzzle still works for the visit.
+- Progress and stats live on the device in local storage key `number-guessing-daily`: the puzzle number, its guesses, and the stats. The answer is never stored. Without storage, the puzzle still works for the visit. Storage keys keep the `number-guessing-` prefix from before the project became Guessle, so saved languages, rooms, and progress survive the rename.
 - Stats count games played and won, the current and longest streak of consecutive puzzle days won, and how many tries each win took. A loss or a missed day ends the streak.
 - An unstarted puzzle switches to the new day at midnight. A finished puzzle keeps its result on screen and offers today's puzzle instead of replacing it. A puzzle left unfinished at midnight continues until it ends; a reload opens the new day.
 
@@ -253,7 +253,7 @@ The interface should feel like one well-built editorial object, not a dashboard.
 - The right contains a decorative perspective tunnel of numbered tiles.
 - The ticker is the only looping animation.
 
-The Single Player card opens the last selected single-player variant, Guessle first; a segmented control inside the play panel switches between Guessle and Classic. The Multiplayer card works the same way for Local and Online. Instructions replaces the center-panel game content. The icon-only Settings (gear) button beside the GitHub link in the panel header is always available. It opens the active mode's game settings plus the language; once an online room exists its rules are fixed, so only the language remains. Guessle has no game settings, so its Settings shows only the language. The purple New Game action is disabled online because the host-owned restart remains inside the online flow, and in Guessle because there is one puzzle per day.
+The Single Player card opens the last selected single-player variant, Daily first; a segmented control inside the play panel switches between Daily (Guessle) and Classic. The Multiplayer card works the same way for Local and Online. Instructions replaces the center-panel game content. The icon-only Settings (gear) button beside the GitHub link in the panel header is always available. It opens the active mode's game settings plus the language; once an online room exists its rules are fixed, so only the language remains. Guessle has no game settings, so its Settings shows only the language. The purple New Game action is disabled online because the host-owned restart remains inside the online flow, and in Guessle because there is one puzzle per day.
 
 Desktop columns are a ~140px nav rail, a flexible play area with a 320px minimum, and a hero using about 40% of the remaining width.
 
@@ -312,7 +312,7 @@ State colors are overlays for borders, low-opacity backgrounds, and small icons�
 - Space Grotesk and Inter load from Google Fonts in `src/app.html` with `display=swap` and system fallbacks.
 - Thai falls back to Noto Sans Thai 400–700, listed after Space Grotesk and Inter in both stacks and loaded from the same Google Fonts request. Its Thai subset downloads only when Thai text is shown.
 
-The main display heading ends with one bold italic word in `--glass-accent`. Use this signature treatment once per page.
+The main display heading is the Guessle wordmark: "Guess" followed by "le." in the bold italic `--glass-accent` signature treatment. The wordmark reads the same in every language. Use the signature treatment once per page.
 
 ### Components
 
@@ -321,7 +321,7 @@ The main display heading ends with one bold italic word in `--glass-accent`. Use
 | Nav card | Number and arrow above label; solid accent; inset border when active; on phones a single-line card with number and label side by side |
 | Ticker | Short labels separated by `✦`; ~40s seamless scroll; static when motion is reduced |
 | Glass panel | Cream surface, dark 1.5px border, 20px radius, 32px/20px responsive padding |
-| Variant switch | Segmented control inside the play panel: Guessle/Classic for single player and Local/Online for multiplayer; active choice is dark-filled |
+| Variant switch | Segmented control inside the play panel: Daily/Classic for single player and Local/Online for multiplayer; active choice is dark-filled |
 | Guessle board | Six rows of five 52px tiles (56px from 600px): empty tiles are translucent, typed tiles get a dark border, and scored tiles fill with the tile tokens, colored left to right; tiles are `aria-hidden` and each row carries a sentence for screen readers |
 | Guessle keypad | Digits 1–5 and 6–0 in two rows, then Delete and Enter; keys are at least 48px high and take the best state each digit has earned (right spot over wrong spot over not in the number) |
 | Guessle result | Win or lose message with the answer; four stat tiles (Played, Win %, Current streak, Max streak); a guess-distribution bar list with bars at most 24px thick, 4px rounded ends, counts in text tokens, and today's bar in `--tile-correct`; Share (system share sheet, otherwise copy with a Copied! tooltip); a countdown to the next puzzle, or a Play today's Guessle action once it has arrived; and Play Classic |
@@ -410,6 +410,8 @@ Add new surfaces to this table. The initial editorial design system was recorded
 2026-10-10 — Added the single-player notepad, masked local secrets, a multiplayer rematch, a 2 × 2 phone nav, and friend rules in Instructions; the Firebase SDK now loads only for online play.
 
 2026-10-14 — Added Guessle, a daily Wordle-style single-player puzzle with tile clues, a keypad, saved stats and streaks, and shareable results. It opens by default, and Classic stays one tap away.
+
+2026-10-17 — Renamed the project to Guessle: the heading is now the Guessle wordmark, and the page title, link previews, and room invites use the name, and the single-player switch reads Daily/Classic.
 
 ## Change guide
 

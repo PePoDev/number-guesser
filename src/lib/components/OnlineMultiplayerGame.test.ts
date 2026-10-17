@@ -295,8 +295,8 @@ it('shares the room invite link when native sharing is available', async () => {
 	await user.click(screen.getByRole('button', { name: 'Share' }))
 
 	expect(share).toHaveBeenCalledWith({
-		title: 'Number Guessing Game',
-		text: 'Join my number guessing room AB2C3D.',
+		title: 'Guessle: Daily Number Puzzle',
+		text: 'Join my Guessle room AB2C3D.',
 		url: `${window.location.origin}/?room=AB2C3D`,
 	})
 	expect(writeText).not.toHaveBeenCalled()
