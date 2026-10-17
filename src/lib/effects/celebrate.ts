@@ -57,6 +57,9 @@ export function launchConfetti(): void {
 	const height = window.innerHeight
 	canvas.width = width * ratio
 	canvas.height = height * ratio
+	// The bitmap is scaled for sharp pieces; the element itself stays window-sized.
+	canvas.style.width = `${width}px`
+	canvas.style.height = `${height}px`
 	canvas.className = 'confetti'
 	canvas.setAttribute('aria-hidden', 'true')
 	context.scale(ratio, ratio)

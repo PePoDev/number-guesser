@@ -146,6 +146,22 @@ describe('launchConfetti', () => {
 		expect(confetti()).not.toBeInTheDocument()
 	})
 
+	it('keeps the canvas window-sized on high-density screens', () => {
+		reduceMotion(false)
+		const context = fakeContext()
+		drawOn(context)
+		vi.stubGlobal('devicePixelRatio', 2)
+
+		launchConfetti()
+
+		const canvas = confetti() as HTMLCanvasElement
+		expect(canvas.width).toBe(window.innerWidth * 2)
+		expect(canvas.style.width).toBe(`${window.innerWidth}px`)
+		expect(canvas.style.height).toBe(`${window.innerHeight}px`)
+		expect(context.scale).toHaveBeenCalledWith(2, 2)
+		canvas.remove()
+	})
+
 	it('skips the confetti when the system asks for reduced motion', () => {
 		reduceMotion(true)
 		const getContext = drawOn(fakeContext())

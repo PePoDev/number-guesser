@@ -259,7 +259,7 @@
 			tabindex="-1"
 			class="banner {won ? 'banner-correct' : 'banner-incorrect'} @container mt-3 space-y-3 p-5 short:space-y-2"
 		>
-			<p class="text-center text-xl font-bold">
+			<p class="text-center text-xl font-bold text-balance">
 				{#if won}
 					{t.daily.won(daily.guesses.length)}
 				{:else}
@@ -290,7 +290,7 @@
 								<span aria-hidden="true" class="flex">
 									<span
 										class="dist-bar"
-										class:dist-today={won && index === daily.guesses.length - 1}
+										class:dist-today={won && index === daily.guesses.length - 1 && daily.stats.lastWonDay === daily.day}
 										style:width="{(wins / mostWins) * 100}%"
 									></span>
 								</span>

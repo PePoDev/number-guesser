@@ -198,12 +198,7 @@ describe("Game Store", () => {
     });
 
     it("starts each new game fresh with the chosen digits and attempts", () => {
-      gameStore.addGuess({
-        guess: "123",
-        correctDigits: 0,
-        correctPositions: 0,
-      });
-      gameStore.setGameOver(true);
+      gameStore.addRandomGuess("123");
       gameStore.updateSettings({ digitCount: 5, maxAttempts: 10 });
 
       gameStore.startNewGame();
@@ -220,47 +215,45 @@ describe("Game Store", () => {
       expect(state.attemptsLeft).toBe(7);
     });
 
-    it("should add guess to history", () => {
-      gameStore.addGuess({
-        guess: "123",
-        correctDigits: 2,
-        correctPositions: 1,
-      });
+    it("scores a guess against the target and uses one attempt", () => {
+      gameStore.addRandomGuess("501");
+      const state = get(gameStore);
+      expect(state.guessHistory).toEqual([
+        { guess: "501", correctDigits: 2, correctPositions: 2 },
+      ]);
+      expect(state.attemptsLeft).toBe(6);
+      expect(state.gameOver).toBe(false);
+    });
+
+    it("ends the game when the number is guessed", () => {
+      gameStore.addRandomGuess("123");
+      gameStore.addRandomGuess("500");
+      const state = get(gameStore);
+      expect(state.gameOver).toBe(true);
+      expect(state.attemptsLeft).toBe(5);
+    });
+
+    it("ends the game when the last attempt misses", () => {
+      gameStore.updateSettings({ maxAttempts: 3 });
+      gameStore.startNewGame();
+      for (const guess of ["111", "222", "333"]) {
+        gameStore.addRandomGuess(guess);
+      }
+      const state = get(gameStore);
+      expect(state.gameOver).toBe(true);
+      expect(state.attemptsLeft).toBe(0);
+    });
+
+    it("ignores guesses once the game is over", () => {
+      gameStore.addRandomGuess("500");
+      gameStore.addRandomGuess("123");
       const state = get(gameStore);
       expect(state.guessHistory).toHaveLength(1);
-      expect(state.guessHistory[0].guess).toBe("123");
       expect(state.attemptsLeft).toBe(6);
     });
 
-    it("should decrement attempts after each guess", () => {
-      gameStore.addGuess({
-        guess: "123",
-        correctDigits: 1,
-        correctPositions: 0,
-      });
-      gameStore.addGuess({
-        guess: "456",
-        correctDigits: 2,
-        correctPositions: 1,
-      });
-      const state = get(gameStore);
-      expect(state.attemptsLeft).toBe(5);
-      expect(state.guessHistory).toHaveLength(2);
-    });
-
-    it("should set game over", () => {
-      gameStore.setGameOver(true);
-      const state = get(gameStore);
-      expect(state.gameOver).toBe(true);
-    });
-
     it("should reset game state", () => {
-      gameStore.addGuess({
-        guess: "123",
-        correctDigits: 1,
-        correctPositions: 0,
-      });
-      gameStore.setGameOver(true);
+      gameStore.addRandomGuess("500");
       gameStore.reset();
       const state = get(gameStore);
       expect(state.guessHistory).toEqual([]);

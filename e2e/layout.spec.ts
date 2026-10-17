@@ -42,6 +42,12 @@ function panelOverflow(page: Page) {
 	return page.getByRole('main').evaluate((panel) => panel.scrollHeight - panel.clientHeight)
 }
 
+function boardOverflow(page: Page) {
+	return page
+		.getByRole('list', { name: 'Guesses' })
+		.evaluate((list) => list.parentElement!.scrollHeight - list.parentElement!.clientHeight)
+}
+
 async function sizes(page: Page, selector: string) {
 	return page
 		.locator(selector)
@@ -86,6 +92,10 @@ for (const viewport of viewports) {
 		await expect(page.getByRole('heading', { name: '6 tries left' })).toBeVisible()
 		expect(await pageOverflow(page)).toBeLessThanOrEqual(0)
 		expect(await panelOverflow(page)).toBeLessThanOrEqual(0)
+		// Desktop windows show all seven default rows; phones scroll the board under its shadows.
+		if (viewport.width >= 900) {
+			expect(await boardOverflow(page)).toBeLessThanOrEqual(0)
+		}
 		await expect(
 			page.getByRole('group', { name: 'Number keypad' }).getByRole('button', { name: 'Enter' }),
 		).toBeInViewport({ ratio: 1 })
@@ -158,6 +168,25 @@ test('floats a warning over the board without resizing it', async ({ page }) => 
 	await expect(page.getByText('Enter all 3 digits.')).toBeInViewport()
 })
 
+test('shows a Random warning in the legend line without covering or resizing the board', async ({ page }) => {
+	await page.setViewportSize({ width: 1280, height: 720 })
+	await openRandom(page)
+	for (const digits of ['123', '456', '789', '012', '345']) {
+		await guess(page, digits)
+	}
+	const rows = page.getByRole('list', { name: 'Guesses' }).getByRole('listitem')
+	const current = rows.last()
+	const before = await page.locator('.tile').first().boundingBox()
+
+	await guess(page, '12')
+
+	await expect(page.getByRole('alert')).toHaveText('Enter all 3 digits.')
+	expect(await page.locator('.tile').first().boundingBox()).toEqual(before)
+	const warning = await page.getByText('Enter all 3 digits.').boundingBox()
+	const row = await current.boundingBox()
+	expect(warning!.y + warning!.height).toBeLessThanOrEqual(row!.y)
+})
+
 test('shows only the rows played above the result without scrolling the page', async ({ page }) => {
 	await page.setViewportSize({ width: 1440, height: 900 })
 	await openGuessle(page)
@@ -228,6 +257,20 @@ test('scrolls a long Random game inside its board, not the page or the panel', a
 		await board.evaluate((list) => list.parentElement!.scrollHeight > list.parentElement!.clientHeight),
 	).toBe(true)
 	await expect(board.getByRole('listitem').last()).toBeInViewport({ ratio: 1 })
+})
+
+test('shows every row of a finished Random game on a phone instead of a nested scroll', async ({ page }) => {
+	await page.setViewportSize({ width: 360, height: 740 })
+	await openRandom(page)
+	for (const digits of ['123', '456', '789', '012', '345', '678', '901']) {
+		await guess(page, digits)
+	}
+
+	await expect(page.getByText(/Game Over!/)).toBeVisible()
+	expect(await sizes(page, '.tile')).toHaveLength(21)
+	expect(await boardOverflow(page)).toBeLessThanOrEqual(0)
+	expect(Math.min(...(await sizes(page, '.tile')))).toBeGreaterThanOrEqual(32)
+	expect(await pageOverflow(page)).toBeLessThanOrEqual(0)
 })
 
 test('scrolls the panel, never the page, when its content cannot fit', async ({ page }) => {

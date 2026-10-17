@@ -201,6 +201,33 @@ describe('DailyGame', () => {
 		expect(celebrate).not.toHaveBeenCalled()
 	})
 
+	it('highlights today in the distribution only when today was counted', async () => {
+		const user = userEvent.setup()
+		localStorage.setItem(
+			DAILY_STORAGE_KEY,
+			JSON.stringify({
+				day: 1,
+				guesses: [],
+				stats: { ...EMPTY_DAILY_STATS, played: 1, wins: 1, distribution: [0, 1, 0, 0, 0, 0], lastPlayedDay: 1, lastWonDay: 0 },
+			}),
+		)
+		const { container } = render(DailyGame)
+
+		await user.keyboard(`123{Enter}${answer}{Enter}`)
+
+		expect(screen.getByText('Solved in 2 tries!')).toBeInTheDocument()
+		expect(container.querySelector('.dist-today')).toBeNull()
+	})
+
+	it('highlights the row for a counted win', async () => {
+		const user = userEvent.setup()
+		const { container } = render(DailyGame)
+
+		await user.keyboard(`123{Enter}${answer}{Enter}`)
+
+		expect(container.querySelectorAll('.dist-bar')[1]).toHaveClass('dist-today')
+	})
+
 	it("restores today's progress and starts fresh on a new day", () => {
 		save(1, ['123'])
 		const { unmount } = render(DailyGame)

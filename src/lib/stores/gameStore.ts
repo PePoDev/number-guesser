@@ -215,14 +215,21 @@ function createGameStore() {
         }
         return state;
       }),
-    addGuess: (guess: SinglePlayerGuess) =>
-      update((state) => ({
-        ...state,
-        guessHistory: [...state.guessHistory, guess],
-        attemptsLeft: state.attemptsLeft - 1,
-      })),
-    setGameOver: (isOver: boolean) =>
-      update((state) => ({ ...state, gameOver: isOver })),
+    addRandomGuess: (guess: string) =>
+      update((state) => {
+        if (state.gameOver || state.attemptsLeft <= 0) {
+          return state;
+        }
+        const feedback = calculateFeedback(guess, state.targetNumber);
+        const attemptsLeft = state.attemptsLeft - 1;
+        return {
+          ...state,
+          guessHistory: [...state.guessHistory, { guess, ...feedback }],
+          attemptsLeft,
+          gameOver:
+            feedback.correctPositions === state.targetNumber.length || attemptsLeft === 0,
+        };
+      }),
     loadDaily: (daily: DailyProgress) => update((state) => ({ ...state, daily })),
     addDailyGuess: (guess: string) =>
       update((state) => {

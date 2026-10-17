@@ -214,10 +214,6 @@ a {
 	background: color-mix(in srgb, var(--surface-white) 60%, transparent);
 }
 
-.surface-translucent-soft {
-	background: color-mix(in srgb, var(--surface-white) 40%, transparent);
-}
-
 .history-row-newest {
 	border-left-color: var(--accent-purple);
 }

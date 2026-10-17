@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { tick, type Snippet } from 'svelte'
-	import { gameStore, calculateFeedback, type SinglePlayerGuess } from '$lib/stores/gameStore'
+	import { gameStore, type SinglePlayerGuess } from '$lib/stores/gameStore'
 	import { messages, type Messages } from '$lib/i18n/messages'
 	import { celebrate } from '$lib/effects/celebrate'
 	import Keypad from './Keypad.svelte'
@@ -82,15 +82,10 @@
 			warn((t) => t.board.duplicate(guess))
 			return
 		}
-		const feedback = calculateFeedback(guess, target)
-		gameStore.addGuess({ guess, ...feedback })
+		gameStore.addRandomGuess(guess)
 		typed = { round: $gameStore.round, digits: '' }
 		announce = 'guess'
-		const solved = feedback.correctPositions === digits
-		if (solved || $gameStore.attemptsLeft === 0) {
-			gameStore.setGameOver(true)
-		}
-		if (solved) {
+		if (won) {
 			celebrate($gameStore.sound)
 		}
 		await tick()
@@ -117,13 +112,22 @@
 		</h2>
 	</div>
 
-	<p class="mb-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm" aria-hidden="true">
-		<span class="inline-flex items-center gap-1.5"><span class="hint hint-digits legend-hint"></span>{t.random.inNumber}</span>
-		<span class="inline-flex items-center gap-1.5"><span class="hint hint-spots legend-hint"></span>{t.random.inSpot}</span>
-	</p>
+	<!-- The board scrolls once it fills its box, so a warning takes the legend's line
+		instead of covering the row being typed. Live regions stay mounted. -->
+	<div class="mb-0.5 flex min-h-6 items-center justify-center">
+		<p class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm" aria-hidden="true" hidden={!!warningMessage}>
+			<span class="inline-flex items-center gap-1.5"><span class="hint hint-digits legend-hint"></span>{t.random.inNumber}</span>
+			<span class="inline-flex items-center gap-1.5"><span class="hint hint-spots legend-hint"></span>{t.random.inSpot}</span>
+		</p>
+		<div role="alert">
+			{#if warningMessage}
+				<div class="banner banner-warning warning-line text-center">{warningMessage}</div>
+			{/if}
+		</div>
+	</div>
 
 	<div class="random-area relative" class:board-finished={!playing} style:--rows={rows} style:--cols={digits}>
-		<div class="absolute inset-0 overflow-y-auto">
+		<div class="board-scroll absolute inset-0 overflow-y-auto">
 			<ol bind:this={board} class="board mx-auto grid w-fit" aria-label={t.board.label}>
 				{#each { length: rows } as _, rowIndex}
 					{@const row = history[rowIndex]}
@@ -149,16 +153,6 @@
 				{/each}
 			</ol>
 		</div>
-
-		<!-- Live regions stay mounted so screen readers announce every change, including the first.
-			The warning floats over the board so the tiles never resize under it. -->
-		{#if playing}
-			<div role="alert" class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center">
-				{#if warningMessage}
-					<div class="banner banner-warning warning-toast text-center">{warningMessage}</div>
-				{/if}
-			</div>
-		{/if}
 	</div>
 	<p class="sr-only" role="status">{announcement}</p>
 
@@ -171,12 +165,12 @@
 			class="banner {won ? 'banner-correct' : 'banner-incorrect'} mt-3 space-y-3 p-5 text-center"
 		>
 			{#if won}
-				<div class="text-xl font-bold">
+				<div class="text-xl font-bold text-balance">
 					<p>{t.random.won(target)}</p>
 					<p>{t.random.wonWith(history.length)}</p>
 				</div>
 			{:else}
-				<p class="text-xl font-bold">
+				<p class="text-xl font-bold text-balance">
 					{#each t.random.lost(target) as part}{#if typeof part === 'string'}{part}{:else}<strong class="tracking-widest">{part.value}</strong>{/if}{/each}
 				</p>
 			{/if}
@@ -189,7 +183,7 @@
 	/* Like the Guessle board, tiles size themselves to the height left; a long
 	   game keeps them legible and scrolls inside the board instead. */
 	.random-area {
-		--gap: 0.375rem;
+		--gap: 0.25rem;
 		--tile-min: 2rem;
 		--tile-max: 3.5rem;
 		container-type: size;
@@ -198,15 +192,35 @@
 		max-height: calc(var(--rows) * var(--tile-max) + (var(--rows) - 1) * var(--gap));
 	}
 
-	.board-finished {
-		--gap: 0.25rem;
-		--tile-min: 1.25rem;
+	/* Where the panel or page scrolls anyway, the board shows every row rather
+	   than nesting a second scroll inside it. */
+	@media (max-width: 599px) {
+		.board-finished {
+			min-height: calc(var(--rows) * var(--tile-min) + (var(--rows) - 1) * var(--gap));
+		}
 	}
 
-	@media (max-width: 599px), (max-height: 539px) {
-		.board-finished {
-			--tile-min: 2rem;
+	@media (max-height: 539px) {
+		.random-area {
+			min-height: calc(var(--rows) * var(--tile-min) + (var(--rows) - 1) * var(--gap));
 		}
+	}
+
+	/* Shadows show only on the side that has more rows to scroll to. */
+	.board-scroll {
+		background:
+			linear-gradient(var(--glass-bg) 30%, transparent) top / 100% 1.5rem local,
+			linear-gradient(transparent, var(--glass-bg) 70%) bottom / 100% 1.5rem local,
+			radial-gradient(farthest-side at 50% 0, color-mix(in srgb, var(--glass-fg) 25%, transparent), transparent) top / 100% 0.625rem scroll,
+			radial-gradient(farthest-side at 50% 100%, color-mix(in srgb, var(--glass-fg) 25%, transparent), transparent) bottom / 100% 0.625rem scroll;
+		background-repeat: no-repeat;
+	}
+
+	/* As tall as the legend it replaces, so showing it never resizes the board. */
+	.warning-line {
+		padding: 0 12px;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
 	}
 
 	/* Each row is the digits plus two hints that together take 1.75 tiles. */
@@ -275,5 +289,18 @@
 
 	.legend-hint {
 		--tile: 1.5rem;
+	}
+
+	/* High-contrast themes drop background fills, so the hints keep an outline and their dot. */
+	@media (forced-colors: active) {
+		.hint-digits,
+		.hint-spots {
+			border: 1.5px solid CanvasText;
+		}
+
+		.hint-digits::after {
+			forced-color-adjust: none;
+			background: CanvasText;
+		}
 	}
 </style>

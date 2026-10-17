@@ -208,9 +208,9 @@ test('starts a fresh board with New Game and keeps the game through Settings and
 
 	await expect(board).not.toContainText('Guess 1')
 	await expect(page.getByRole('heading', { name: '7 tries left' })).toBeVisible()
-	// New Game keeps focus, where a physical Enter would press it again.
-	await page.keyboard.type('500')
-	await page.getByRole('group', { name: 'Number keypad' }).getByRole('button', { name: 'Enter' }).click()
+	// A tapped New Game lets go of focus, so a physical Enter submits instead of restarting.
+	await expect(page.getByRole('button', { name: /New Game/ })).not.toBeFocused()
+	await guess(page, '500')
 	await expect(page.getByText('You won with 1 attempt!')).toBeVisible()
 })
 
@@ -255,8 +255,8 @@ test('saves the sound setting and stays quiet when it is off', async ({ page }) 
 	await expect(sound).toHaveValue('off')
 	await page.getByRole('button', { name: 'Close', exact: true }).click()
 
-	await page.keyboard.type('500')
-	await page.getByRole('group', { name: 'Number keypad' }).getByRole('button', { name: 'Enter' }).click()
+	// Settings opened with a tap hands focus back to nothing, so Enter submits instead of reopening it.
+	await guess(page, '500')
 	await expect(page.getByText('You won with 1 attempt!')).toBeVisible()
 	await expect(page.locator('canvas.confetti')).toBeAttached()
 	expect(await chimes(page)).toBe(0)

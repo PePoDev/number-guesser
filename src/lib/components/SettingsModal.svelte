@@ -15,7 +15,7 @@
     let previouslyFocused: HTMLElement | null = null;
     
     const t = $derived(messages[$gameStore.locale]);
-    // Guessle and a started online room own their rules, so only the language stays editable.
+    // Guessle and a started online room own their rules, so only the language and sound stay editable.
     const gameSettingsLocked = $derived(
         mode === 'daily' || (mode === 'online' && $gameStore.online.room !== null)
     );
