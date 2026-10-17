@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/svelte'
+import { createRawSnippet } from 'svelte'
 import userEvent from '@testing-library/user-event'
 import { get } from 'svelte/store'
 import DailyGame from './DailyGame.svelte'
@@ -123,6 +124,30 @@ describe('DailyGame', () => {
 
 		await user.keyboard('5')
 		expect(get(gameStore).daily.guesses).toHaveLength(2)
+	})
+
+	it('keeps only the rows played once the puzzle ends', async () => {
+		const user = userEvent.setup()
+		render(DailyGame)
+		const board = screen.getByRole('list', { name: 'Guesses' })
+		expect(within(board).getAllByRole('listitem', { hidden: true })).toHaveLength(6)
+
+		await user.keyboard(`12345{Enter}${answer}{Enter}`)
+
+		expect(within(board).getAllByRole('listitem', { hidden: true })).toHaveLength(2)
+		expect(within(board).getAllByRole('listitem')).toHaveLength(2)
+	})
+
+	it('sets the toolbar beside the puzzle heading', () => {
+		const toolbar = createRawSnippet(() => ({
+			render: () => '<div role="group" aria-label="Single-player type"></div>',
+		}))
+		render(DailyGame, { props: { toolbar } })
+
+		const group = screen.getByRole('group', { name: 'Single-player type' })
+		const heading = screen.getByRole('heading', { name: 'Guessle #1' })
+		expect(group.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+		expect(group.parentElement).toBe(heading.parentElement)
 	})
 
 	it('reveals the answer after six misses', async () => {

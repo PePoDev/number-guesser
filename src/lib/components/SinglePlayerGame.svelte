@@ -33,22 +33,12 @@
 		$gameStore.gameOver &&
 			latestGuess?.correctPositions === $gameStore.settings.digitCount,
 	)
-	const result = $derived.by(() => {
-		if (!latestGuess) return undefined
-		if (won) {
-			return { message: t.single.perfect, tone: 'correct' }
-		}
-		if ($gameStore.gameOver) {
-			return { message: t.single.betterLuck, tone: 'incorrect' }
-		}
-		return {
-			message: t.single.feedback(
-				latestGuess.correctDigits,
-				latestGuess.correctPositions,
-			),
-			tone: 'info',
-		}
-	})
+	// The result box reports the final guess, so the banner covers only a game in progress.
+	const feedback = $derived(
+		latestGuess && !$gameStore.gameOver
+			? t.single.feedback(latestGuess.correctDigits, latestGuess.correctPositions)
+			: '',
+	)
 	const digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 	const nextMark: Record<NoteMark, NoteMark> = { none: 'out', out: 'in', in: 'none' }
 	// Notes belong to one round; a new game bumps the round and clears them.
@@ -145,93 +135,97 @@
 
 </script>
 
-<div class="game-area">
-	<div class="mb-5 flex flex-wrap gap-3">
-		<label for="single-player-guess" class="sr-only">{t.single.guessLabel}</label>
-		<input
-			id="single-player-guess"
-			type="text"
-			bind:this={guessField}
-			value={guessInput}
-			oninput={(event) => (guessInput = keepDigits(event, $gameStore.settings.digitCount))}
-			onkeydown={handleKeyDown}
-			placeholder={t.single.placeholder}
-			inputmode="numeric"
-			pattern="[0-9]*"
-			autocomplete="off"
-			enterkeyhint="go"
-			disabled={$gameStore.gameOver}
-			class="field-input min-w-0 grow basis-32 text-lg tracking-widest tabular-nums placeholder:tracking-normal"
-		/>
-		<button
-			type="button"
-			onclick={submitGuess}
-			disabled={$gameStore.gameOver}
-			class="btn-primary grow text-lg sm:grow-0"
-		>
-			{t.single.submit}
-		</button>
-	</div>
-
-	<!-- Live regions stay mounted so screen readers announce every change, including the first. -->
-	<div role="alert">
-		{#if warningMessage}
-			<div class="banner banner-warning my-3 text-center">{warningMessage}</div>
-		{/if}
-	</div>
-	<div role="status">
-		{#if !warningMessage && result}
-			<div class="banner banner-{result.tone} my-3 text-center">{result.message}</div>
-		{/if}
-	</div>
-
-	{#if $gameStore.gameOver && latestGuess}
-		<div
-			bind:this={resultPanel}
-			tabindex="-1"
-			class="banner {won ? 'banner-correct' : 'banner-incorrect'} my-5 space-y-4 p-5 text-center"
-		>
-			{#if won}
-				<div class="text-xl font-bold">
-					<p>{t.single.won($gameStore.targetNumber)}</p>
-					<p>{t.single.wonWith(attemptsUsed)}</p>
-				</div>
-			{:else}
-				<p class="text-xl font-bold">
-					{#each t.single.lost($gameStore.targetNumber) as part}{#if typeof part === 'string'}{part}{:else}<strong>{part.value}</strong>{/if}{/each}
-				</p>
-			{/if}
-			<button type="button" class="btn-primary" onclick={playAgain}>{t.single.playAgain}</button>
+<div class="game-area flex flex-1 flex-col">
+	<!-- Block flow keeps these margins collapsing; only the history below stretches. -->
+	<div>
+		<div class="mb-5 flex flex-wrap gap-3">
+			<label for="single-player-guess" class="sr-only">{t.single.guessLabel}</label>
+			<input
+				id="single-player-guess"
+				type="text"
+				bind:this={guessField}
+				value={guessInput}
+				oninput={(event) => (guessInput = keepDigits(event, $gameStore.settings.digitCount))}
+				onkeydown={handleKeyDown}
+				placeholder={t.single.placeholder}
+				inputmode="numeric"
+				pattern="[0-9]*"
+				autocomplete="off"
+				enterkeyhint="go"
+				disabled={$gameStore.gameOver}
+				class="field-input min-w-0 grow basis-32 text-lg tracking-widest tabular-nums placeholder:tracking-normal"
+			/>
+			<button
+				type="button"
+				onclick={submitGuess}
+				disabled={$gameStore.gameOver}
+				class="btn-primary grow text-lg sm:grow-0"
+			>
+				{t.single.submit}
+			</button>
 		</div>
-	{/if}
 
-	<section class="mt-8" aria-labelledby="single-player-notepad">
-		<div class="mb-1 flex flex-wrap items-center justify-between gap-x-3">
-			<h3 id="single-player-notepad" class="font-display text-lg font-bold">{t.notepad.heading}</h3>
-			{#if hasNotes}
-				<button type="button" class="note-clear min-h-11 text-sm font-semibold underline" onclick={clearNotes}>
-					{t.notepad.clear}
-				</button>
+		<!-- Live regions stay mounted so screen readers announce every change, including the first. -->
+		<div role="alert">
+			{#if warningMessage}
+				<div class="banner banner-warning my-3 text-center">{warningMessage}</div>
 			{/if}
 		</div>
-		<p class="mb-3 text-sm text-[var(--glass-muted)]">{t.notepad.hint}</p>
-		<div class="grid grid-cols-5 gap-2 sm:grid-cols-10">
-			{#each digits as digit (digit)}
-				<button
-					type="button"
-					class="note-digit note-{marks[digit] ?? 'none'}"
-					aria-label={t.notepad.digit(digit, marks[digit] ?? 'none')}
-					onclick={() => cycleMark(digit)}
-				>
-					{digit}
-				</button>
-			{/each}
+		<div role="status">
+			{#if !warningMessage && feedback}
+				<div class="banner banner-info my-3 text-center">{feedback}</div>
+			{/if}
 		</div>
-	</section>
 
-	<section class="mt-8" aria-labelledby="single-player-history">
+		{#if $gameStore.gameOver && latestGuess}
+			<div
+				bind:this={resultPanel}
+				tabindex="-1"
+				class="banner {won ? 'banner-correct' : 'banner-incorrect'} my-5 space-y-4 p-5 text-center short:space-y-3"
+			>
+				{#if won}
+					<div class="text-xl font-bold">
+						<p>{t.single.won($gameStore.targetNumber)}</p>
+						<p>{t.single.wonWith(attemptsUsed)}</p>
+					</div>
+				{:else}
+					<p class="text-xl font-bold">
+						{#each t.single.lost($gameStore.targetNumber) as part}{#if typeof part === 'string'}{part}{:else}<strong>{part.value}</strong>{/if}{/each}
+					</p>
+				{/if}
+				<button type="button" class="btn-primary" onclick={playAgain}>{t.single.playAgain}</button>
+			</div>
+		{/if}
+
+		<section class="mt-8 short:mt-6" aria-labelledby="single-player-notepad">
+			<div class="mb-1 flex flex-wrap items-center justify-between gap-x-3">
+				<h3 id="single-player-notepad" class="font-display text-lg font-bold">{t.notepad.heading}</h3>
+				{#if hasNotes}
+					<button type="button" class="note-clear min-h-11 text-sm font-semibold underline" onclick={clearNotes}>
+						{t.notepad.clear}
+					</button>
+				{/if}
+			</div>
+			<p class="mb-3 text-sm text-[var(--glass-muted)]">{t.notepad.hint}</p>
+			<div class="grid grid-cols-5 gap-2 sm:grid-cols-10">
+				{#each digits as digit (digit)}
+					<button
+						type="button"
+						class="note-digit note-{marks[digit] ?? 'none'}"
+						aria-label={t.notepad.digit(digit, marks[digit] ?? 'none')}
+						onclick={() => cycleMark(digit)}
+					>
+						{digit}
+					</button>
+				{/each}
+			</div>
+		</section>
+	</div>
+
+	<!-- Size containment keeps a long history from stretching the panel; the list scrolls instead. -->
+	<section class="mt-8 flex min-h-24 flex-1 flex-col short:mt-6 fit:contain-size" aria-labelledby="single-player-history">
 		<h3 id="single-player-history" class="mb-3 font-display text-lg font-bold">{t.single.historyHeading}</h3>
-		<div class="surface-translucent-soft max-h-52 space-y-1 overflow-y-auto rounded-2xl border-[1.5px] border-[var(--glass-border)] p-2">
+		<div class="surface-translucent-soft min-h-0 space-y-1 overflow-y-auto rounded-2xl border-[1.5px] border-[var(--glass-border)] p-2">
 			{#each newestFirst as entry (entry.number)}
 				<div class="history-row flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 px-3 py-2 {entry.number === attemptsUsed ? 'history-row-newest' : ''}">
 					<span class="whitespace-nowrap font-bold tabular-nums">{t.single.historyGuess(entry.number, entry.guess)}</span>

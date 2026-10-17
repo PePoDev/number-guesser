@@ -25,6 +25,8 @@
 	const settingsLabel = $derived(t.header.openSettings(t.modes[$gameStore.mode]));
 	const tickerText = $derived(`${t.ticker.join(' ✦ ')} ✦ `);
 	const singleMode = $derived($gameStore.mode === 'daily' || $gameStore.mode === 'single');
+	// Single-player boards stretch to fill the panel; other screens keep block flow and its collapsing margins.
+	const fillPanel = $derived(singleMode && !showInstructions);
 
 	function startNewGame() {
 		showInstructions = false;
@@ -101,27 +103,32 @@
 {/snippet}
 
 {#snippet variantSwitch(label: string, options: { mode: GameMode; label: string }[])}
-	<div class="mt-4">
-		<div class="variant-switch" role="group" aria-label={label}>
-			{#each options as option (option.mode)}
-				<button
-					type="button"
-					aria-pressed={$gameStore.mode === option.mode}
-					onclick={() => selectMode(option.mode)}
-				>
-					{option.label}
-				</button>
-			{/each}
-		</div>
+	<div class="variant-switch" role="group" aria-label={label}>
+		{#each options as option (option.mode)}
+			<button
+				type="button"
+				aria-pressed={$gameStore.mode === option.mode}
+				onclick={() => selectMode(option.mode)}
+			>
+				{option.label}
+			</button>
+		{/each}
 	</div>
+{/snippet}
+
+{#snippet singleSwitch()}
+	{@render variantSwitch(t.header.singleType, [
+		{ mode: 'daily', label: t.header.dailyMode },
+		{ mode: 'single', label: t.header.classic },
+	])}
 {/snippet}
 
 <svelte:head>
 	<title>{t.title}</title>
 </svelte:head>
 
-<div class="stage flex min-h-screen items-center justify-center p-3 sm:p-5">
-	<div class="stage-frame flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl md:rounded-3xl">
+<div class="stage flex min-h-dvh items-center justify-center p-3 sm:p-5 short:p-3 fit:h-dvh fit:overflow-hidden">
+	<div class="stage-frame flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl md:rounded-3xl fit:h-full fit:max-h-[60rem]">
 		<div class="ticker">
 			<div class="ticker-track">
 				<span class="ticker-seq">{tickerText}</span>
@@ -129,7 +136,7 @@
 			</div>
 		</div>
 
-		<div class="stage-body grid grid-cols-1 gap-3 p-3 sm:gap-4 sm:p-4 md:grid-cols-[140px_minmax(320px,6fr)_minmax(0,4fr)]">
+		<div class="stage-body grid grid-cols-1 grid-rows-[auto_minmax(0,1fr)] gap-3 p-3 sm:gap-4 sm:p-4 short:gap-3 short:p-3 md:grid-cols-[140px_minmax(320px,6fr)_minmax(0,4fr)] md:grid-rows-1 fit:min-h-0 fit:flex-1">
 			<nav class="nav-rail grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 md:grid-cols-1 md:grid-rows-[1fr_1fr_1fr_auto]" aria-label={t.nav.label}>
 				{#each navCards as card (card.number)}
 					<button
@@ -161,8 +168,8 @@
 				</button>
 			</nav>
 
-			<main class="panel p-5 sm:p-6 md:p-8">
-				<header class="game-info mb-6 space-y-2">
+			<main class="panel relative p-4 sm:p-6 md:p-8 md:short:p-6 fit:min-h-0 fit:overflow-y-auto {fillPanel ? 'flex flex-col' : ''}">
+				<header class="game-info mb-6 flex flex-col gap-2">
 					<!-- wrap-reverse lifts the icons above the title, not below it, when the title needs the full width. -->
 					<div class="flex flex-wrap-reverse items-center justify-between gap-3">
 						<h1 class="font-display text-[clamp(2rem,4vw,3rem)] font-bold leading-tight">
@@ -187,26 +194,24 @@
 						</div>
 					</div>
 					{#if !showInstructions}
-						<p>
-							{#if $gameStore.mode === 'daily'}
-								{@render rich(t.header.daily(DAILY_DIGITS, DAILY_TRIES))}
-							{:else}
-								{@render rich(t.header.thinking(displayedDigitCount))}
-							{/if}
-						</p>
+						{#if $gameStore.mode === 'daily'}
+							<p class="short:sr-only">{@render rich(t.header.daily(DAILY_DIGITS, DAILY_TRIES))}</p>
+						{:else}
+							<p>{@render rich(t.header.thinking(displayedDigitCount))}</p>
+						{/if}
 						{#if $gameStore.mode === 'single'}
 							<p>{@render rich(t.header.attemptsLeft($gameStore.attemptsLeft))}</p>
 						{/if}
-						{#if singleMode}
-							{@render variantSwitch(t.header.singleType, [
-								{ mode: 'daily', label: t.header.dailyMode },
-								{ mode: 'single', label: t.header.classic },
-							])}
-						{:else}
-							{@render variantSwitch(t.header.multiplayerType, [
-								{ mode: 'multi', label: t.header.local },
-								{ mode: 'online', label: t.header.online },
-							])}
+						<!-- Guessle sets the switch beside its puzzle heading to save a row. -->
+						{#if $gameStore.mode === 'single'}
+							<div class="mt-2">{@render singleSwitch()}</div>
+						{:else if !singleMode}
+							<div class="mt-2">
+								{@render variantSwitch(t.header.multiplayerType, [
+									{ mode: 'multi', label: t.header.local },
+									{ mode: 'online', label: t.header.online },
+								])}
+							</div>
 						{/if}
 					{/if}
 				</header>
@@ -226,9 +231,9 @@
 						</ul>
 					</section>
 				{/if}
-				<div hidden={showInstructions}>
+				<div hidden={showInstructions} class={fillPanel ? 'flex flex-1 flex-col' : ''}>
 					{#if $gameStore.mode === 'daily'}
-						<DailyGame />
+						<DailyGame toolbar={singleSwitch} />
 					{:else if $gameStore.mode === 'single'}
 						<SinglePlayerGame />
 					{:else if $gameStore.mode === 'multi'}
@@ -252,7 +257,7 @@
 			</aside>
 		</div>
 
-		<footer class="utility-row">
+		<footer class="utility-row flex flex-wrap items-center justify-between gap-x-6 gap-y-1 max-sm:hidden short:hidden">
 			<span><kbd>Enter</kbd> {t.footer.submit} · <kbd>Escape</kbd> {t.footer.close}</span>
 			<span>{t.modes[$gameStore.mode]}</span>
 		</footer>
@@ -384,20 +389,8 @@
 	}
 
 	@media (max-width: 599px) {
-		.ticker-track {
-			width: auto;
-			animation: none;
-		}
-
 		.ticker-seq {
-			padding: 8px 12px;
-			white-space: normal;
-			text-align: center;
-			line-height: 1.5;
-		}
-
-		.ticker-seq[aria-hidden='true'] {
-			display: none;
+			padding: 6px 0;
 		}
 
 		.nav-card {
@@ -405,7 +398,7 @@
 			align-items: center;
 			justify-content: flex-start;
 			gap: 8px;
-			min-height: 48px;
+			min-height: 44px;
 			padding: 8px 12px;
 		}
 
@@ -414,7 +407,7 @@
 		}
 
 		.nav-primary {
-			min-height: 48px;
+			min-height: 44px;
 		}
 	}
 
@@ -455,6 +448,12 @@
 		font-weight: 600;
 		color: var(--glass-fg);
 		cursor: pointer;
+	}
+
+	@media (max-width: 599px) {
+		.variant-switch button {
+			padding: 10px 14px;
+		}
 	}
 
 	.variant-switch button[aria-pressed='true'] {
@@ -523,11 +522,6 @@
 	}
 
 	.utility-row {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: 4px 24px;
 		padding: 10px 16px;
 		border-top: 1.5px solid var(--stage-border);
 		color: var(--ticker-fg);

@@ -415,29 +415,19 @@ describe("SinglePlayerGame Component", () => {
     });
   });
 
-  it("should show correct feedback type for win", async () => {
+  it("should report a win only in the result banner", async () => {
     const user = userEvent.setup();
     render(SinglePlayerGame);
 
-    // Get the target number from the store
-    let targetNumber = "";
-    gameStore.subscribe((state) => {
-      targetNumber = state.targetNumber;
-    })();
-
-    await user.type(screen.getByPlaceholderText("Enter number"), targetNumber);
+    await user.type(screen.getByPlaceholderText("Enter number"), "500");
     await user.click(screen.getByText("Submit Guess"));
 
-    await waitFor(() => {
-      const feedback = screen.getByText(
-        /Perfect! All digits in correct positions!/
-      );
-      expect(feedback).toHaveClass("banner");
-      expect(feedback).toHaveClass("banner-correct");
-    });
+    const result = await screen.findByText(/Congratulations! You guessed the number 500/);
+    expect(result.closest(".banner")).toHaveClass("banner-correct");
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 
-  it("should show correct feedback type for lose", async () => {
+  it("should report a loss only in the result banner", async () => {
     const user = userEvent.setup();
     gameStore.reset();
     gameStore.setMode("single");
@@ -449,11 +439,9 @@ describe("SinglePlayerGame Component", () => {
     await user.type(screen.getByPlaceholderText("Enter number"), "111");
     await user.click(screen.getByText("Submit Guess"));
 
-    await waitFor(() => {
-      const feedback = screen.getByText(/Better luck next time!/);
-      expect(feedback).toHaveClass("banner");
-      expect(feedback).toHaveClass("banner-incorrect");
-    });
+    const result = await screen.findByText(/Game Over!/);
+    expect(result.closest(".banner")).toHaveClass("banner-incorrect");
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 });
 
@@ -490,7 +478,7 @@ describe('SinglePlayerGame round lifecycle', () => {
 		await waitFor(() => {
 			expect(screen.queryByText(/Game Over!/)).not.toBeInTheDocument()
 		})
-		expect(screen.queryByText(/Better luck next time!/)).not.toBeInTheDocument()
+		expect(screen.getByRole('status')).toBeEmptyDOMElement()
 		expect(screen.getByLabelText('Guess')).toBeEnabled()
 	})
 

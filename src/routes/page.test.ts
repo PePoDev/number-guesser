@@ -535,6 +535,24 @@ describe("+page.svelte Component", () => {
     );
   });
 
+  it("shows one Daily/Classic switch, beside the puzzle heading in Guessle", async () => {
+    const user = userEvent.setup();
+    render(Page);
+
+    const header = screen.getByRole("heading", { level: 1 }).closest("header");
+    const switches = () => screen.getAllByRole("group", { name: "Single-player type" });
+    expect(switches()).toHaveLength(1);
+    expect(header).not.toContainElement(switches()[0]);
+    expect(switches()[0].parentElement).toContainElement(
+      screen.getByRole("heading", { name: "Guessle #1" })
+    );
+
+    await user.click(within(switches()[0]).getByRole("button", { name: "Classic" }));
+
+    expect(switches()).toHaveLength(1);
+    expect(header).toContainElement(switches()[0]);
+  });
+
   it("explains Guessle tiles in Instructions", async () => {
     const user = userEvent.setup();
     render(Page);

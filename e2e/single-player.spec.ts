@@ -58,10 +58,9 @@ test.describe("Single Player Game", () => {
         ratio: 1,
       })
     }
-    await expect(page.locator(".ticker-seq").first()).toHaveCSS(
-      "white-space",
-      "normal"
-    );
+    const ticker = page.locator(".ticker-seq").first();
+    await expect(ticker).toHaveCSS("white-space", "nowrap");
+    expect((await ticker.boundingBox())?.height).toBeLessThan(40);
 
     await page.setViewportSize({ width: 840, height: 800 })
     const navTops = await mobileNav

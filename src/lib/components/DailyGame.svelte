@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte'
+	import { onMount, tick, type Snippet } from 'svelte'
 	import {
 		gameStore,
 		DAILY_DIGITS,
@@ -17,6 +17,8 @@
 	} from '$lib/stores/gameStore'
 	import { readDailyProgress, saveDailyProgress } from '$lib/daily/progress'
 	import { messages, type Messages } from '$lib/i18n/messages'
+
+	let { toolbar }: { toolbar?: Snippet } = $props()
 
 	let root = $state<HTMLDivElement>()
 	let heading = $state<HTMLHeadingElement>()
@@ -54,6 +56,7 @@
 		daily.guesses.map((guess) => ({ guess, tiles: scoreTiles(guess, target) })),
 	)
 	const keys = $derived(digitStates(daily.guesses, target))
+	const rows = $derived(status === 'playing' ? DAILY_TRIES : scored.length)
 	const untilNext = $derived(msUntilDaily(daily.day + 1, now))
 	const warningMessage = $derived(
 		warning.render && warning.guesses === daily.guesses && warning.entry === entry
@@ -241,43 +244,49 @@
 	</button>
 {/snippet}
 
-<div class="game-area" bind:this={root}>
-	<h2 bind:this={heading} tabindex="-1" class="mb-4 font-display text-2xl font-bold">
-		{t.daily.heading(daily.day)}
-	</h2>
+<div class="game-area flex flex-1 flex-col" bind:this={root}>
+	<div class="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-4">
+		{@render toolbar?.()}
+		<h2 bind:this={heading} tabindex="-1" class="font-display text-xl font-bold sm:text-2xl">
+			{t.daily.heading(daily.day)}
+		</h2>
+	</div>
 
-	<ol class="mx-auto grid w-fit gap-1.5" aria-label={t.daily.board}>
-		{#each { length: DAILY_TRIES } as _, rowIndex}
-			{@const row = scored[rowIndex]}
-			{@const current = !row && rowIndex === scored.length && status === 'playing'}
-			<li class="grid grid-cols-5 gap-1.5" aria-hidden={row || current ? undefined : 'true'}>
-				{#if row}
-					<span class="sr-only">{rowLabel(t, rowIndex)}</span>
-				{:else if current}
-					<span class="sr-only">{t.daily.entry(spaced(entry))}</span>
-				{/if}
-				{#each { length: DAILY_DIGITS } as _, index}
-					{@const digit = row ? row.guess[index] : current ? entry[index] : undefined}
-					<span
-						aria-hidden="true"
-						class="tile mark-{row ? row.tiles[index] : digit ? 'typed' : 'none'}"
-						style:--i={index}
-					>{digit ?? ''}</span>
-				{/each}
-			</li>
-		{/each}
-	</ol>
+	<div class="board-area relative" class:board-finished={status !== 'playing'} style:--rows={rows}>
+		<ol class="board mx-auto grid w-fit" aria-label={t.daily.board}>
+			{#each { length: rows } as _, rowIndex}
+				{@const row = scored[rowIndex]}
+				{@const current = !row && rowIndex === scored.length && status === 'playing'}
+				<li class="board-row grid grid-cols-5" aria-hidden={row || current ? undefined : 'true'}>
+					{#if row}
+						<span class="sr-only">{rowLabel(t, rowIndex)}</span>
+					{:else if current}
+						<span class="sr-only">{t.daily.entry(spaced(entry))}</span>
+					{/if}
+					{#each { length: DAILY_DIGITS } as _, index}
+						{@const digit = row ? row.guess[index] : current ? entry[index] : undefined}
+						<span
+							aria-hidden="true"
+							class="tile mark-{row ? row.tiles[index] : digit ? 'typed' : 'none'}"
+							style:--i={index}
+						>{digit ?? ''}</span>
+					{/each}
+				</li>
+			{/each}
+		</ol>
 
-	<!-- Live regions stay mounted so screen readers announce every change, including the first. -->
-	<div role="alert">
-		{#if warningMessage}
-			<div class="banner banner-warning mt-4 text-center">{warningMessage}</div>
-		{/if}
+		<!-- Live regions stay mounted so screen readers announce every change, including the first.
+			The warning floats over the board so the tiles never resize under it. -->
+		<div role="alert" class="pointer-events-none absolute inset-x-0 top-0 flex justify-center">
+			{#if warningMessage}
+				<div class="banner banner-warning warning-toast text-center">{warningMessage}</div>
+			{/if}
+		</div>
 	</div>
 	<p class="sr-only" role="status">{announcement}</p>
 
 	{#if status === 'playing'}
-		<div class="mx-auto mt-5 grid max-w-md gap-2" role="group" aria-label={t.daily.keypad}>
+		<div class="keypad mx-auto mt-3 grid w-full max-w-md gap-2" role="group" aria-label={t.daily.keypad}>
 			<div class="grid grid-cols-5 gap-2">
 				{#each ['1', '2', '3', '4', '5'] as digit (digit)}{@render key(digit)}{/each}
 			</div>
@@ -301,7 +310,7 @@
 		<div
 			bind:this={resultPanel}
 			tabindex="-1"
-			class="banner {won ? 'banner-correct' : 'banner-incorrect'} mt-5 space-y-5 p-5"
+			class="banner {won ? 'banner-correct' : 'banner-incorrect'} @container mt-3 space-y-3 p-5 short:space-y-2"
 		>
 			<p class="text-center text-xl font-bold">
 				{#if won}
@@ -311,39 +320,41 @@
 				{/if}
 			</p>
 
-			<section aria-labelledby="daily-stats-heading">
-				<h3 id="daily-stats-heading" class="eyebrow mb-2 text-center">{t.daily.statsHeading}</h3>
-				<dl class="grid grid-cols-4 gap-2">
-					{#each statTiles as stat (stat.label)}
-						<div class="surface-translucent flex flex-col-reverse items-center justify-end rounded-xl p-2 text-center">
-							<dt class="text-xs leading-tight text-[var(--glass-muted)]">{stat.label}</dt>
-							<dd class="text-2xl font-semibold">{stat.value}</dd>
-						</div>
-					{/each}
-				</dl>
-			</section>
+			<div class="grid gap-3 @sm:grid-cols-2 @sm:gap-4">
+				<section aria-labelledby="daily-stats-heading">
+					<h3 id="daily-stats-heading" class="eyebrow mb-2 text-center">{t.daily.statsHeading}</h3>
+					<dl class="grid grid-cols-4 gap-2 @sm:grid-cols-2">
+						{#each statTiles as stat (stat.label)}
+							<div class="surface-translucent flex flex-col-reverse items-center justify-end rounded-xl p-2 text-center">
+								<dt class="text-xs leading-tight text-[var(--glass-muted)]">{stat.label}</dt>
+								<dd class="text-2xl font-semibold">{stat.value}</dd>
+							</div>
+						{/each}
+					</dl>
+				</section>
 
-			<section aria-labelledby="daily-distribution-heading">
-				<h3 id="daily-distribution-heading" class="eyebrow mb-2 text-center">{t.daily.distributionHeading}</h3>
-				<ol class="mx-auto max-w-sm space-y-1.5">
-					{#each daily.stats.distribution as wins, index}
-						<li class="grid grid-cols-[1rem_1fr_2rem] items-center gap-2 text-sm">
-							<span class="sr-only">{t.daily.distributionRow(index + 1, wins)}</span>
-							<span aria-hidden="true" class="font-semibold">{index + 1}</span>
-							<span aria-hidden="true" class="flex">
-								<span
-									class="dist-bar"
-									class:dist-today={won && index === daily.guesses.length - 1}
-									style:width="{(wins / mostWins) * 100}%"
-								></span>
-							</span>
-							<span aria-hidden="true" class="text-right tabular-nums">{wins}</span>
-						</li>
-					{/each}
-				</ol>
-			</section>
+				<section aria-labelledby="daily-distribution-heading">
+					<h3 id="daily-distribution-heading" class="eyebrow mb-2 text-center">{t.daily.distributionHeading}</h3>
+					<ol class="mx-auto max-w-sm space-y-1">
+						{#each daily.stats.distribution as wins, index}
+							<li class="grid grid-cols-[1rem_1fr_2rem] items-center gap-2 text-sm leading-4.5">
+								<span class="sr-only">{t.daily.distributionRow(index + 1, wins)}</span>
+								<span aria-hidden="true" class="font-semibold">{index + 1}</span>
+								<span aria-hidden="true" class="flex">
+									<span
+										class="dist-bar"
+										class:dist-today={won && index === daily.guesses.length - 1}
+										style:width="{(wins / mostWins) * 100}%"
+									></span>
+								</span>
+								<span aria-hidden="true" class="text-right tabular-nums">{wins}</span>
+							</li>
+						{/each}
+					</ol>
+				</section>
+			</div>
 
-			<div class="flex flex-wrap justify-center gap-3">
+			<div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-3">
 				<div class="relative">
 					{#if copied}
 						<span aria-hidden="true" class="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-[var(--glass-border)] bg-[var(--glass-fg)] px-3 py-2 text-sm text-[var(--glass-bg)] shadow-lg">{t.daily.copied}</span>
@@ -351,32 +362,68 @@
 					<button type="button" class="btn-primary" onclick={shareResult}>{t.daily.share}</button>
 				</div>
 				<button type="button" class="btn-secondary" onclick={playClassic}>{t.daily.practice}</button>
-			</div>
-
-			<p class="text-center">
 				{#if untilNext <= 0}
 					<button type="button" class="btn-secondary" onclick={playToday}>{t.daily.nextReady}</button>
 				{:else}
-					{t.daily.next}
-					<span role="timer" class="font-bold tabular-nums">{formatCountdown(untilNext)}</span>
+					<p>
+						{t.daily.next}
+						<span role="timer" class="font-bold tabular-nums">{formatCountdown(untilNext)}</span>
+					</p>
 				{/if}
-			</p>
+			</div>
 		</div>
 	{/if}
 </div>
 
 <style>
+	/* The board takes whatever height the heading and keypad leave, so tiles
+	   are sized from the board area's container units. */
+	.board-area {
+		--gap: 0.375rem;
+		--tile-min: 2rem;
+		--tile-max: 3.5rem;
+		container-type: size;
+		flex: 1 1 0;
+		min-height: calc(var(--rows) * var(--tile-min) + (var(--rows) - 1) * var(--gap));
+		max-height: calc(var(--rows) * var(--tile-max) + (var(--rows) - 1) * var(--gap));
+	}
+
+	.board-finished {
+		--gap: 0.25rem;
+		--tile-min: 1.25rem;
+	}
+
+	.board {
+		--tile: clamp(
+			var(--tile-min),
+			min(
+				(100cqh - (var(--rows) - 1) * var(--gap)) / var(--rows),
+				(100cqw - 4 * var(--gap)) / 5
+			),
+			var(--tile-max)
+		);
+		gap: var(--gap);
+	}
+
+	.board-row {
+		gap: var(--gap);
+	}
+
+	.warning-toast {
+		background: color-mix(in srgb, var(--state-warning) 18%, var(--glass-bg));
+	}
+
 	.tile {
 		position: relative;
 		display: grid;
 		place-items: center;
-		width: 3.25rem;
-		height: 3.25rem;
+		width: var(--tile);
+		height: var(--tile);
 		border: 1.5px solid color-mix(in srgb, var(--glass-border) 25%, transparent);
-		border-radius: 10px;
+		border-radius: calc(var(--tile) * 0.18);
 		background: color-mix(in srgb, var(--surface-white) 40%, transparent);
 		font-family: var(--font-display);
-		font-size: 1.5rem;
+		font-size: calc(var(--tile) * 0.5);
 		font-weight: 700;
 		transition:
 			background-color var(--motion-duration) var(--motion-easing),
@@ -391,17 +438,12 @@
 		transition-delay: 0ms;
 	}
 
-	@media (min-width: 600px) {
-		.tile {
-			width: 3.5rem;
-			height: 3.5rem;
-			font-size: 1.75rem;
-		}
+	.keypad button {
+		min-height: clamp(2.75rem, 6dvh, 3.25rem);
 	}
 
 	.key {
 		position: relative;
-		min-height: 52px;
 		border: 1.5px solid var(--glass-border);
 		border-radius: 10px;
 		background: var(--surface-white);
@@ -439,6 +481,12 @@
 		border-radius: 50%;
 		background: currentColor;
 		transform: translateX(-50%);
+	}
+
+	.tile.mark-present::after {
+		bottom: calc(var(--tile) * 0.08);
+		width: max(4px, calc(var(--tile) * 0.11));
+		height: max(4px, calc(var(--tile) * 0.11));
 	}
 
 	.mark-absent {

@@ -8,6 +8,9 @@
 	--font-body: "Inter", "Noto Sans Thai", "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
+@custom-variant fit (@media (min-height: 540px));
+@custom-variant short (@media (max-height: 959px));
+
 :root {
 	--stage-bg: #1d4ed8;
 	--stage-grid: rgba(255, 255, 255, 0.18);

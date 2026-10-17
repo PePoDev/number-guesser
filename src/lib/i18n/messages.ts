@@ -145,8 +145,6 @@ const en = {
 		empty: 'Please enter a number before submitting.',
 		duplicate: (guess: string) =>
 			`You've already guessed ${guess}. Try a different number!`,
-		perfect: 'Perfect! All digits in correct positions!',
-		betterLuck: 'Better luck next time!',
 		feedback: (digits: number, positions: number) =>
 			`Correct digits: ${digits}, Correct positions: ${positions}`,
 		won: (target: string) =>
@@ -450,8 +448,6 @@ const th: Messages = {
 		submit: 'ส่งคำทาย',
 		empty: 'กรุณากรอกตัวเลขก่อนส่ง',
 		duplicate: (guess) => `คุณทาย ${guess} ไปแล้ว ลองเลขอื่นดูนะ!`,
-		perfect: 'เยี่ยม! ทุกหลักถูกตำแหน่งหมดแล้ว!',
-		betterLuck: 'คราวหน้าลองใหม่นะ!',
 		feedback: (digits, positions) => `เลขถูก: ${digits}, ตำแหน่งถูก: ${positions}`,
 		won: (target) => `ยินดีด้วย! คุณทายเลข ${target} ถูกแล้ว!`,
 		wonWith: (attempts) => `ชนะด้วยการทาย ${attempts} ครั้ง!`,
